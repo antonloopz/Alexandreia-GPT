@@ -1,26 +1,43 @@
-@import "tailwindcss";
+/* src/app/globals.css */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #24231f;
+  --paper: #f2f4ef;
+  --paper-alt: #fbfaf7;
+
+  --kategorie-philosophie: #c9c4dc;
+  --kategorie-psychologie: #bfd2de;
+  --kategorie-wirtschaft_business: #e6d2a0;
+  --kategorie-geschichte: #e5b8a1;
+  --kategorie-naturwissenschaft: #c8dac5;
+  --kategorie-gesellschaft_politik: #b7c6d2;
+  --kategorie-biografie_memoir: #ddbabc;
+  --kategorie-literatur_klassiker: #b7d5ce;
+  --kategorie-spiritualitaet_sinnfragen: #d5c0d3;
+  --kategorie-persoenliche_entwicklung: #e6d39f;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-work-sans), "Work Sans", Arial, sans-serif;
+}
+
+/* Helvetica ist eine Systemschrift (macOS/iOS) — kein next/font-Ladevorgang
+   nötig, nur der Fallback-Stack wie im Design Canvas. Auf anderen Systemen
+   greift automatisch Arial. */
+.font-helvetica {
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }

@@ -1,0 +1,199 @@
+// app/fortschritt/page.tsx
+//
+// Vierter sekundärer Screen: reine Statistik-Ansicht, kein Aktionsbutton.
+// Streak = längste je erreichte Tage-Folge (src/lib/streak.ts, nicht die
+// aktuelle wie auf Home/Abschluss). "Bücher gelesen" wie im Archiv gezählt.
+// Quiz-Trefferquote ist NICHT berechenbar: Quiz-Ergebnisse werden aktuell
+// nirgends persistiert (nur transient als Query-Parameter an Abschluss
+// übergeben) — Anzeige deshalb bewusst "–" statt einer erfundenen Zahl;
+// bräuchte eine eigene Tabelle für Quiz-Versuche, um das nachzutragen.
+// Wochen-Balken zählt repetitionselemente.aktualisiertAm pro Wochentag
+// dieser Woche — da nur der letzte Bewertungszeitpunkt gespeichert wird
+// (keine Historie), unterzählt das, wenn eine Karte mehrfach in derselben
+// Woche bewertet wird.
+
+import Link from "next/link";
+import { db } from "../../src/db";
+import { buchinhalte, buecher, gezeigteBuecher, konten, repetitionselemente } from "../../src/db/schema";
+import { and, eq, gte, lt, ne } from "drizzle-orm";
+import { laengsterStreak } from "../../src/lib/streak";
+import MenuButton from "../MenuButton";
+
+export const dynamic = "force-dynamic";
+
+const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
+function montagDieserWoche(heute: Date): Date {
+  const tag = heute.getDay();
+  const differenz = tag === 0 ? -6 : 1 - tag;
+  const montag = new Date(heute);
+  montag.setDate(heute.getDate() + differenz);
+  montag.setHours(0, 0, 0, 0);
+  return montag;
+}
+
+export default async function FortschrittSeite() {
+  const [konto] = await db.select().from(konten).limit(1);
+
+  if (!konto) {
+    return (
+      <main style={{ padding: 24, fontFamily: "Helvetica, Arial, sans-serif" }}>
+        Kein Konto gefunden — <code>npx tsx src/db/seed.ts</code> ausführen.
+      </main>
+    );
+  }
+
+  const heute = new Date();
+
+  const gezeigteDaten = await db
+    .select({ datum: gezeigteBuecher.datumGezeigt })
+    .from(gezeigteBuecher)
+    .where(eq(gezeigteBuecher.kontoId, konto.id));
+
+  const streak = laengsterStreak(gezeigteDaten.map((d) => d.datum));
+
+  const buecherGelesen = await db
+    .select({ id: gezeigteBuecher.id })
+    .from(gezeigteBuecher)
+    .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(and(eq(gezeigteBuecher.kontoId, konto.id), ne(gezeigteBuecher.datumGezeigt, heute)));
+
+  const montag = montagDieserWoche(heute);
+  const naechsterMontag = new Date(montag);
+  naechsterMontag.setDate(montag.getDate() + 7);
+
+  const bewertungenDieseWoche = await db
+    .select({ zeitpunkt: repetitionselemente.aktualisiertAm })
+    .from(repetitionselemente)
+    .where(
+      and(
+        eq(repetitionselemente.kontoId, konto.id),
+        gte(repetitionselemente.aktualisiertAm, montag),
+        lt(repetitionselemente.aktualisiertAm, naechsterMontag)
+      )
+    );
+
+  const zaehlerProTag = new Array(7).fill(0);
+  for (const { zeitpunkt } of bewertungenDieseWoche) {
+    const differenzTage = Math.floor((zeitpunkt.getTime() - montag.getTime()) / 86400000);
+    if (differenzTage >= 0 && differenzTage < 7) zaehlerProTag[differenzTage]++;
+  }
+  const maxProTag = Math.max(1, ...zaehlerProTag);
+  const heuteIndex = Math.floor((heute.getTime() - montag.getTime()) / 86400000);
+
+  return (
+    <main
+      style={{
+        width: "100%",
+        minHeight: "100dvh",
+        boxSizing: "border-box",
+        padding: 16,
+        background: "var(--paper)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 24,
+        color: "var(--ink)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" aria-label="Schliessen">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </Link>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Fortschritt</span>
+        </div>
+        <MenuButton />
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34 }}>{streak} Tage</span>
+        <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.65)" }}>Streak — dein bisher längster Lauf</span>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <div
+          style={{
+            flex: 1,
+            boxSizing: "border-box",
+            padding: "12px 14px",
+            borderRadius: 14,
+            background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buecherGelesen.length}</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+            Bücher gelesen
+          </span>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            boxSizing: "border-box",
+            padding: "12px 14px",
+            borderRadius: 14,
+            background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>–</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+            Quiz-Trefferquote
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <span
+          style={{
+            fontFamily: "Helvetica, Arial, sans-serif",
+            fontWeight: 700,
+            fontSize: 12,
+            letterSpacing: ".06em",
+            textTransform: "uppercase",
+            color: "rgba(36,35,31,.6)",
+          }}
+        >
+          Diese Woche · Wiederholungen
+        </span>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 110, borderBottom: "1.5px solid #24231F" }}>
+          {zaehlerProTag.map((anzahl, i) => {
+            const istZukunft = i > heuteIndex;
+            if (istZukunft) {
+              return (
+                <div
+                  key={i}
+                  style={{
+                    width: 24,
+                    height: 14,
+                    background: "none",
+                    border: "1.5px solid #24231F",
+                    borderRadius: "4px 4px 0 0",
+                    boxSizing: "border-box",
+                  }}
+                />
+              );
+            }
+            const hoehe = anzahl === 0 ? 6 : Math.max(20, Math.round((anzahl / maxProTag) * 100));
+            return <div key={i} style={{ width: 24, height: hoehe, background: "#24231F", borderRadius: "4px 4px 0 0" }} />;
+          })}
+        </div>
+        <div style={{ display: "flex", gap: 14 }}>
+          {WOCHENTAGE.map((tag) => (
+            <span key={tag} style={{ width: 24, textAlign: "center", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10.5, color: "rgba(36,35,31,.6)" }}>
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}

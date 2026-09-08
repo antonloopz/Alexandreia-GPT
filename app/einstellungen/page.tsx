@@ -1,0 +1,110 @@
+// app/einstellungen/page.tsx
+//
+// Fünfter und letzter sekundärer Screen. Nur "Obsidian-Export" und
+// "Anki-Export" sind echt verdrahtet (kontoeinstellungen-Zeile, per Toggle
+// aktualisiert). "Themenverteilung anpassen" und "Partnerkonto verknüpfen"
+// sind bewusst inerte Zeilen ohne Funktion — beide Features (Zielwerte pro
+// Kategorie überschreiben, Mehrnutzer-Verknüpfung) sind konzeptionell
+// vorgesehen, aber noch nicht gebaut; kein Link, damit nichts 404 wirft.
+
+import { db } from "../../src/db";
+import { konten, kontoeinstellungen } from "../../src/db/schema";
+import { eq } from "drizzle-orm";
+import Link from "next/link";
+import MenuButton from "../MenuButton";
+import EinstellungenClient from "./EinstellungenClient";
+
+export const dynamic = "force-dynamic";
+
+const gruppenLabelStil: React.CSSProperties = {
+  fontFamily: "Helvetica, Arial, sans-serif",
+  fontWeight: 700,
+  fontSize: 12,
+  letterSpacing: ".06em",
+  textTransform: "uppercase",
+  color: "rgba(36,35,31,.6)",
+};
+
+const zeileStil: React.CSSProperties = {
+  boxSizing: "border-box",
+  padding: "14px 16px",
+  borderRadius: 14,
+  background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+export default async function EinstellungenSeite() {
+  const [konto] = await db.select().from(konten).limit(1);
+
+  if (!konto) {
+    return (
+      <main style={{ padding: 24, fontFamily: "Helvetica, Arial, sans-serif" }}>
+        Kein Konto gefunden — <code>npx tsx src/db/seed.ts</code> ausführen.
+      </main>
+    );
+  }
+
+  const [einstellungen] = await db
+    .select()
+    .from(kontoeinstellungen)
+    .where(eq(kontoeinstellungen.kontoId, konto.id));
+
+  return (
+    <main
+      style={{
+        width: "100%",
+        minHeight: "100dvh",
+        boxSizing: "border-box",
+        padding: 16,
+        background: "var(--paper)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 24,
+        color: "var(--ink)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link href="/" aria-label="Schliessen">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </Link>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Einstellungen</span>
+        </div>
+        <MenuButton />
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <span style={gruppenLabelStil}>Inhalt</span>
+        <div style={zeileStil}>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
+            Themenverteilung anpassen
+          </span>
+          <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <span style={gruppenLabelStil}>Export</span>
+        <EinstellungenClient
+          obsidianAktiv={einstellungen?.obsidianExportAktiv ?? true}
+          ankiAktiv={einstellungen?.ankiExportAktiv ?? false}
+        />
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <span style={gruppenLabelStil}>Konto</span>
+        <div style={zeileStil}>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
+            Partnerkonto verknüpfen
+          </span>
+          <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
+        </div>
+      </div>
+    </main>
+  );
+}
