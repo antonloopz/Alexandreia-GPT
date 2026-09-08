@@ -81,9 +81,15 @@ export const buchinhalte = pgTable("buchinhalte", {
   kernzitatOriginal: text(),
   kernzitatUebersetzung: text(),
   status: buchinhaltStatusEnum().notNull().default("in_aufbereitung"),
-  // Vertrauenshinweis pro Feld, z.B. { zusammenfassung: "verifiziert",
-  // entstehungsgeschichte: "eingeordnet", kernzitat: "verifiziert" }
-  vertrauenshinweise: jsonb().$type<Record<string, "verifiziert" | "eingeordnet">>(),
+  // Vertrauenshinweis pro Feld. kernzitat ist explizit auch null zulässig
+  // (Bücher ohne Kernzitat haben keinen Vertrauenshinweis dafür — siehe
+  // entwurf.ts, dort wird das bewusst so erzwungen).
+  vertrauenshinweise: jsonb().$type<{
+    zusammenfassung: "verifiziert" | "eingeordnet";
+    entstehungsgeschichte: "verifiziert" | "eingeordnet";
+    autorenhintergrund: "verifiziert" | "eingeordnet";
+    kernzitat: "verifiziert" | "eingeordnet" | null;
+  }>(),
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });
 
