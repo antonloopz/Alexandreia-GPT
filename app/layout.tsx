@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   // nur drei feste Stile (default = deckend weiss, black = deckend
   // schwarz, black-translucent = durchsichtig, zeigt was dahinter liegt).
   // Nur mit black-translucent lässt sich die Statusleiste farbig einfärben
-  // — siehe der feste Ink-Streifen unten im <body>.
+  // — siehe body { padding-top / background } in globals.css.
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -44,22 +44,16 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#F2F4EF",
-  // Nötig, damit der Ink-Streifen unten überhaupt bis unter die Notch/
-  // Dynamic Island reicht (sonst bleibt env(safe-area-inset-top) = 0).
+  // Nötig, damit env(safe-area-inset-top) in globals.css überhaupt einen
+  // Wert über 0 bekommt (sonst reserviert iOS die Notch/Dynamic-Island-
+  // Fläche gar nicht erst im Viewport).
   viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de" className={workSans.variable}>
-      <body>
-        {/* Füllt die Statusleisten-Fläche (Uhrzeit/Signal) im Standalone-
-            Modus mit der Ink-Farbe. Ausserhalb der installierten App (z.B.
-            normaler Safari-Tab, oder Geräte ohne Notch) ist
-            env(safe-area-inset-top) = 0 und der Streifen unsichtbar. */}
-        <div className="status-bar-fill" aria-hidden />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
