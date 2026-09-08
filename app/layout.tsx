@@ -34,6 +34,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // width/initialScale fehlten in der vorherigen Version — dadurch hat der
+  // eigene viewport-Export den impliziten Next.js-Standard
+  // ("width=device-width, initial-scale=1") komplett ersetzt statt ergänzt.
+  // Ohne die beiden Werte rendert Safari die Seite in der Desktop-Breite
+  // (980px) herunterskaliert -> genau der Effekt, dass oben Platz fehlt
+  // und man scrollen muss, um "Guten Tag, Toni" zu sehen. Jetzt wieder
+  // explizit alle drei Werte zusammen.
+  width: "device-width",
+  initialScale: 1,
   themeColor: "#F2F4EF",
   // Nötig, damit der Ink-Streifen unten überhaupt bis unter die Notch/
   // Dynamic Island reicht (sonst bleibt env(safe-area-inset-top) = 0).
