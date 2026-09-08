@@ -106,7 +106,32 @@ Regeln:
   });
 
   const text = await letzterTextblock(message);
-  return jsonAusText(text) as EntwurfJSON;
+  const entwurf = jsonAusText(text) as EntwurfJSON;
+  pruefeEntwurfVollstaendigkeit(entwurf);
+  return entwurf;
+}
+
+// Zusätzlich zur reinen JSON-Gültigkeit (siehe json.ts) hier eine inhaltliche
+// Mindestprüfung: gültiges JSON ohne die erwarteten, nicht-leeren Felder
+// würde sonst entweder an der DB-NOT-NULL-Regel mit einer kryptischen
+// Fehlermeldung scheitern (zusammenfassung/entstehungsgeschichte) oder —
+// schlimmer — als leerer, aber technisch gültiger Bucheintrag durchrutschen,
+// falls das Modell z.B. "" statt eines echten Texts liefert. Lieber hier
+// laut und klar scheitern, bevor überhaupt in die Datenbank geschrieben wird.
+function pruefeEntwurfVollstaendigkeit(entwurf: EntwurfJSON): void {
+  const fehlend: string[] = [];
+  if (!entwurf.zusammenfassung?.trim()) fehlend.push("zusammenfassung");
+  if (!entwurf.entstehungsgeschichte?.trim()) fehlend.push("entstehungsgeschichte");
+  if (!Array.isArray(entwurf.kernaussagen) || entwurf.kernaussagen.length === 0) {
+    fehlend.push("kernaussagen");
+  } else if (entwurf.kernaussagen.some((k) => !k.text?.trim() || !k.erklaerung?.trim())) {
+    fehlend.push("kernaussagen[].text/erklaerung");
+  }
+  if (fehlend.length > 0) {
+    throw new Error(
+      `Entwurf-Antwort unvollständig oder leer, fehlende Felder: ${fehlend.join(", ")}.`
+    );
+  }
 }
 
 export async function entwurfPruefen(
