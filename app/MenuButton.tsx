@@ -23,8 +23,8 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
     ),
   },
   {
-    href: "/buecherliste",
-    label: "Bücherliste",
+    href: "/bookshelf",
+    label: "Bibliothek",
     pfade: (
       <>
         <path d="M12 6.5c-1.8-1.3-4.2-1.8-6.5-1.3v11c2.3-.5 4.7 0 6.5 1.3 1.8-1.3 4.2-1.8 6.5-1.3v-11c-2.3-.5-4.7 0-6.5 1.3Z" />
@@ -33,13 +33,12 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
     ),
   },
   {
-    href: "/archiv",
-    label: "Archiv",
+    href: "/buecherliste",
+    label: "Wunschliste",
     pfade: (
       <>
-        <rect x="4.5" y="8.5" width="15" height="11" rx="1.5" />
-        <path d="M4.5 8.5V6a1.5 1.5 0 0 1 1.5-1.5h12A1.5 1.5 0 0 1 19.5 6v2.5" />
-        <line x1="10" y1="13" x2="14" y2="13" />
+        <path d="M6 3.5v17" />
+        <path d="M6 4h11l-3 3.5 3 3.5H6" />
       </>
     ),
   },

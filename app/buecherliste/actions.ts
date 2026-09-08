@@ -51,7 +51,12 @@ export async function buchJetztAufbereiten(buchId: string) {
         buchinhaltId = ergebnis.buchinhaltId;
       }
     }
-  } catch {
+  } catch (e) {
+    // Bisher wurde der eigentliche Fehler hier komplett verschluckt — man
+    // sah nur "technisch" im UI, aber nie WARUM. Jetzt landet die echte
+    // Fehlermeldung im Server-Log (Terminal bei "npm run dev", Vercel-Logs
+    // in Produktion), ohne das Nutzer-facing Verhalten zu ändern.
+    console.error(`buchJetztAufbereiten(${buchId}) fehlgeschlagen:`, e);
     fehler = "technisch";
   }
 

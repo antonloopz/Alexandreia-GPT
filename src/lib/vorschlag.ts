@@ -180,3 +180,70 @@ export async function vorschlaege(
 
   return ergebnis;
 }
+
+// Rein lesende Übersicht über die Kategorie-Rotation: pro Kategorie der
+// aktuelle Bestand und — unabhängig davon, ob die Kategorie gerade knapp
+// ist — welches Buch dort als Nächstes an der Reihe wäre. Bewusst NICHT
+// dieselbe Auswahl wie vorschlaege() (die berücksichtigt zusätzlich manuell
+// priorisierte "bald"-Einträge querbeet über alle Kategorien) — hier geht
+// es um die reine Rotation pro Kategorie zum Nachschauen, nicht um die
+// tatsächliche nächste Produktionsreihenfolge.
+export type KategorieStatus = {
+  kategorie: Kategorie;
+  bestand: number;
+  mindestbestand: number;
+  naechsterKandidat: { titel: string; autor: string } | null;
+};
+
+export async function kategorieUebersicht(kontoId: string): Promise<KategorieStatus[]> {
+  const belegt = await db.select({ buchId: buchinhalte.buchId }).from(buchinhalte);
+  const belegteIds = new Set(belegt.map((r) => r.buchId));
+
+  const bestandRows = await db
+    .select({ kategorie: buecher.kategorie, anzahl: sql<number>`count(*)::int` })
+    .from(buchinhalte)
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(eq(buchinhalte.status, "im_vorrat"))
+    .groupBy(buecher.kategorie);
+
+  const bestand = new Map<Kategorie, number>(ALLE_KATEGORIEN.map((k) => [k, 0]));
+  for (const row of bestandRows) bestand.set(row.kategorie as Kategorie, row.anzahl);
+
+  const eintraege = await db
+    .select({ buchId: wunschlisteneintraege.buchId })
+    .from(wunschlisteneintraege)
+    .where(eq(wunschlisteneintraege.kontoId, kontoId));
+  const wunschlistenIds = new Set(
+    eintraege.map((r) => r.buchId).filter((id): id is string => id !== null)
+  );
+  const ausListeAnteil =
+    belegt.length === 0 ? 0 : belegt.filter((r) => wunschlistenIds.has(r.buchId)).length / belegt.length;
+  const wunschlisteBevorzugt = ausListeAnteil < WUNSCHLISTEN_QUOTE;
+
+  const ergebnis: KategorieStatus[] = [];
+
+  for (const kategorie of ALLE_KATEGORIEN) {
+    const kandidatenInKategorie = await db
+      .select()
+      .from(buecher)
+      .where(eq(buecher.kategorie, kategorie));
+
+    const offen = kandidatenInKategorie.filter((b) => !belegteIds.has(b.id));
+    const ausListe = offen.filter((b) => wunschlistenIds.has(b.id));
+    const andere = offen.filter((b) => !wunschlistenIds.has(b.id));
+
+    let gewaehlt: (typeof offen)[number] | undefined;
+    if (wunschlisteBevorzugt && ausListe.length > 0) gewaehlt = ausListe[0];
+    else if (andere.length > 0) gewaehlt = andere[0];
+    else if (ausListe.length > 0) gewaehlt = ausListe[0];
+
+    ergebnis.push({
+      kategorie,
+      bestand: bestand.get(kategorie)!,
+      mindestbestand: MINDESTBESTAND,
+      naechsterKandidat: gewaehlt ? { titel: gewaehlt.titel, autor: gewaehlt.autor } : null,
+    });
+  }
+
+  return ergebnis;
+}
