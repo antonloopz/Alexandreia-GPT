@@ -16,6 +16,7 @@ import { naechstesBuchFuerHeute, faelligeWiederholungenAnzahl } from "../src/lib
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../src/lib/kategorien";
 import { aktuellerStreak } from "../src/lib/streak";
 import MenuButton from "./MenuButton";
+import StatusBarColor from "./StatusBarColor";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,7 @@ export default async function Home() {
         color: "var(--ink)",
       }}
     >
+      <StatusBarColor farbe={akzent} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>

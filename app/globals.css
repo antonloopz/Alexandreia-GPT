@@ -43,7 +43,11 @@ body {
    Statusleiste, der Rest der Seite (main) folgt direkt danach unverändert. */
 body {
   padding-top: env(safe-area-inset-top, 0px);
-  background: var(--ink);
+  /* Fallback Ink auf neutralen Seiten (z.B. Wunschliste, Einstellungen);
+     auf den Buch-Screens (Buch heute, Lesen, Kernaussagen, Lernkarten,
+     Quiz) überschreibt StatusBarColor.tsx --status-farbe mit der
+     jeweiligen Kategoriefarbe. */
+  background: var(--status-farbe, var(--ink));
 }
 
 /* Helvetica ist eine Systemschrift (macOS/iOS) — kein next/font-Ladevorgang

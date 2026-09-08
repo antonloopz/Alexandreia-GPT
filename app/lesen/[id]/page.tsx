@@ -11,6 +11,7 @@ import { buchinhalte, buecher } from "../../../src/db/schema";
 import { eq } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import MenuButton from "../../MenuButton";
+import StatusBarColor from "../../StatusBarColor";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +123,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
         color: "var(--ink)",
       }}
     >
+      <StatusBarColor farbe={akzent} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/" aria-label="Zurück">

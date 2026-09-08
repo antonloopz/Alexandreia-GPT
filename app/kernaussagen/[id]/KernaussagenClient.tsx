@@ -10,6 +10,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import MenuButton from "../../MenuButton";
+import StatusBarColor from "../../StatusBarColor";
 
 type Kernaussage = { text: string; erklaerung: string };
 
@@ -44,6 +45,7 @@ export default function KernaussagenClient({
         color: "var(--ink)",
       }}
     >
+      <StatusBarColor farbe={akzent} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link href={`/lesen/${buchinhaltId}`} aria-label="Zurück">

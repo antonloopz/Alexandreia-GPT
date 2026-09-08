@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MenuButton from "../../MenuButton";
+import StatusBarColor from "../../StatusBarColor";
 
 type Frage = { id: string; frage: string; optionen: string[]; richtigeOptionIndex: number };
 type FalscheAntwort = { frage: string; gewaehlt: string; richtig: string };
@@ -96,6 +97,7 @@ export default function QuizClient({
           color: "var(--ink)",
         }}
       >
+        <StatusBarColor farbe={akzent} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Auswertung</span>
           <MenuButton />
@@ -189,6 +191,7 @@ export default function QuizClient({
         color: "var(--ink)",
       }}
     >
+      <StatusBarColor farbe={akzent} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link href={`/lernkarten/${buchinhaltId}`} aria-label="Zurück">

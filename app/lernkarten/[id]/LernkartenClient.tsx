@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { bewertungSpeichern } from "./actions";
 import MenuButton from "../../MenuButton";
+import StatusBarColor from "../../StatusBarColor";
 
 type Lernkarte = { id: string; kernaussageId: string; frage: string; antwort: string };
 type Bewertung = "nicht_gewusst" | "unsicher" | "gewusst";
@@ -62,6 +63,7 @@ export default function LernkartenClient({
         color: "var(--ink)",
       }}
     >
+      <StatusBarColor farbe={akzent} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link href={`/kernaussagen/${buchinhaltId}`} aria-label="Zurück">
