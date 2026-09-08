@@ -33,6 +33,17 @@ export type TagesBuch = {
   kategorie: string;
   teaser: string;
   kernaussagenAnzahl: number;
+  // true sobald die gezeigteBuecher-Zeile ein abgeschlossenAm trägt (siehe
+  // app/abschluss/[id]/page.tsx) — Home zeigt dann nicht mehr den vollen
+  // Detail-Block, sondern einen kompakten "geschafft"-Zustand.
+  abgeschlossen: boolean;
+};
+
+export type BereitesBuch = {
+  buchinhaltId: string;
+  titel: string;
+  autor: string;
+  kategorie: string;
 };
 
 function heuteDatum(): Date {
@@ -62,6 +73,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       autor: buecher.autor,
       kategorie: buecher.kategorie,
       zusammenfassung: buchinhalte.zusammenfassung,
+      abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
     })
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
@@ -81,6 +93,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       kategorie: bereitsHeute.kategorie,
       teaser: teaserAus(bereitsHeute.zusammenfassung),
       kernaussagenAnzahl: anzahl[0]?.n ?? 0,
+      abgeschlossen: bereitsHeute.abgeschlossenAm !== null,
     };
   }
 
@@ -157,7 +170,36 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
     kategorie: gewaehlt.kategorie,
     teaser: teaserAus(gewaehlt.zusammenfassung),
     kernaussagenAnzahl: anzahl[0]?.n ?? 0,
+    abgeschlossen: false,
   };
+}
+
+// "Bereit zum Weiterlesen": fertig produzierte ("im_vorrat") Bücher, die
+// diesem Konto noch nie gezeigt wurden — dieselbe Auswahl wie Bookshelfs
+// "Bereit"-Abschnitt, hier aber nur die ersten `limit` (alphabetisch), für
+// den kompakten Vorschlagsblock auf Home nach Abschluss des Tagesbuchs.
+export async function bereiteBuecher(kontoId: string, limit = 3): Promise<BereitesBuch[]> {
+  const gezeigt = await db
+    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId })
+    .from(gezeigteBuecher)
+    .where(eq(gezeigteBuecher.kontoId, kontoId));
+  const gezeigtIds = new Set(gezeigt.map((r) => r.buchinhaltId));
+
+  const kandidaten = await db
+    .select({
+      buchinhaltId: buchinhalte.id,
+      titel: buecher.titel,
+      autor: buecher.autor,
+      kategorie: buecher.kategorie,
+    })
+    .from(buchinhalte)
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(eq(buchinhalte.status, "im_vorrat"));
+
+  return kandidaten
+    .filter((b) => !gezeigtIds.has(b.buchinhaltId))
+    .sort((a, b) => a.titel.localeCompare(b.titel))
+    .slice(0, limit);
 }
 
 export async function faelligeWiederholungenAnzahl(kontoId: string): Promise<number> {

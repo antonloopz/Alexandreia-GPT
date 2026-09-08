@@ -21,7 +21,7 @@ import {
   quizfragen,
   repetitionselemente,
 } from "../../../src/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { aktuellerStreak } from "../../../src/lib/streak";
 import MenuButton from "../../MenuButton";
@@ -47,6 +47,25 @@ export default async function AbschlussSeite({
   if (!buch) notFound();
 
   const [konto] = await db.select().from(konten).limit(1);
+
+  // Markiert die gezeigteBuecher-Zeile dieses Buchs als abgeschlossen —
+  // Home nutzt das (tagesbuch.ts), um nach dem Durcharbeiten nicht mehr
+  // den vollen Detail-Block zu zeigen. isNull-Guard: nur beim ersten Mal
+  // setzen, ein erneuter Abschluss-Besuch überschreibt den Zeitpunkt nicht.
+  // Betrifft nur die offizielle Tagesbuch-Zeile (falls id keiner entspricht,
+  // z.B. bei einem zusätzlich gelesenen "Bereit"-Buch, ändert sich nichts).
+  if (konto) {
+    await db
+      .update(gezeigteBuecher)
+      .set({ abgeschlossenAm: new Date() })
+      .where(
+        and(
+          eq(gezeigteBuecher.kontoId, konto.id),
+          eq(gezeigteBuecher.buchinhaltId, id),
+          isNull(gezeigteBuecher.abgeschlossenAm)
+        )
+      );
+  }
 
   const [{ n: kernaussagenAnzahl }] = await db
     .select({ n: sql<number>`count(*)::int` })

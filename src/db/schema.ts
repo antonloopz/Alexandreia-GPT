@@ -159,6 +159,12 @@ export const gezeigteBuecher = pgTable("gezeigte_buecher", {
     .references(() => buchinhalte.id),
   datumGezeigt: date({ mode: "date" }).notNull(),
   quelle: quelleEnum().notNull(),
+  // Gesetzt beim Erreichen von Abschluss (siehe app/abschluss/[id]/page.tsx)
+  // — null solange das Buch noch nicht durchgearbeitet wurde. Home nutzt
+  // das, um nach Abschluss nicht mehr das "heutige Buch" im Detail zu
+  // zeigen, sondern einen kompakten "geschafft"-Zustand plus weitere,
+  // bereits fertige Bücher zum Weiterlesen (siehe tagesbuch.ts).
+  abgeschlossenAm: timestamp({ mode: "date" }),
 });
 
 export const repetitionselemente = pgTable("repetitionselemente", {
