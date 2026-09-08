@@ -144,18 +144,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
 
   const gewaehlt = sortiert[0];
 
-  const wunschlistenTreffer = await db
-    .select()
-    .from(wunschlisteneintraege)
-    .where(and(eq(wunschlisteneintraege.kontoId, kontoId), eq(wunschlisteneintraege.buchId, gewaehlt.buchId)))
-    .limit(1);
-
-  await db.insert(gezeigteBuecher).values({
-    kontoId,
-    buchinhaltId: gewaehlt.buchinhaltId,
-    datumGezeigt: heute,
-    quelle: wunschlistenTreffer.length > 0 ? "eigene_liste" : "klassiker",
-  });
+  await sicherstelleGezeigt(kontoId, gewaehlt.buchinhaltId, gewaehlt.buchId);
 
   const anzahl = await db
     .select({ n: sql<number>`count(*)::int` })
@@ -172,6 +161,38 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
     kernaussagenAnzahl: anzahl[0]?.n ?? 0,
     abgeschlossen: false,
   };
+}
+
+// Stellt sicher, dass für dieses Buch+Konto eine gezeigteBuecher-Zeile
+// existiert (idempotent, kein Doppel-Insert bei erneutem Aufruf) — genutzt
+// von naechstesBuchFuerHeute (offizielle Tagesauswahl) UND von der
+// Lesen-Seite (app/lesen/[id]/page.tsx), falls jemand ein "Bereit"-Buch
+// direkt öffnet statt über Home. Ohne Letzteres würde so ein Buch nie in
+// Bookshelfs "Gelesen"-Historie oder den Streak einfliessen.
+export async function sicherstelleGezeigt(
+  kontoId: string,
+  buchinhaltId: string,
+  buchId: string
+): Promise<void> {
+  const [vorhanden] = await db
+    .select({ id: gezeigteBuecher.id })
+    .from(gezeigteBuecher)
+    .where(and(eq(gezeigteBuecher.kontoId, kontoId), eq(gezeigteBuecher.buchinhaltId, buchinhaltId)));
+
+  if (vorhanden) return;
+
+  const wunschlistenTreffer = await db
+    .select()
+    .from(wunschlisteneintraege)
+    .where(and(eq(wunschlisteneintraege.kontoId, kontoId), eq(wunschlisteneintraege.buchId, buchId)))
+    .limit(1);
+
+  await db.insert(gezeigteBuecher).values({
+    kontoId,
+    buchinhaltId,
+    datumGezeigt: heuteDatum(),
+    quelle: wunschlistenTreffer.length > 0 ? "eigene_liste" : "klassiker",
+  });
 }
 
 // "Bereit zum Weiterlesen": fertig produzierte ("im_vorrat") Bücher, die

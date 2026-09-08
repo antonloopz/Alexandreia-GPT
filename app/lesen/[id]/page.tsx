@@ -7,9 +7,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "../../../src/db";
-import { buchinhalte, buecher } from "../../../src/db/schema";
+import { buchinhalte, buecher, konten } from "../../../src/db/schema";
 import { eq } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
+import { sicherstelleGezeigt } from "../../../src/lib/tagesbuch";
 import MenuButton from "../../MenuButton";
 import StatusBarColor from "../../StatusBarColor";
 
@@ -88,6 +89,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
   const [zeile] = await db
     .select({
       buchinhaltId: buchinhalte.id,
+      buchId: buecher.id,
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
@@ -103,6 +105,18 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
     .where(eq(buchinhalte.id, id));
 
   if (!zeile) notFound();
+
+  // Markiert das Buch als "gezeigt", falls es noch keine gezeigteBuecher-
+  // Zeile hat — betrifft v.a. selbst geöffnete "Bereit"-Bücher (Home
+  // "Weiterlesen", Bookshelf), die nicht über naechstesBuchFuerHeute
+  // laufen. Ohne das würden sie nie in Bookshelfs "Gelesen"-Historie oder
+  // den Streak einfliessen. Für das offizielle Tagesbuch ist die Zeile an
+  // dieser Stelle schon vorhanden (von Home angelegt) — sicherstelleGezeigt
+  // ist idempotent, macht dann nichts.
+  const [konto] = await db.select().from(konten).limit(1);
+  if (konto) {
+    await sicherstelleGezeigt(konto.id, zeile.buchinhaltId, zeile.buchId);
+  }
 
   const akzent = KATEGORIE_FARBE[zeile.kategorie] ?? "var(--paper)";
   const kategorieLabel = KATEGORIE_LABEL[zeile.kategorie] ?? zeile.kategorie;
