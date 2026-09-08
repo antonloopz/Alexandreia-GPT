@@ -21,22 +21,36 @@ export const metadata: Metadata = {
   },
   // Macht "Zum Home-Bildschirm hinzufügen" auf iOS zu einer echten
   // Standalone-App (kein Safari-Adressleisten-/Tab-UI mehr), mit eigenem
-  // Titel unter dem Icon.
+  // Titel unter dem Icon. "black-translucent" statt "default": iOS kennt
+  // nur drei feste Stile (default = deckend weiss, black = deckend
+  // schwarz, black-translucent = durchsichtig, zeigt was dahinter liegt).
+  // Nur mit black-translucent lässt sich die Statusleiste farbig einfärben
+  // — siehe der feste Ink-Streifen unten im <body>.
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Alexandreia",
   },
 };
 
 export const viewport: Viewport = {
   themeColor: "#F2F4EF",
+  // Nötig, damit der Ink-Streifen unten überhaupt bis unter die Notch/
+  // Dynamic Island reicht (sonst bleibt env(safe-area-inset-top) = 0).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de" className={workSans.variable}>
-      <body>{children}</body>
+      <body>
+        {/* Füllt die Statusleisten-Fläche (Uhrzeit/Signal) im Standalone-
+            Modus mit der Ink-Farbe. Ausserhalb der installierten App (z.B.
+            normaler Safari-Tab, oder Geräte ohne Notch) ist
+            env(safe-area-inset-top) = 0 und der Streifen unsichtbar. */}
+        <div className="status-bar-fill" aria-hidden />
+        {children}
+      </body>
     </html>
   );
 }

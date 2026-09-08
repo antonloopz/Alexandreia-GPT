@@ -41,3 +41,22 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* Farbige Statusleiste im installierten (Home-Bildschirm-)Modus auf iOS:
+   siehe layout.tsx (statusBarStyle "black-translucent" + viewportFit
+   "cover"). Ohne diesen festen Streifen wäre die Statusleisten-Fläche nur
+   durchsichtig und würde die App-Hintergrundfarbe (--paper, sehr hell)
+   durchscheinen lassen — kaum von "weiss" zu unterscheiden. Der Streifen
+   ist bewusst immer Ink-farben (nicht die jeweilige Kategoriefarbe der
+   Seite), damit die Uhrzeit/Signal-Icons (weiss bei black-translucent)
+   zuverlässig lesbar bleiben. */
+.status-bar-fill {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--ink);
+  z-index: 100;
+  pointer-events: none;
+}
