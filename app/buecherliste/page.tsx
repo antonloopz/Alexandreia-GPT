@@ -5,8 +5,10 @@
 // eigener Auswahl-Nebeneffekt hier, das bleibt Aufgabe von tagesbuch.ts),
 // darunter die restlichen Wunschlisten-Einträge mit Kategorie-Farbpunkt.
 // "Jetzt lesen" (Kreis+Chevron) erscheint nur, wenn für das Buch bereits
-// ein fertiger Buchinhalt ("im_vorrat") existiert — die meisten der 64
-// Wunschliste-Titel sind noch nicht durch die Content-Pipeline gelaufen.
+// ein fertiger Buchinhalt ("im_vorrat") existiert. Für noch nicht
+// produzierte Bücher gibt's stattdessen zwei Aktionen: sofort ad-hoc
+// aufbereiten (AufbereitenButton) oder für den nächsten automatischen
+// Cron-Lauf vormerken (PrioritaetToggle) — siehe actions.ts.
 // "+"-Button bewusst oben im Header statt unten als grosser Kreisbutton
 // (wie sonst üblich) — bei wachsender Listenlänge müsste man sonst erst
 // runterscrollen, um ein Buch hinzuzufügen.
@@ -16,11 +18,19 @@ import { db } from "../../src/db";
 import { buchinhalte, buecher, gezeigteBuecher, konten, wunschlisteneintraege } from "../../src/db/schema";
 import { and, eq } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
+import { vorschlaege } from "../../src/lib/vorschlag";
 import MenuButton from "../MenuButton";
+import PrioritaetToggle from "./PrioritaetToggle";
+import AufbereitenButton from "./AufbereitenButton";
 
 export const dynamic = "force-dynamic";
 
-export default async function BuecherlisteSeite() {
+export default async function BuecherlisteSeite({
+  searchParams,
+}: {
+  searchParams: Promise<{ fehler?: string }>;
+}) {
+  const { fehler } = await searchParams;
   const [konto] = await db.select().from(konten).limit(1);
 
   if (!konto) {
@@ -61,6 +71,10 @@ export default async function BuecherlisteSeite() {
     .leftJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
     .leftJoin(buchinhalte, and(eq(buchinhalte.buchId, buecher.id), eq(buchinhalte.status, "im_vorrat")))
     .where(eq(wunschlisteneintraege.kontoId, konto.id));
+
+  // Reine Vorschau, kein Seiteneffekt — dieselbe Funktion, die auch der
+  // Cron-Job nutzt, um zu entscheiden, was als Nächstes produziert wird.
+  const naechsteKandidaten = await vorschlaege(konto.id, 3);
 
   const zeilen = liste
     .filter((z) => z.buchId !== heutigesBuch?.buchId)
@@ -106,6 +120,23 @@ export default async function BuecherlisteSeite() {
         </div>
       </div>
 
+      {fehler && (
+        <div
+          style={{
+            boxSizing: "border-box",
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: "rgba(36,35,31,.08)",
+            fontSize: 13,
+            lineHeight: 1.4,
+          }}
+        >
+          {fehler === "verworfen"
+            ? "Aufbereitung fehlgeschlagen: die Prüfung hat den Entwurf nicht bestanden. Einfach nochmal versuchen."
+            : "Aufbereitung fehlgeschlagen (technischer Fehler, z.B. unbrauchbare Modellantwort). Einfach nochmal versuchen."}
+        </div>
+      )}
+
       <span
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
@@ -118,6 +149,26 @@ export default async function BuecherlisteSeite() {
       >
         {liste.length} auf der Liste
       </span>
+
+      {naechsteKandidaten.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span
+            style={{
+              fontFamily: "Helvetica, Arial, sans-serif",
+              fontWeight: 600,
+              fontSize: 11,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              color: "rgba(36,35,31,.5)",
+            }}
+          >
+            Als Nächstes automatisch dran
+          </span>
+          <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.7)", lineHeight: 1.5 }}>
+            {naechsteKandidaten.map((k) => k.titel).join(" · ")}
+          </span>
+        </div>
+      )}
 
       {liste.length === 0 ? (
         <div
@@ -226,6 +277,12 @@ export default async function BuecherlisteSeite() {
                 </span>
                 {(zeile.autor ?? zeile.rohAutor) && (
                   <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
+                )}
+                {!zeile.buchinhaltId && zeile.buchId && (
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                    <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
+                    <AufbereitenButton buchId={zeile.buchId} />
+                  </div>
                 )}
               </div>
               {zeile.bald && (

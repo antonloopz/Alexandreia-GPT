@@ -6,6 +6,11 @@
 // legt nichts an, markiert nichts als "in Bearbeitung".
 //
 // Logik:
+// 0. Manuell priorisierte Wunschlisten-Einträge ("bald" = true, noch ohne
+//    Buchinhalt) zuerst — UNABHÄNGIG von der Kategorie-Mindestbestand-Logik.
+//    Wer ein Buch über die Bücherliste explizit "für den nächsten Lauf
+//    vormerkt", will es dann auch bekommen, nicht erst wenn seine Kategorie
+//    zufällig knapp wird.
 // 1. Bestand pro Kategorie zählen (Buchinhalte mit Status "im_vorrat").
 // 2. Kategorien unter dem Mindestbestand (2) sind kandidatenwürdig,
 //    knappste zuerst.
@@ -20,7 +25,7 @@
 
 import { db } from "../db";
 import { buecher, buchinhalte, wunschlisteneintraege } from "../db/schema";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 export const ALLE_KATEGORIEN = [
   "philosophie",
@@ -53,6 +58,45 @@ export async function vorschlaege(
   kontoId: string,
   anzahl = 3
 ): Promise<VorschlagKandidat[]> {
+  // Bereits mit Buchinhalt versehene Bücher ausschliessen (gleich welchen
+  // Status — "in Bearbeitung" ist kein Kandidat mehr). Vorgezogen, weil
+  // sowohl die manuelle Priorisierung (Schritt 0) als auch die
+  // Kategorie-Logik das brauchen.
+  const belegt = await db.select({ buchId: buchinhalte.buchId }).from(buchinhalte);
+  const belegteIds = new Set(belegt.map((r) => r.buchId));
+
+  const ergebnis: VorschlagKandidat[] = [];
+
+  // 0. Manuell priorisiert ("bald"), noch ohne Buchinhalt — siehe Kommentar
+  // oben. Reihenfolge: wie in der Wunschliste angelegt.
+  const priorisiert = await db
+    .select({
+      buchId: buecher.id,
+      titel: buecher.titel,
+      autor: buecher.autor,
+      kategorie: buecher.kategorie,
+    })
+    .from(wunschlisteneintraege)
+    .innerJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
+    .where(and(eq(wunschlisteneintraege.kontoId, kontoId), eq(wunschlisteneintraege.bald, true)));
+
+  for (const buch of priorisiert) {
+    if (ergebnis.length >= anzahl) break;
+    if (belegteIds.has(buch.buchId)) continue; // längst produziert, "bald" nur noch Alt-Markierung
+    ergebnis.push({
+      buchId: buch.buchId,
+      titel: buch.titel,
+      autor: buch.autor,
+      kategorie: buch.kategorie as Kategorie,
+      quelle: "eigene_liste",
+      grund: "Manuell für den nächsten Lauf vorgemerkt.",
+    });
+  }
+
+  if (ergebnis.length >= anzahl) return ergebnis;
+
+  const bereitsGewaehlt = new Set(ergebnis.map((e) => e.buchId));
+
   // 1. Bestand pro Kategorie (nur "im_vorrat")
   const bestandRows = await db
     .select({ kategorie: buecher.kategorie, anzahl: sql<number>`count(*)::int` })
@@ -69,12 +113,7 @@ export async function vorschlaege(
     .filter((k) => bestand.get(k)! < MINDESTBESTAND)
     .sort((a, b) => bestand.get(a)! - bestand.get(b)!);
 
-  if (knappeKategorien.length === 0) return [];
-
-  // 3. Bereits mit Buchinhalt versehene Bücher ausschliessen (gleich
-  //    welchen Status — "in Bearbeitung" ist kein Kandidat mehr)
-  const belegt = await db.select({ buchId: buchinhalte.buchId }).from(buchinhalte);
-  const belegteIds = new Set(belegt.map((r) => r.buchId));
+  if (knappeKategorien.length === 0) return ergebnis;
 
   // 4. Wunschlisten-Quote: Anteil bereits produzierter Bücher, die aus der
   //    eigenen Liste dieses Kontos stammen
@@ -93,8 +132,6 @@ export async function vorschlaege(
   const wunschlisteBevorzugt = ausListeAnteil < WUNSCHLISTEN_QUOTE;
 
   // 5. Pro knapper Kategorie einen Kandidaten ziehen, bis `anzahl` erreicht
-  const ergebnis: VorschlagKandidat[] = [];
-
   for (const kategorie of knappeKategorien) {
     if (ergebnis.length >= anzahl) break;
 
@@ -103,7 +140,9 @@ export async function vorschlaege(
       .from(buecher)
       .where(eq(buecher.kategorie, kategorie));
 
-    const offen = kandidatenInKategorie.filter((b) => !belegteIds.has(b.id));
+    const offen = kandidatenInKategorie.filter(
+      (b) => !belegteIds.has(b.id) && !bereitsGewaehlt.has(b.id)
+    );
     if (offen.length === 0) continue; // (noch) kein Kandidat in dieser Kategorie
 
     const ausListe = offen.filter((b) => wunschlistenIds.has(b.id));
