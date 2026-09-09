@@ -88,7 +88,7 @@ export default function QuizClient({
       <main
         style={{
           width: "100%",
-          height: "100dvh",
+          height: "calc(100dvh - env(safe-area-inset-top, 0px))",
           boxSizing: "border-box",
           padding: 16,
           background: akzent,
@@ -182,7 +182,7 @@ export default function QuizClient({
     <main
       style={{
         width: "100%",
-        height: "100dvh",
+        height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
         background: akzent,
