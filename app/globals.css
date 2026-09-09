@@ -4,18 +4,11 @@
   --ink: #24231f;
   --paper: #f2f4ef;
   --paper-alt: #fbfaf7;
-
-  --kategorie-philosophie: #c9c4dc;
-  --kategorie-psychologie: #bfd2de;
-  --kategorie-wirtschaft_business: #e6d2a0;
-  --kategorie-geschichte: #e5b8a1;
-  --kategorie-naturwissenschaft: #c8dac5;
-  --kategorie-gesellschaft_politik: #b7c6d2;
-  --kategorie-biografie_memoir: #ddbabc;
-  --kategorie-literatur_klassiker: #b7d5ce;
-  --kategorie-spiritualitaet_sinnfragen: #d5c0d3;
-  --kategorie-persoenliche_entwicklung: #e6d39f;
 }
+
+/* Kategoriefarben: einzige Quelle ist KATEGORIE_FARBE in src/lib/kategorien.ts
+   (nicht hier als CSS-Variable dupliziert) — die Seiten, die sie brauchen,
+   sind Server Components und lesen ohnehin kein CSS zur Laufzeit. */
 
 * {
   box-sizing: border-box;

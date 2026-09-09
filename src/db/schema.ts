@@ -67,6 +67,15 @@ export const buecher = pgTable("buecher", {
   // Google Books / Open Library ID oder URL, für Disambiguierung beim
   // Wunschlisten-Abgleich.
   externeReferenz: text(),
+  // Nur gesetzt für recherchierte (nicht wunschlisten-basierte) Bücher —
+  // legt fest, welche gezeigteBuecher.quelle beim tatsächlichen Zeigen
+  // verwendet wird. null = aus der Wunschliste (immer "eigene_liste").
+  herkunft: quelleEnum(),
+  // Grobe Umfangsangabe (z.B. "412 Seiten"), per Google Books API
+  // nachgeschlagen und einmalig gecacht — siehe lib/umfang.ts. null, bis
+  // die erste Vorschlags-Anfrage sie nachgeschlagen (und gespeichert) hat,
+  // oder wenn kein Treffer gefunden wurde.
+  umfang: text(),
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });
 

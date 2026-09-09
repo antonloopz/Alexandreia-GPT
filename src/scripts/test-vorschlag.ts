@@ -1,7 +1,11 @@
 // src/scripts/test-vorschlag.ts
 //
 // Testet die Vorschlag-Logik (src/lib/vorschlag.ts) gegen die echten,
-// geseedeten Daten. Reiner Lese-Vorgang — verändert nichts in der DB.
+// geseedeten Daten. ACHTUNG: seit der Klassiker/Geheimtipp/Synergie-
+// Recherche (siehe lib/recherche.ts) ist das NICHT mehr garantiert
+// nebenwirkungsfrei — ist eine Kategorie knapp und weder Wunschliste noch
+// Recherche-Pool liefern einen Kandidaten, legt dieser Aufruf per Claude+
+// Websuche ein echtes neues `buecher`-Eintrag an (kostet einen API-Call).
 //
 // Ausführen mit:  npx tsx src/scripts/test-vorschlag.ts
 
@@ -28,7 +32,7 @@ async function main() {
   console.log(`${kandidaten.length} Vorschlag/Vorschläge:\n`);
   for (const k of kandidaten) {
     console.log(`— ${k.titel} (${k.autor})`);
-    console.log(`  Kategorie: ${k.kategorie} · Quelle: ${k.quelle}`);
+    console.log(`  Kategorie: ${k.kategorie} · Quelle: ${k.quelle} · Umfang: ${k.umfang ?? "unbekannt"}`);
     console.log(`  ${k.grund}\n`);
   }
 }

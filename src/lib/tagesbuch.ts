@@ -187,11 +187,19 @@ export async function sicherstelleGezeigt(
     .where(and(eq(wunschlisteneintraege.kontoId, kontoId), eq(wunschlisteneintraege.buchId, buchId)))
     .limit(1);
 
+  // Herkunft nur relevant, wenn das Buch NICHT aus der Wunschliste stammt —
+  // recherchierte Bücher tragen sie auf buecher.herkunft (siehe recherche.ts).
+  let quelle: "eigene_liste" | "klassiker" | "geheimtipp" | "synergie" = "eigene_liste";
+  if (wunschlistenTreffer.length === 0) {
+    const [buch] = await db.select({ herkunft: buecher.herkunft }).from(buecher).where(eq(buecher.id, buchId));
+    quelle = buch?.herkunft ?? "klassiker";
+  }
+
   await db.insert(gezeigteBuecher).values({
     kontoId,
     buchinhaltId,
     datumGezeigt: heuteDatum(),
-    quelle: wunschlistenTreffer.length > 0 ? "eigene_liste" : "klassiker",
+    quelle,
   });
 }
 
