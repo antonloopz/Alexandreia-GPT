@@ -4,6 +4,11 @@
 // nativem <form action={serverAction}> (kein Client-JS nötig). Kein eigenes
 // Mockup vorhanden — im gleichen visuellen Vokabular wie der Rest der App
 // gehalten (Eyebrow-Labels, Ink-Umriss-Felder, runder Aktionsbutton).
+//
+// Kategorie ist jetzt optional ("Automatisch erkennen" als Standard) —
+// actions.ts versucht dann kategorieErkennen() und kommt nur bei einem
+// Fehlschlag hierher zurück (?fehler=kategorie), mit den bisherigen
+// Eingaben als Query-Parameter vorausgefüllt, damit nichts verloren geht.
 
 import Link from "next/link";
 import { kategorieEnum } from "../../../src/db/schema";
@@ -34,7 +39,14 @@ const labelStil: React.CSSProperties = {
   color: "rgba(36,35,31,.6)",
 };
 
-export default function NeuesBuchSeite() {
+export default async function NeuesBuchSeite({
+  searchParams,
+}: {
+  searchParams: Promise<{ fehler?: string; titel?: string; autor?: string; originalsprache?: string; notiz?: string; bald?: string }>;
+}) {
+  const vorbelegung = await searchParams;
+  const kategorieFehler = vorbelegung.fehler === "kategorie";
+
   return (
     <main
       style={{
@@ -62,21 +74,58 @@ export default function NeuesBuchSeite() {
         <MenuButton />
       </div>
 
+      {kategorieFehler && (
+        <div
+          style={{
+            boxSizing: "border-box",
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: "rgba(36,35,31,.08)",
+            fontSize: 13,
+            lineHeight: 1.4,
+          }}
+        >
+          Kategorie konnte nicht automatisch erkannt werden — bitte manuell auswählen.
+        </div>
+      )}
+
       <form action={buchHinzufuegen} style={{ display: "flex", flexDirection: "column", gap: 18, flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={labelStil} htmlFor="titel">Titel</label>
-          <input style={feldStil} type="text" id="titel" name="titel" required placeholder="z.B. Sapiens" />
+          <input
+            style={feldStil}
+            type="text"
+            id="titel"
+            name="titel"
+            required
+            defaultValue={vorbelegung.titel ?? ""}
+            placeholder="z.B. Sapiens"
+          />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={labelStil} htmlFor="autor">Autor (optional)</label>
-          <input style={feldStil} type="text" id="autor" name="autor" placeholder="z.B. Yuval Noah Harari" />
+          <input
+            style={feldStil}
+            type="text"
+            id="autor"
+            name="autor"
+            defaultValue={vorbelegung.autor ?? ""}
+            placeholder="z.B. Yuval Noah Harari"
+          />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={labelStil} htmlFor="kategorie">Kategorie</label>
-          <select style={feldStil} id="kategorie" name="kategorie" required defaultValue="">
-            <option value="" disabled>Bitte wählen</option>
+          <label style={labelStil} htmlFor="kategorie">
+            Kategorie {!kategorieFehler && "(optional)"}
+          </label>
+          <select style={feldStil} id="kategorie" name="kategorie" required={kategorieFehler} defaultValue="">
+            {!kategorieFehler && <option value="">Automatisch erkennen</option>}
+            {kategorieFehler && (
+              <option value="" disabled>
+                Bitte wählen
+              </option>
+            )}
             {kategorieEnum.enumValues.map((k) => (
               <option key={k} value={k}>{KATEGORIE_LABEL[k] ?? k}</option>
             ))}
@@ -85,16 +134,33 @@ export default function NeuesBuchSeite() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={labelStil} htmlFor="originalsprache">Originalsprache</label>
-          <input style={feldStil} type="text" id="originalsprache" name="originalsprache" defaultValue="Deutsch" />
+          <input
+            style={feldStil}
+            type="text"
+            id="originalsprache"
+            name="originalsprache"
+            defaultValue={vorbelegung.originalsprache ?? "Deutsch"}
+          />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={labelStil} htmlFor="notiz">Notiz (optional)</label>
-          <textarea style={{ ...feldStil, resize: "vertical", minHeight: 60 }} id="notiz" name="notiz" placeholder="Warum interessiert dich das Buch?" />
+          <textarea
+            style={{ ...feldStil, resize: "vertical", minHeight: 60 }}
+            id="notiz"
+            name="notiz"
+            defaultValue={vorbelegung.notiz ?? ""}
+            placeholder="Warum interessiert dich das Buch?"
+          />
         </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-          <input type="checkbox" name="bald" style={{ width: 18, height: 18, accentColor: "#24231F" }} />
+          <input
+            type="checkbox"
+            name="bald"
+            defaultChecked={vorbelegung.bald === "on"}
+            style={{ width: 18, height: 18, accentColor: "#24231F" }}
+          />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5 }}>Bald lesen (priorisieren)</span>
         </label>
 
