@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MenuButton from "../../MenuButton";
+import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 
 type Frage = { id: string; frage: string; optionen: string[]; richtigeOptionIndex: number };
@@ -157,10 +158,11 @@ export default function QuizClient({
             aria-label="Zum Abschluss"
             style={{
               width: 56,
-              height: 56,
-              borderRadius: "50%",
+              height: 32,
+              borderRadius: 999,
               background: "#24231F",
               border: "none",
+              boxSizing: "border-box",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -168,7 +170,7 @@ export default function QuizClient({
               cursor: "pointer",
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9.5 5.5 16 12l-6.5 6.5" />
             </svg>
           </button>
@@ -308,27 +310,31 @@ export default function QuizClient({
         </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", visibility: beantwortet ? "visible" : "hidden" }}>
-        <button
-          onClick={weiter}
-          aria-label={istLetzte ? "Zum Abschluss" : "Nächste Frage"}
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            background: "#24231F",
-            border: "none",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            cursor: "pointer",
-          }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9.5 5.5 16 12l-6.5 6.5" />
-          </svg>
-        </button>
+      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", visibility: beantwortet ? "visible" : "hidden" }}>
+          <button
+            onClick={weiter}
+            aria-label={istLetzte ? "Zum Abschluss" : "Nächste Frage"}
+            style={{
+              width: 56,
+              height: 32,
+              borderRadius: 999,
+              background: "#24231F",
+              border: "none",
+              boxSizing: "border-box",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              cursor: "pointer",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9.5 5.5 16 12l-6.5 6.5" />
+            </svg>
+          </button>
+        </div>
+        <NavKreise buchinhaltId={buchinhaltId} akzent={akzent} aktiv="quiz" />
       </div>
     </main>
   );

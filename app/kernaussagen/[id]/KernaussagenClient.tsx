@@ -10,6 +10,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import MenuButton from "../../MenuButton";
+import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 
 type Kernaussage = { text: string; erklaerung: string };
@@ -110,40 +111,44 @@ export default function KernaussagenClient({
         <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>{aktuelle.erklaerung}</p>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        {istLetzte ? (
-          <Link href={`/lernkarten/${buchinhaltId}`} aria-label="Weiter zu Lernkarten">
-            <WeiterButton />
-          </Link>
-        ) : (
-          <button
-            onClick={() => setIndex((i) => i + 1)}
-            aria-label="Nächste Kernaussage"
-            style={{ border: "none", background: "none", padding: 0, cursor: "pointer" }}
-          >
-            <WeiterButton />
-          </button>
-        )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          {istLetzte ? (
+            <Link href={`/lernkarten/${buchinhaltId}`} aria-label="Weiter zu Lernkarten">
+              <WeiterButton akzent={akzent} />
+            </Link>
+          ) : (
+            <button
+              onClick={() => setIndex((i) => i + 1)}
+              aria-label="Nächste Kernaussage"
+              style={{ border: "none", background: "none", padding: 0, cursor: "pointer" }}
+            >
+              <WeiterButton akzent={akzent} />
+            </button>
+          )}
+        </div>
+        <NavKreise buchinhaltId={buchinhaltId} akzent={akzent} aktiv="kernaussagen" />
       </div>
     </main>
   );
 }
 
-function WeiterButton() {
+function WeiterButton({ akzent }: { akzent: string }) {
   return (
     <div
       style={{
         width: 56,
-        height: 56,
-        borderRadius: "50%",
+        height: 32,
+        borderRadius: 999,
         background: "#24231F",
+        boxSizing: "border-box",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
       }}
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9.5 5.5 16 12l-6.5 6.5" />
       </svg>
     </div>

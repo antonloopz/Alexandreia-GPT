@@ -60,6 +60,7 @@ export default async function BookshelfSeite() {
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
+      umfang: buecher.umfang,
     })
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
@@ -72,6 +73,7 @@ export default async function BookshelfSeite() {
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
+      umfang: buecher.umfang,
     })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
@@ -198,6 +200,9 @@ export default async function BookshelfSeite() {
                   {heutigesBuch.titel}
                 </span>
                 <span style={{ fontSize: 12.5, color: "rgba(251,250,247,.75)" }}>{heutigesBuch.autor}</span>
+                {heutigesBuch.umfang && (
+                  <span style={{ fontSize: 11.5, color: "rgba(251,250,247,.55)" }}>{heutigesBuch.umfang}</span>
+                )}
               </div>
             </div>
           )}
@@ -233,10 +238,13 @@ export default async function BookshelfSeite() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
                     <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>{buch.titel}</span>
                     <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{buch.autor}</span>
+                    {buch.umfang && (
+                      <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>{buch.umfang}</span>
+                    )}
                   </div>
                   <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Jetzt lesen">
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#24231F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={KATEGORIE_FARBE[buch.kategorie] ?? "#FBFAF7"} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9.5 5.5 16 12l-6.5 6.5" />
                       </svg>
                     </div>
@@ -282,6 +290,9 @@ export default async function BookshelfSeite() {
                         letztesDatumProBuchinhalt.get(buch.buchinhaltId)!
                       )}
                     </span>
+                    {buch.umfang && (
+                      <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>{buch.umfang}</span>
+                    )}
                   </div>
                 </div>
               ))}

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { bewertungSpeichern } from "./actions";
 import MenuButton from "../../MenuButton";
+import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 
 type Lernkarte = { id: string; kernaussageId: string; frage: string; antwort: string };
@@ -161,6 +162,8 @@ export default function LernkartenClient({
         <BewertungsChip label="Unsicher" onClick={() => bewerten("unsicher")} />
         <BewertungsChip label="Gewusst" onClick={() => bewerten("gewusst")} />
       </div>
+
+      <NavKreise buchinhaltId={buchinhaltId} akzent={akzent} aktiv="lernkarten" />
     </main>
   );
 }

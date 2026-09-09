@@ -16,6 +16,7 @@ import { naechstesBuchFuerHeute, faelligeWiederholungenAnzahl, bereiteBuecher } 
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../src/lib/kategorien";
 import { aktuellerStreak } from "../src/lib/streak";
 import MenuButton from "./MenuButton";
+import NavKreise from "./NavKreise";
 import StatusBarColor from "./StatusBarColor";
 
 export const dynamic = "force-dynamic";
@@ -299,61 +300,7 @@ export default async function Home() {
         </div>
       </Link>
 
-      {!buch.abgeschlossen && (
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <NavKreis href={`/lesen/${buch.buchinhaltId}`} akzent={akzent}>
-            <path d="M12 6.5c-1.8-1.3-4.2-1.8-6.5-1.3v11c2.3-.5 4.7 0 6.5 1.3 1.8-1.3 4.2-1.8 6.5-1.3v-11c-2.3-.5-4.7 0-6.5 1.3Z" />
-            <path d="M12 6.5v11" />
-          </NavKreis>
-          <NavKreis href={`/kernaussagen/${buch.buchinhaltId}`} akzent={akzent}>
-            <path d="M6 4.5h12v15l-6-4-6 4Z" />
-          </NavKreis>
-          <NavKreis href={`/lernkarten/${buch.buchinhaltId}`} akzent={akzent}>
-            <rect x="4.5" y="7" width="13" height="9" rx="1.5" transform="rotate(-6 11 11.5)" />
-            <rect x="6.5" y="8.5" width="13" height="9" rx="1.5" />
-          </NavKreis>
-          <NavKreis href={`/quiz/${buch.buchinhaltId}`} akzent={akzent}>
-            <circle cx="12" cy="12" r="8" />
-            <path d="M8.5 12.3l2.3 2.3 4.7-5" />
-          </NavKreis>
-        </div>
-      )}
+      {!buch.abgeschlossen && <NavKreise buchinhaltId={buch.buchinhaltId} akzent={akzent} />}
     </main>
-  );
-}
-
-// Wie im Design-Canvas-Mockup: alle vier Kreise gleich, "leer" mit
-// Kategoriefarbe als Hintergrund — keine Unterscheidung nach aktivem
-// Schritt und ohne Text-Label (Ablösung der früheren AktionsSchritt-Variante
-// mit Label + schwarz gefülltem "aktiven" Kreis).
-function NavKreis({
-  href,
-  akzent,
-  children,
-}: {
-  href: string;
-  akzent: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link href={href}>
-      <div
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          background: akzent,
-          border: "3px solid #24231F",
-          boxSizing: "border-box",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          {children}
-        </svg>
-      </div>
-    </Link>
   );
 }

@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { sicherstelleGezeigt } from "../../../src/lib/tagesbuch";
 import MenuButton from "../../MenuButton";
+import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 
 export const dynamic = "force-dynamic";
@@ -205,24 +206,28 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
 
       <div style={{ flex: 1 }} />
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Link href={`/kernaussagen/${zeile.buchinhaltId}`} aria-label="Weiter zu Kernaussagen">
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: "#24231F",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9.5 5.5 16 12l-6.5 6.5" />
-            </svg>
-          </div>
-        </Link>
+      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Link href={`/kernaussagen/${zeile.buchinhaltId}`} aria-label="Weiter zu Kernaussagen">
+            <div
+              style={{
+                width: 56,
+                height: 32,
+                borderRadius: 999,
+                background: "#24231F",
+                boxSizing: "border-box",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.5 5.5 16 12l-6.5 6.5" />
+              </svg>
+            </div>
+          </Link>
+        </div>
+        <NavKreise buchinhaltId={zeile.buchinhaltId} akzent={akzent} aktiv="lesen" />
       </div>
     </main>
   );

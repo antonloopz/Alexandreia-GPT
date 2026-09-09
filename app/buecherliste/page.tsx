@@ -53,6 +53,7 @@ export default async function BuecherlisteSeite({
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
+      umfang: buecher.umfang,
     })
     .from(wunschlisteneintraege)
     .leftJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
@@ -300,6 +301,9 @@ export default async function BuecherlisteSeite({
                 </span>
                 {(zeile.autor ?? zeile.rohAutor) && (
                   <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
+                )}
+                {zeile.umfang && (
+                  <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>{zeile.umfang}</span>
                 )}
                 {zeile.buchId && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
