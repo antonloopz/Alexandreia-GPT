@@ -20,21 +20,6 @@ import StatusBarColor from "./StatusBarColor";
 
 export const dynamic = "force-dynamic";
 
-function begruessung(): string {
-  const stunde = new Date().getHours();
-  if (stunde < 11) return "Guten Morgen";
-  if (stunde < 18) return "Guten Tag";
-  return "Guten Abend";
-}
-
-function heutigesDatum(): string {
-  return new Intl.DateTimeFormat("de-DE", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(new Date());
-}
-
 export default async function Home() {
   const [konto] = await db.select().from(konten).limit(1);
 
@@ -100,23 +85,7 @@ export default async function Home() {
       }}
     >
       <StatusBarColor farbe={akzent} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>
-            {begruessung()}, Toni
-          </span>
-          <span
-            style={{
-              fontFamily: "Helvetica, Arial, sans-serif",
-              fontSize: 12,
-              letterSpacing: ".05em",
-              textTransform: "uppercase",
-              color: "rgba(36,35,31,.62)",
-            }}
-          >
-            {heutigesDatum()}
-          </span>
-        </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <div
             style={{
@@ -257,47 +226,29 @@ export default async function Home() {
         </>
       ) : (
         <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span
-              style={{
-                fontFamily: "Helvetica, Arial, sans-serif",
-                fontWeight: 600,
-                fontSize: 12,
-                letterSpacing: ".06em",
-                textTransform: "uppercase",
-                color: "rgba(36,35,31,.62)",
-              }}
-            >
-              Dein Buch heute — {kategorieLabel}
-            </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34, lineHeight: 1.1 }}>
-              {buch.titel}
-            </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
-              {buch.autor}
-            </span>
-            <span style={{ fontSize: 15, lineHeight: 1.5 }}>{buch.teaser}</span>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span
+                style={{
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 12,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  color: "rgba(36,35,31,.62)",
+                }}
+              >
+                Dein Buch heute — {kategorieLabel}
+              </span>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34, lineHeight: 1.1 }}>
+                {buch.titel}
+              </span>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
+                {buch.autor}
+              </span>
+              <span style={{ fontSize: 15, lineHeight: 1.5 }}>{buch.teaser}</span>
+            </div>
           </div>
-
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <AktionsSchritt href={`/lesen/${buch.buchinhaltId}`} aktiv label="Zusammenfassung" akzent={akzent}>
-              <path d="M12 6.5c-1.8-1.3-4.2-1.8-6.5-1.3v11c2.3-.5 4.7 0 6.5 1.3 1.8-1.3 4.2-1.8 6.5-1.3v-11c-2.3-.5-4.7 0-6.5 1.3Z" />
-              <path d="M12 6.5v11" />
-            </AktionsSchritt>
-            <AktionsSchritt href={`/kernaussagen/${buch.buchinhaltId}`} label="Kernaussagen" akzent={akzent}>
-              <path d="M6 4.5h12v15l-6-4-6 4Z" />
-            </AktionsSchritt>
-            <AktionsSchritt href={`/lernkarten/${buch.buchinhaltId}`} label="Lernkarten" akzent={akzent}>
-              <rect x="4.5" y="7" width="13" height="9" rx="1.5" transform="rotate(-6 11 11.5)" />
-              <rect x="6.5" y="8.5" width="13" height="9" rx="1.5" />
-            </AktionsSchritt>
-            <AktionsSchritt href={`/quiz/${buch.buchinhaltId}`} label="Quiz" akzent={akzent}>
-              <circle cx="12" cy="12" r="8" />
-              <path d="M8.5 12.3l2.3 2.3 4.7-5" />
-            </AktionsSchritt>
-          </div>
-
-          <div style={{ flex: 1 }} />
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Buch heute starten">
@@ -344,61 +295,62 @@ export default async function Home() {
           <span style={{ color: "rgba(36,35,31,.6)", fontSize: 16 }}>›</span>
         </div>
       </Link>
+
+      {!buch.abgeschlossen && (
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <NavKreis href={`/lesen/${buch.buchinhaltId}`} akzent={akzent}>
+            <path d="M12 6.5c-1.8-1.3-4.2-1.8-6.5-1.3v11c2.3-.5 4.7 0 6.5 1.3 1.8-1.3 4.2-1.8 6.5-1.3v-11c-2.3-.5-4.7 0-6.5 1.3Z" />
+            <path d="M12 6.5v11" />
+          </NavKreis>
+          <NavKreis href={`/kernaussagen/${buch.buchinhaltId}`} akzent={akzent}>
+            <path d="M6 4.5h12v15l-6-4-6 4Z" />
+          </NavKreis>
+          <NavKreis href={`/lernkarten/${buch.buchinhaltId}`} akzent={akzent}>
+            <rect x="4.5" y="7" width="13" height="9" rx="1.5" transform="rotate(-6 11 11.5)" />
+            <rect x="6.5" y="8.5" width="13" height="9" rx="1.5" />
+          </NavKreis>
+          <NavKreis href={`/quiz/${buch.buchinhaltId}`} akzent={akzent}>
+            <circle cx="12" cy="12" r="8" />
+            <path d="M8.5 12.3l2.3 2.3 4.7-5" />
+          </NavKreis>
+        </div>
+      )}
     </main>
   );
 }
 
-function AktionsSchritt({
+// Wie im Design-Canvas-Mockup: alle vier Kreise gleich, "leer" mit
+// Kategoriefarbe als Hintergrund — keine Unterscheidung nach aktivem
+// Schritt und ohne Text-Label (Ablösung der früheren AktionsSchritt-Variante
+// mit Label + schwarz gefülltem "aktiven" Kreis).
+function NavKreis({
   href,
-  label,
   akzent,
-  aktiv,
   children,
 }: {
   href: string;
-  label: string;
   akzent: string;
-  aktiv?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <Link href={href} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: 70 }}>
+    <Link href={href}>
       <div
         style={{
-          width: 44,
-          height: 44,
+          width: 56,
+          height: 56,
           borderRadius: "50%",
-          background: aktiv ? "#24231F" : "none",
-          border: aktiv ? "none" : "2.25px solid #24231F",
+          background: akzent,
+          border: "3px solid #24231F",
+          boxSizing: "border-box",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke={aktiv ? "#FBFAF7" : akzent}
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           {children}
         </svg>
       </div>
-      <span
-        style={{
-          fontFamily: "Helvetica, Arial, sans-serif",
-          fontSize: 11,
-          fontWeight: aktiv ? 700 : 500,
-          color: aktiv ? "#24231F" : "rgba(36,35,31,.7)",
-          textAlign: "center",
-        }}
-      >
-        {label}
-      </span>
     </Link>
   );
 }
