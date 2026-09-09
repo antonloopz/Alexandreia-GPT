@@ -19,6 +19,7 @@ import { buchinhalte, buecher, konten, wunschlisteneintraege } from "../../src/d
 import { and, eq, isNull, or } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
 import { kategorieUebersicht, vorschlaege } from "../../src/lib/vorschlag";
+import { sicherstelleUmfang } from "../../src/lib/umfang";
 import MenuButton from "../MenuButton";
 import PrioritaetToggle from "./PrioritaetToggle";
 import AufbereitenButton from "./AufbereitenButton";
@@ -74,6 +75,18 @@ export default async function BuecherlisteSeite({
     if (a.bald !== b.bald) return a.bald ? -1 : 1;
     return (a.titel ?? a.rohTitel ?? "").localeCompare(b.titel ?? b.rohTitel ?? "");
   });
+
+  // Umfang für ALLE angezeigten Einträge nachschlagen (nicht nur die
+  // gerade vorgeschlagenen) — sonst bleibt die Angabe bei den meisten
+  // Büchern auf der Liste leer, weil vorschlaege() nur die knappen
+  // Kategorien bedient. sicherstelleUmfang() cached in buecher.umfang,
+  // kostet also nur beim ersten Aufruf pro Buch etwas.
+  await Promise.all(
+    zeilen.map(async (zeile) => {
+      if (!zeile.buchId || zeile.umfang || !zeile.titel || !zeile.autor) return;
+      zeile.umfang = await sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang);
+    })
+  );
 
   return (
     <main

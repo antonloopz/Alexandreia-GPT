@@ -30,7 +30,7 @@ import { db } from "../db";
 import { buecher, buchinhalte, wunschlisteneintraege } from "../db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { kandidatRecherchieren } from "./recherche";
-import { umfangNachschlagen } from "./umfang";
+import { sicherstelleUmfang } from "./umfang";
 
 export const ALLE_KATEGORIEN = [
   "philosophie",
@@ -111,20 +111,6 @@ async function wunschlistenQuote(
 // Grobe Umfangsangabe sicherstellen: vorhandenen Wert übernehmen, sonst per
 // Google Books nachschlagen und für künftige Aufrufe direkt auf der
 // `buecher`-Zeile festschreiben (Best-Effort — ohne Treffer bleibt es null).
-async function sicherstelleUmfang(
-  buchId: string,
-  titel: string,
-  autor: string,
-  vorhandenerUmfang: string | null | undefined
-): Promise<string | null> {
-  if (vorhandenerUmfang) return vorhandenerUmfang;
-  const gefunden = await umfangNachschlagen(titel, autor);
-  if (gefunden) {
-    await db.update(buecher).set({ umfang: gefunden }).where(eq(buecher.id, buchId));
-  }
-  return gefunden;
-}
-
 export async function vorschlaege(
   kontoId: string,
   anzahl = 3
