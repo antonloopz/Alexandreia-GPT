@@ -75,7 +75,7 @@ export default async function Home() {
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "100dvh",
         boxSizing: "border-box",
         padding: 16,
         background: akzent,
@@ -83,6 +83,7 @@ export default async function Home() {
         flexDirection: "column",
         gap: 26,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
       <StatusBarColor farbe={akzent} />
@@ -161,7 +162,7 @@ export default async function Home() {
           </div>
 
           {weitereBuecher.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
               <span
                 style={{
                   fontFamily: "Helvetica, Arial, sans-serif",
@@ -203,12 +204,12 @@ export default async function Home() {
               ))}
             </div>
           ) : (
-            <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
-              Kein weiteres Buch bereit — bald kommt automatisch Nachschub.
-            </span>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
+                Kein weiteres Buch bereit — bald kommt automatisch Nachschub.
+              </span>
+            </div>
           )}
-
-          <div style={{ flex: 1 }} />
 
           <Link href="/bookshelf">
             <div
@@ -230,7 +231,7 @@ export default async function Home() {
         </>
       ) : (
         <>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", overflowY: "auto" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span
                 style={{
