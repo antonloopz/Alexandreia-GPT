@@ -97,6 +97,9 @@ export default async function Home() {
               background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
             }}
           >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 4.5h12v15l-6-4-6 4Z" />
+            </svg>
             <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>
               {streak}
             </span>
@@ -240,13 +243,13 @@ export default async function Home() {
               >
                 Dein Buch heute — {kategorieLabel}
               </span>
-              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34, lineHeight: 1.1 }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22, lineHeight: 1.1 }}>
                 {buch.titel}
               </span>
               <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
                 {buch.autor}
               </span>
-              <span style={{ fontSize: 15, lineHeight: 1.5 }}>{buch.teaser}</span>
+              <span style={{ fontSize: 16, lineHeight: 1.5 }}>{buch.teaser}</span>
             </div>
           </div>
 
@@ -255,15 +258,15 @@ export default async function Home() {
               <div
                 style={{
                   width: 56,
-                  height: 56,
-                  borderRadius: "50%",
+                  height: 32,
+                  borderRadius: 999,
                   background: "#24231F",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9.5 5.5 16 12l-6.5 6.5" />
                 </svg>
               </div>
