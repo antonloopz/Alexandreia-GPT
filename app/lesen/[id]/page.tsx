@@ -128,7 +128,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "100dvh",
         boxSizing: "border-box",
         padding: 16,
         background: akzent,
@@ -136,6 +136,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
         flexDirection: "column",
         gap: 20,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
       <StatusBarColor farbe={akzent} />
@@ -164,7 +165,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
         {zeile.titel} — {kategorieLabel}
       </span>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 22, overflowY: "auto" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 22, overflowY: "auto" }}>
         <Abschnitt label="Zusammenfassung" hinweis={vh.zusammenfassung}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {zusammenfassungsAbschnitte.map((abschnitt, i) => (
@@ -204,9 +205,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
         )}
       </div>
 
-      <div style={{ flex: 1 }} />
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <Link href={`/kernaussagen/${zeile.buchinhaltId}`} aria-label="Weiter zu Kernaussagen">
             <div

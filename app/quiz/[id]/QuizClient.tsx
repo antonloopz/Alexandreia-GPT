@@ -88,7 +88,7 @@ export default function QuizClient({
       <main
         style={{
           width: "100%",
-          minHeight: "100dvh",
+          height: "100dvh",
           boxSizing: "border-box",
           padding: 16,
           background: akzent,
@@ -96,6 +96,7 @@ export default function QuizClient({
           flexDirection: "column",
           gap: 20,
           color: "var(--ink)",
+          overflow: "hidden",
         }}
       >
         <StatusBarColor farbe={akzent} />
@@ -117,7 +118,7 @@ export default function QuizClient({
           {titel} — {kategorieLabel} · {richtigAnzahl} / {fragen.length} richtig
         </span>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
           {falscheAntworten.map((eintrag, i) => (
             <div
               key={i}
@@ -150,9 +151,7 @@ export default function QuizClient({
           ))}
         </div>
 
-        <div style={{ flex: 1 }} />
-
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
           <button
             onClick={zumAbschluss}
             aria-label="Zum Abschluss"
@@ -183,7 +182,7 @@ export default function QuizClient({
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "100dvh",
         boxSizing: "border-box",
         padding: 16,
         background: akzent,
@@ -191,6 +190,7 @@ export default function QuizClient({
         flexDirection: "column",
         gap: 20,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
       <StatusBarColor farbe={akzent} />
@@ -239,7 +239,7 @@ export default function QuizClient({
         </span>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 26 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 26, overflowY: "auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span
             style={{
@@ -310,7 +310,7 @@ export default function QuizClient({
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "flex-end", visibility: beantwortet ? "visible" : "hidden" }}>
           <button
             onClick={weiter}

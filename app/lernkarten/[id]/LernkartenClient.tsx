@@ -54,7 +54,7 @@ export default function LernkartenClient({
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "100dvh",
         boxSizing: "border-box",
         padding: 16,
         background: akzent,
@@ -62,6 +62,7 @@ export default function LernkartenClient({
         flexDirection: "column",
         gap: 20,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
       <StatusBarColor farbe={akzent} />
@@ -110,7 +111,7 @@ export default function LernkartenClient({
         </span>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", overflowY: "auto" }}>
         <div
           style={{
             borderRadius: 18,
@@ -157,13 +158,15 @@ export default function LernkartenClient({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <BewertungsChip label="Nicht gewusst" onClick={() => bewerten("nicht_gewusst")} />
-        <BewertungsChip label="Unsicher" onClick={() => bewerten("unsicher")} />
-        <BewertungsChip label="Gewusst" onClick={() => bewerten("gewusst")} />
-      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <BewertungsChip label="Nicht gewusst" onClick={() => bewerten("nicht_gewusst")} />
+          <BewertungsChip label="Unsicher" onClick={() => bewerten("unsicher")} />
+          <BewertungsChip label="Gewusst" onClick={() => bewerten("gewusst")} />
+        </div>
 
-      <NavKreise buchinhaltId={buchinhaltId} akzent={akzent} aktiv="lernkarten" />
+        <NavKreise buchinhaltId={buchinhaltId} akzent={akzent} aktiv="lernkarten" />
+      </div>
     </main>
   );
 }

@@ -36,7 +36,7 @@ export default function KernaussagenClient({
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "100dvh",
         boxSizing: "border-box",
         padding: 16,
         background: akzent,
@@ -44,6 +44,7 @@ export default function KernaussagenClient({
         flexDirection: "column",
         gap: 20,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
       <StatusBarColor farbe={akzent} />
@@ -92,7 +93,7 @@ export default function KernaussagenClient({
         </span>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, overflowY: "auto" }}>
         <span
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
@@ -111,7 +112,7 @@ export default function KernaussagenClient({
         <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>{aktuelle.erklaerung}</p>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           {istLetzte ? (
             <Link href={`/lernkarten/${buchinhaltId}`} aria-label="Weiter zu Lernkarten">
