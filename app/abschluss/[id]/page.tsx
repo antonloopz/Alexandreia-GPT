@@ -2,11 +2,12 @@
 //
 // Server Component: Abschluss-Screen nach Zusammenfassung, Kernaussagen,
 // Lernkarten und Quiz. Quiz-Ergebnis kommt als Query-Parameter (?richtig=N)
-// von QuizClient — kein eigenes Schema-Feld für Quiz-Ergebnisse nötig, da
-// nichts davon weiter ausgewertet wird. "Wiederholungen geplant" ist eine
-// echte Zählung der repetitionselemente-Zeilen, die die Lernkarten-Bewertung
-// gerade angelegt hat. "N Tage Streak" nutzt jetzt dieselbe echte
-// Streak-Berechnung wie Home (src/lib/streak.ts).
+// von QuizClient und wird hier — zusammen mit abgeschlossenAm — einmalig in
+// gezeigteBuecher.quizRichtigAnzahl/quizGesamtAnzahl geschrieben, damit
+// Fortschritt daraus die Quiz-Trefferquote berechnen kann. "Wiederholungen
+// geplant" ist eine echte Zählung der repetitionselemente-Zeilen, die die
+// Lernkarten-Bewertung gerade angelegt hat. "N Tage Streak" nutzt jetzt
+// dieselbe echte Streak-Berechnung wie Home (src/lib/streak.ts).
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -48,25 +49,6 @@ export default async function AbschlussSeite({
 
   const [konto] = await db.select().from(konten).limit(1);
 
-  // Markiert die gezeigteBuecher-Zeile dieses Buchs als abgeschlossen —
-  // Home nutzt das (tagesbuch.ts), um nach dem Durcharbeiten nicht mehr
-  // den vollen Detail-Block zu zeigen. isNull-Guard: nur beim ersten Mal
-  // setzen, ein erneuter Abschluss-Besuch überschreibt den Zeitpunkt nicht.
-  // Betrifft nur die offizielle Tagesbuch-Zeile (falls id keiner entspricht,
-  // z.B. bei einem zusätzlich gelesenen "Bereit"-Buch, ändert sich nichts).
-  if (konto) {
-    await db
-      .update(gezeigteBuecher)
-      .set({ abgeschlossenAm: new Date() })
-      .where(
-        and(
-          eq(gezeigteBuecher.kontoId, konto.id),
-          eq(gezeigteBuecher.buchinhaltId, id),
-          isNull(gezeigteBuecher.abgeschlossenAm)
-        )
-      );
-  }
-
   const [{ n: kernaussagenAnzahl }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(kernaussagen)
@@ -83,6 +65,34 @@ export default async function AbschlussSeite({
     .from(quizfragen)
     .innerJoin(kernaussagen, eq(quizfragen.kernaussageId, kernaussagen.id))
     .where(eq(kernaussagen.buchinhaltId, id));
+
+  const richtigAnzahl = Number(richtig ?? 0);
+
+  // Markiert die gezeigteBuecher-Zeile dieses Buchs als abgeschlossen und
+  // schreibt das Quiz-Ergebnis fest — Home nutzt abgeschlossenAm
+  // (tagesbuch.ts), um nach dem Durcharbeiten nicht mehr den vollen
+  // Detail-Block zu zeigen; Fortschritt nutzt quizRichtigAnzahl/
+  // quizGesamtAnzahl für die Quiz-Trefferquote. isNull-Guard: nur beim
+  // ersten Mal setzen, ein erneuter Abschluss-Besuch überschreibt weder
+  // den Zeitpunkt noch das schon gespeicherte Ergebnis. Betrifft nur die
+  // offizielle Tagesbuch-Zeile (falls id keiner entspricht, z.B. bei einem
+  // zusätzlich gelesenen "Bereit"-Buch, ändert sich nichts).
+  if (konto) {
+    await db
+      .update(gezeigteBuecher)
+      .set({
+        abgeschlossenAm: new Date(),
+        quizRichtigAnzahl: richtigAnzahl,
+        quizGesamtAnzahl: quizfragenAnzahl,
+      })
+      .where(
+        and(
+          eq(gezeigteBuecher.kontoId, konto.id),
+          eq(gezeigteBuecher.buchinhaltId, id),
+          isNull(gezeigteBuecher.abgeschlossenAm)
+        )
+      );
+  }
 
   let geplanteWiederholungen = 0;
   if (konto) {
@@ -103,7 +113,6 @@ export default async function AbschlussSeite({
     streak = aktuellerStreak(gezeigteDaten.map((d) => d.datum));
   }
 
-  const richtigAnzahl = Number(richtig ?? 0);
   const akzent = KATEGORIE_FARBE[buch.kategorie] ?? "var(--paper)";
   const kategorieLabel = KATEGORIE_LABEL[buch.kategorie] ?? buch.kategorie;
 

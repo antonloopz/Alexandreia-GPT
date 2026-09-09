@@ -3,10 +3,10 @@
 // Vierter sekundärer Screen: reine Statistik-Ansicht, kein Aktionsbutton.
 // Streak = längste je erreichte Tage-Folge (src/lib/streak.ts, nicht die
 // aktuelle wie auf Home/Abschluss). "Bücher gelesen" wie im Archiv gezählt.
-// Quiz-Trefferquote ist NICHT berechenbar: Quiz-Ergebnisse werden aktuell
-// nirgends persistiert (nur transient als Query-Parameter an Abschluss
-// übergeben) — Anzeige deshalb bewusst "–" statt einer erfundenen Zahl;
-// bräuchte eine eigene Tabelle für Quiz-Versuche, um das nachzutragen.
+// Quiz-Trefferquote summiert gezeigteBuecher.quizRichtigAnzahl/
+// quizGesamtAnzahl über alle Bücher dieses Kontos (siehe
+// app/abschluss/[id]/page.tsx, wo beide einmalig pro Buch gesetzt werden) —
+// "–" nur, solange noch kein einziges Quiz abgeschlossen wurde.
 // Wochen-Balken zählt repetitionselemente.aktualisiertAm pro Wochentag
 // dieser Woche — da nur der letzte Bewertungszeitpunkt gespeichert wird
 // (keine Historie), unterzählt das, wenn eine Karte mehrfach in derselben
@@ -58,6 +58,16 @@ export default async function FortschrittSeite() {
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(and(eq(gezeigteBuecher.kontoId, konto.id), ne(gezeigteBuecher.datumGezeigt, heute)));
+
+  const quizErgebnisse = await db
+    .select({ richtig: gezeigteBuecher.quizRichtigAnzahl, gesamt: gezeigteBuecher.quizGesamtAnzahl })
+    .from(gezeigteBuecher)
+    .where(eq(gezeigteBuecher.kontoId, konto.id));
+
+  const quizGesamtSumme = quizErgebnisse.reduce((summe, e) => summe + (e.gesamt ?? 0), 0);
+  const quizRichtigSumme = quizErgebnisse.reduce((summe, e) => summe + (e.richtig ?? 0), 0);
+  const quizTrefferquote =
+    quizGesamtSumme > 0 ? `${Math.round((quizRichtigSumme / quizGesamtSumme) * 100)}%` : "–";
 
   const montag = montagDieserWoche(heute);
   const naechsterMontag = new Date(montag);
@@ -144,7 +154,7 @@ export default async function FortschrittSeite() {
             gap: 2,
           }}
         >
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>–</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{quizTrefferquote}</span>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
             Quiz-Trefferquote
           </span>

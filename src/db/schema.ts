@@ -174,6 +174,11 @@ export const gezeigteBuecher = pgTable("gezeigte_buecher", {
   // zeigen, sondern einen kompakten "geschafft"-Zustand plus weitere,
   // bereits fertige Bücher zum Weiterlesen (siehe tagesbuch.ts).
   abgeschlossenAm: timestamp({ mode: "date" }),
+  // Quiz-Ergebnis dieses Durchlaufs, einmalig zusammen mit abgeschlossenAm
+  // gesetzt (siehe app/abschluss/[id]/page.tsx) — beide null, bis das Quiz
+  // durchlaufen wurde. Fortschritt.tsx nutzt das für die Quiz-Trefferquote.
+  quizRichtigAnzahl: integer(),
+  quizGesamtAnzahl: integer(),
 });
 
 export const repetitionselemente = pgTable("repetitionselemente", {
