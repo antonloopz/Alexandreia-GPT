@@ -185,6 +185,7 @@ export default function QuizClient({
         height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
+        paddingBottom: 32,
         background: akzent,
         display: "flex",
         flexDirection: "column",
