@@ -1,11 +1,13 @@
 // app/einstellungen/page.tsx
 //
-// Fünfter und letzter sekundärer Screen. Nur "Obsidian-Export" und
-// "Anki-Export" sind echt verdrahtet (kontoeinstellungen-Zeile, per Toggle
-// aktualisiert). "Themenverteilung anpassen" und "Partnerkonto verknüpfen"
-// sind bewusst inerte Zeilen ohne Funktion — beide Features (Zielwerte pro
-// Kategorie überschreiben, Mehrnutzer-Verknüpfung) sind konzeptionell
-// vorgesehen, aber noch nicht gebaut; kein Link, damit nichts 404 wirft.
+// Fünfter und letzter sekundärer Screen. "Obsidian-Export"/"Anki-Export"
+// (kontoeinstellungen-Zeile, per Toggle aktualisiert) und "Themenverteilung
+// anpassen" (verlinkt auf app/einstellungen/themenverteilung, siehe dort)
+// sind echt verdrahtet. "Partnerkonto verknüpfen" ist konzeptionell
+// vorgesehen (Mehrnutzer-Verknüpfung), aber ohne jede Datenbankgrundlage
+// (kein Login/Einladungssystem) noch nicht gebaut — Zeile deshalb bewusst
+// entfernt statt als toter Button stehen zu lassen, bis das Feature wirklich
+// umgesetzt wird.
 
 import { db } from "../../src/db";
 import { konten, kontoeinstellungen } from "../../src/db/schema";
@@ -80,12 +82,12 @@ export default async function EinstellungenSeite() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <span style={gruppenLabelStil}>Inhalt</span>
-        <div style={zeileStil}>
+        <Link href="/einstellungen/themenverteilung" style={zeileStil}>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
             Themenverteilung anpassen
           </span>
           <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
-        </div>
+        </Link>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -94,16 +96,6 @@ export default async function EinstellungenSeite() {
           obsidianAktiv={einstellungen?.obsidianExportAktiv ?? true}
           ankiAktiv={einstellungen?.ankiExportAktiv ?? false}
         />
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <span style={gruppenLabelStil}>Konto</span>
-        <div style={zeileStil}>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
-            Partnerkonto verknüpfen
-          </span>
-          <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
-        </div>
       </div>
     </main>
   );

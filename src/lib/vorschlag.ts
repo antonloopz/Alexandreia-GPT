@@ -27,7 +27,7 @@
 //    Status), sind keine Kandidaten mehr.
 
 import { db } from "../db";
-import { buecher, buchinhalte, wunschlisteneintraege } from "../db/schema";
+import { buecher, buchinhalte, kontoeinstellungen, wunschlisteneintraege } from "../db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { kandidatRecherchieren } from "./recherche";
 import { sicherstelleUmfang } from "./umfang";
@@ -47,7 +47,7 @@ export const ALLE_KATEGORIEN = [
 
 export type Kategorie = (typeof ALLE_KATEGORIEN)[number];
 
-const MINDESTBESTAND = 2;
+export const STANDARD_MINDESTBESTAND = 2;
 const WUNSCHLISTEN_QUOTE = 0.4;
 
 export type VorschlagKandidat = {
@@ -82,6 +82,28 @@ async function bestandProKategorie(): Promise<Map<Kategorie, number>> {
   const bestand = new Map<Kategorie, number>(ALLE_KATEGORIEN.map((k) => [k, 0]));
   for (const row of bestandRows) bestand.set(row.kategorie as Kategorie, row.anzahl);
   return bestand;
+}
+
+// Pro-Kategorie-Mindestbestand für dieses Konto: Standardwert
+// (STANDARD_MINDESTBESTAND), aber überschreibbar über
+// kontoeinstellungen.kategorieZielwerte (siehe
+// app/einstellungen/themenverteilung — von dort aus einstellbar). Fehlende
+// oder ungültige Einträge (keine Zahl, negativ) fallen auf den
+// Standardwert zurück. Von vorschlaege() UND kategorieUebersicht()
+// gebraucht.
+async function mindestbestandProKategorie(kontoId: string): Promise<Map<Kategorie, number>> {
+  const [einstellungen] = await db
+    .select({ kategorieZielwerte: kontoeinstellungen.kategorieZielwerte })
+    .from(kontoeinstellungen)
+    .where(eq(kontoeinstellungen.kontoId, kontoId));
+
+  const zielwerte = einstellungen?.kategorieZielwerte ?? {};
+  const ergebnis = new Map<Kategorie, number>();
+  for (const kategorie of ALLE_KATEGORIEN) {
+    const wert = zielwerte[kategorie];
+    ergebnis.set(kategorie, typeof wert === "number" && wert >= 0 ? wert : STANDARD_MINDESTBESTAND);
+  }
+  return ergebnis;
 }
 
 // Wunschlisten-Quote dieses Kontos: Anteil bereits produzierter Bücher, die
@@ -154,12 +176,13 @@ export async function vorschlaege(
 
   const bereitsGewaehlt = new Set(ergebnis.map((e) => e.buchId));
 
-  // 1. Bestand pro Kategorie (nur "im_vorrat")
+  // 1. Bestand pro Kategorie (nur "im_vorrat") + Mindestbestand pro Kategorie
   const bestand = await bestandProKategorie();
+  const mindestbestandeMap = await mindestbestandProKategorie(kontoId);
 
   // 2. Knappe Kategorien, knappste zuerst
   const knappeKategorien = ALLE_KATEGORIEN
-    .filter((k) => bestand.get(k)! < MINDESTBESTAND)
+    .filter((k) => bestand.get(k)! < mindestbestandeMap.get(k)!)
     .sort((a, b) => bestand.get(a)! - bestand.get(b)!);
 
   if (knappeKategorien.length === 0) return ergebnis;
@@ -194,11 +217,11 @@ export async function vorschlaege(
     if (wunschlisteBevorzugt && ausListe.length > 0) {
       gewaehlt = ausListe[0];
       quelle = "eigene_liste";
-      grund = `Kategorie "${kategorie}" unter Mindestbestand (${bestand.get(kategorie)}/${MINDESTBESTAND}); Wunschlisten-Quote noch nicht erreicht (${Math.round(ausListeAnteil * 100)}% von ${Math.round(WUNSCHLISTEN_QUOTE * 100)}%).`;
+      grund = `Kategorie "${kategorie}" unter Mindestbestand (${bestand.get(kategorie)}/${mindestbestandeMap.get(kategorie)}); Wunschlisten-Quote noch nicht erreicht (${Math.round(ausListeAnteil * 100)}% von ${Math.round(WUNSCHLISTEN_QUOTE * 100)}%).`;
     } else if (andere.length > 0) {
       gewaehlt = andere[0];
       quelle = (andere[0].herkunft as VorschlagKandidat["quelle"]) ?? "klassiker";
-      grund = `Kategorie "${kategorie}" unter Mindestbestand (${bestand.get(kategorie)}/${MINDESTBESTAND}); Kandidat aus Recherche-Pool (${quelle}).`;
+      grund = `Kategorie "${kategorie}" unter Mindestbestand (${bestand.get(kategorie)}/${mindestbestandeMap.get(kategorie)}); Kandidat aus Recherche-Pool (${quelle}).`;
     } else {
       try {
         const recherchiert = await kandidatRecherchieren(kontoId, kategorie);
@@ -251,6 +274,7 @@ export async function kategorieUebersicht(kontoId: string): Promise<KategorieSta
   const belegteIds = new Set(belegt.map((r) => r.buchId));
 
   const bestand = await bestandProKategorie();
+  const mindestbestandeMap = await mindestbestandProKategorie(kontoId);
   const { wunschlistenIds, wunschlisteBevorzugt } = await wunschlistenQuote(kontoId, belegt);
 
   const ergebnis: KategorieStatus[] = [];
@@ -273,7 +297,7 @@ export async function kategorieUebersicht(kontoId: string): Promise<KategorieSta
     ergebnis.push({
       kategorie,
       bestand: bestand.get(kategorie)!,
-      mindestbestand: MINDESTBESTAND,
+      mindestbestand: mindestbestandeMap.get(kategorie)!,
       naechsterKandidat: gewaehlt ? { titel: gewaehlt.titel, autor: gewaehlt.autor } : null,
     });
   }
