@@ -14,6 +14,7 @@
 // runterscrollen, um ein Buch hinzuzufügen.
 
 import Link from "next/link";
+import { after } from "next/server";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, konten, wunschlisteneintraege } from "../../src/db/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
@@ -56,6 +57,7 @@ export default async function BuecherlisteSeite({
       autor: buecher.autor,
       kategorie: buecher.kategorie,
       umfang: buecher.umfang,
+      umfangGeprueftAm: buecher.umfangGeprueftAm,
     })
     .from(wunschlisteneintraege)
     .leftJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
@@ -80,14 +82,25 @@ export default async function BuecherlisteSeite({
   // Umfang für ALLE angezeigten Einträge nachschlagen (nicht nur die
   // gerade vorgeschlagenen) — sonst bleibt die Angabe bei den meisten
   // Büchern auf der Liste leer, weil vorschlaege() nur die knappen
-  // Kategorien bedient. sicherstelleUmfang() cached in buecher.umfang,
-  // kostet also nur beim ersten Aufruf pro Buch etwas.
-  await Promise.all(
-    zeilen.map(async (zeile) => {
-      if (!zeile.buchId || zeile.umfang || !zeile.titel || !zeile.autor) return;
-      zeile.umfang = await sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang);
-    })
-  );
+  // Kategorien bedient. sicherstelleUmfang() cached in buecher.umfang bzw.
+  // buecher.umfangGeprueftAm (Negativ-Cache), kostet also nur beim ERSTEN
+  // Aufruf pro Buch einen echten Netzwerk-Roundtrip.
+  //
+  // Bewusst NICHT mehr vor dem Rendern awaited (Bug 09/2026, "Wunschliste
+  // lädt langsam"): das blockierte den Seitenaufbau auf so viele
+  // sequentiell/parallel laufende Open-Library-Anfragen wie fehlende
+  // Einträge — bei vielen (v.a. nicht katalogisierten) Büchern spürbar.
+  // Stattdessen rendert die Seite sofort mit dem aktuell gecachten Stand;
+  // die Nachschlage-Arbeit läuft NACH dem Response im Hintergrund weiter
+  // (Next.js after()) und füllt buecher.umfang für den nächsten Aufruf.
+  after(async () => {
+    await Promise.all(
+      zeilen.map(async (zeile) => {
+        if (!zeile.buchId || zeile.umfang || !zeile.titel || !zeile.autor) return;
+        await sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang, zeile.umfangGeprueftAm);
+      })
+    );
+  });
 
   return (
     <main

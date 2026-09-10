@@ -153,6 +153,7 @@ export async function vorschlaege(
       autor: buecher.autor,
       kategorie: buecher.kategorie,
       umfang: buecher.umfang,
+      umfangGeprueftAm: buecher.umfangGeprueftAm,
     })
     .from(wunschlisteneintraege)
     .innerJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
@@ -168,7 +169,7 @@ export async function vorschlaege(
       kategorie: buch.kategorie as Kategorie,
       quelle: "eigene_liste",
       grund: "Manuell für den nächsten Lauf vorgemerkt.",
-      umfang: await sicherstelleUmfang(buch.buchId, buch.titel, buch.autor, buch.umfang),
+      umfang: await sicherstelleUmfang(buch.buchId, buch.titel, buch.autor, buch.umfang, buch.umfangGeprueftAm),
     });
   }
 
@@ -210,7 +211,9 @@ export async function vorschlaege(
     const ausListe = offen.filter((b) => wunschlistenIds.has(b.id));
     const andere = offen.filter((b) => !wunschlistenIds.has(b.id));
 
-    let gewaehlt: { id: string; titel: string; autor: string; umfang?: string | null } | undefined;
+    let gewaehlt:
+      | { id: string; titel: string; autor: string; umfang?: string | null; umfangGeprueftAm?: Date | null }
+      | undefined;
     let quelle: VorschlagKandidat["quelle"] | undefined;
     let grund = "";
 
@@ -239,7 +242,13 @@ export async function vorschlaege(
 
     if (!gewaehlt || !quelle) continue;
 
-    const umfang = await sicherstelleUmfang(gewaehlt.id, gewaehlt.titel, gewaehlt.autor, gewaehlt.umfang);
+    const umfang = await sicherstelleUmfang(
+      gewaehlt.id,
+      gewaehlt.titel,
+      gewaehlt.autor,
+      gewaehlt.umfang,
+      gewaehlt.umfangGeprueftAm
+    );
 
     ergebnis.push({
       buchId: gewaehlt.id,

@@ -85,16 +85,27 @@ export async function umfangNachschlagen(titel: string, autor: string): Promise<
 // liste, Bibliothek) für alle angezeigten Einträge, nicht nur die
 // aktuell vorgeschlagenen — sonst bekämen nur die paar gerade knappen
 // Kategorien je eine Umfangsangabe.
+//
+// umfangGeprueftAm ist der Negativ-Cache (Bug-Fix 09/2026): ohne ihn wurde
+// ein Buch OHNE Open-Library-Treffer (z.B. keine Katalogisierung) bei
+// JEDEM Aufruf erneut angefragt, weil nur ERFOLGREICHE Treffer gecacht
+// wurden — bei vielen nicht katalogisierten Wunschlisten-Einträgen machte
+// das den Seitenaufbau spürbar langsam. Ist der Zeitstempel gesetzt, wurde
+// bereits (mindestens einmal) erfolglos nachgeschlagen — kein erneuter
+// Versuch.
 export async function sicherstelleUmfang(
   buchId: string,
   titel: string,
   autor: string,
-  vorhandenerUmfang: string | null | undefined
+  vorhandenerUmfang: string | null | undefined,
+  umfangGeprueftAm: Date | null | undefined
 ): Promise<string | null> {
   if (vorhandenerUmfang) return vorhandenerUmfang;
+  if (umfangGeprueftAm) return null;
   const gefunden = await umfangNachschlagen(titel, autor);
-  if (gefunden) {
-    await db.update(buecher).set({ umfang: gefunden }).where(eq(buecher.id, buchId));
-  }
+  await db
+    .update(buecher)
+    .set({ umfang: gefunden, umfangGeprueftAm: new Date() })
+    .where(eq(buecher.id, buchId));
   return gefunden;
 }

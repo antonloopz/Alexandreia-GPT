@@ -76,6 +76,13 @@ export const buecher = pgTable("buecher", {
   // die erste Vorschlags-Anfrage sie nachgeschlagen (und gespeichert) hat,
   // oder wenn kein Treffer gefunden wurde.
   umfang: text(),
+  // Zeitpunkt des letzten Nachschlage-VERSUCHS bei Open Library — UNABHÄNGIG
+  // vom Ergebnis (siehe sicherstelleUmfang() in lib/umfang.ts). Verhindert,
+  // dass ein Buch ohne Katalog-Treffer bei jedem erneuten Aufruf wieder
+  // angefragt wird (Bug 09/2026: liess die Wunschliste bei vielen nicht
+  // katalogisierten Büchern bei jedem Laden erneut alle nachschlagen). null
+  // nur, solange noch NIE nachgeschlagen wurde.
+  umfangGeprueftAm: timestamp({ mode: "date" }),
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });
 

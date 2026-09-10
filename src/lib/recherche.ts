@@ -77,6 +77,7 @@ export async function kandidatRecherchieren(
   quelle: RechercheQuelle;
   grund: string;
   umfang: string | null;
+  umfangGeprueftAm: Date | null;
 }> {
   const quelle = await naechsteQuelle(kontoId);
 
@@ -135,6 +136,10 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
     throw new Error("Recherche-Antwort unvollständig: Titel oder Autor fehlt.");
   }
 
+  // umfangGeprueftAm gleich mit setzen — der Lookup ist hier bereits
+  // gelaufen (erfolgreich oder nicht), ein sonst folgender
+  // sicherstelleUmfang()-Aufruf (siehe vorschlag.ts) soll ihn nicht sofort
+  // nochmal versuchen.
   const umfang = await umfangNachschlagen(vorschlag.titel, vorschlag.autor);
 
   const [neuesBuch] = await db
@@ -146,6 +151,7 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
       kategorie,
       herkunft: quelle,
       umfang,
+      umfangGeprueftAm: new Date(),
     })
     .returning();
 
@@ -156,5 +162,6 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
     quelle,
     grund: ohneZitationsTags(vorschlag.begruendung || "") || `Per Recherche vorgeschlagen (${quelle}).`,
     umfang: neuesBuch.umfang,
+    umfangGeprueftAm: neuesBuch.umfangGeprueftAm,
   };
 }
