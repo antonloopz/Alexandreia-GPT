@@ -11,6 +11,16 @@
 // abgeschlossen — beides direkt (weiter-)lesbar über "Jetzt lesen").
 // Bewusst kein Coverbild (dafür gibt's aktuell keine Datenquelle) —
 // Kategorie-farbiges Icon als Platzhalter, wie zuvor in Archiv.
+//
+// "Gelesen"-Bücher bleiben bewusst genauso aufrufbar wie "Bereit"-Bücher
+// (09/2026, Pendenz "Bibliothek: gelesene Bücher weiterhin aufrufbar, ohne
+// den Gelesen-Zähler zu beeinflussen") — ein zweites Öffnen/erneutes Quiz
+// ist dafür schon von sich aus unschädlich: sicherstelleGezeigt() (siehe
+// app/lesen/[id]/page.tsx) legt nur beim ALLERERSTEN Öffnen eine Zeile an,
+// und app/abschluss/[id]/page.tsx schreibt abgeschlossenAm/
+// quizRichtigAnzahl nur, wenn abgeschlossenAm noch null ist (isNull-Guard)
+// — ein erneuter Durchlauf überschreibt also weder Datum noch Ergebnis, und
+// Fortschritts Zähler ("Bücher gelesen", Trefferquote) bleiben unverändert.
 
 import Link from "next/link";
 import { db } from "../../src/db";
@@ -315,6 +325,13 @@ export default async function BookshelfSeite() {
                       </span>
                     )}
                   </div>
+                  <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Nochmal lesen">
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(36,35,31,.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9.5 5.5 16 12l-6.5 6.5" />
+                      </svg>
+                    </div>
+                  </Link>
                 </div>
               ))}
             </div>
