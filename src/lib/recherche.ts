@@ -28,15 +28,25 @@ type RechercheJSON = {
   begruendung: string;
 };
 
-async function letzterTextblock(message: Anthropic.Message): Promise<string> {
-  const textBloecke = message.content.filter((b) => b.type === "text");
-  const letzter = textBloecke[textBloecke.length - 1];
-  if (!letzter || letzter.type !== "text") {
+// Extrahiert den GESAMTEN Textanteil der Modellantwort — nicht nur den
+// letzten Textblock (Bug 09/2026, gleicher Fehler wie in entwurf.ts: bei
+// aktivierter Websuche kann die Antwort aus mehreren Textblöcken bestehen,
+// z.B. das komplette JSON in einem frühen Block, gefolgt von weiteren
+// Tool-Aufrufen und einem kurzen abschliessenden Textblock. Nur den letzten
+// zu nehmen lieferte dann bloss ein abgeschnittenes Fragment statt des
+// tatsächlichen JSON).
+async function gesamtText(message: Anthropic.Message): Promise<string> {
+  const textBloecke = message.content.filter(
+    (b): b is Extract<Anthropic.Message["content"][number], { type: "text" }> => b.type === "text"
+  );
+  if (textBloecke.length === 0) {
     throw new Error(
-      `Keine Textantwort vom Modell erhalten (stop_reason: ${message.stop_reason}).`
+      `Keine Textantwort vom Modell erhalten (stop_reason: ${message.stop_reason}). ` +
+        `Häufigste Ursache: max_tokens zu knapp bemessen für die Websuche-Ergebnisse — ` +
+        `Antwort bricht vor der finalen JSON-Ausgabe ab.`
     );
   }
-  return letzter.text;
+  return textBloecke.map((b) => b.text).join("");
 }
 
 // Web-Search-Antworten hängen manchmal technische Zitations-Tags an
@@ -129,7 +139,7 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
     messages: [{ role: "user", content: "Schlage jetzt ein Buch vor." }],
   });
 
-  const text = await letzterTextblock(message);
+  const text = await gesamtText(message);
   const vorschlag = jsonAusText(text) as RechercheJSON;
 
   if (!vorschlag.titel?.trim() || !vorschlag.autor?.trim()) {
