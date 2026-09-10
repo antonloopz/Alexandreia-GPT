@@ -1,13 +1,26 @@
 // app/NavKreise.tsx
 //
-// Vier-Kreis-Navigation zwischen den Hauptscreens eines Buchs (Lesen,
-// Kernaussagen, Lernkarten, Quiz) — wie im Design-Canvas-Mockup (Main/
-// Lesen/Kernaussagen/Lernkarten/Quiz.dc.html). Auf Home ohne aktiven
-// Kreis (keiner der vier Screens ist "gerade offen"); auf jedem der vier
-// Screens selbst mit dem eigenen Kreis aktiv hervorgehoben (schwarz
-// gefüllt, Icon in Kategoriefarbe statt umgekehrt akzentfarben mit
-// schwarzem Icon).
+// Vier-Kacheln-Navigation zwischen den Hauptscreens eines Buchs (Lesen,
+// Kernaussagen, Lernkarten, Quiz). Quadrate mit stark abgerundeten Ecken
+// statt echter Kreise (09/2026, Pendenz "Design Kreisbuttons"), gleiche
+// Grösse wie zuvor (56px), dickerer Rahmen (5px statt 3px). Aktiver
+// Screen: Kachel schwarz gefüllt, Icon in Kategoriefarbe. Inaktive
+// Screens: Kachel in Kategoriefarbe, Icon schwarz — exakt die Farblogik
+// der vorherigen Kreise, nur mit neuer Form.
+//
+// Beim Laden der jeweils aktiven Seite füllt sich deren Kachel animiert
+// von unten mit Schwarz, statt sofort im Endzustand zu erscheinen (daher
+// "use client": der Übergang wird per useEffect nach dem Mount
+// ausgelöst). Ein Übergang ÜBER die Seitennavigation hinweg — die
+// vorherige Kachel sichtbar "leert" sich beim Verlassen — ist damit NICHT
+// möglich, da Lesen/Kernaussagen/Lernkarten/Quiz separate Routen sind und
+// bei jeder Navigation neu gemountet werden; dafür bräuchte es ein
+// gemeinsames Layout über alle vier Routen hinweg (nicht Teil dieser
+// Änderung).
 
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 type Ziel = "lesen" | "kernaussagen" | "lernkarten" | "quiz";
@@ -70,34 +83,83 @@ export default function NavKreise({
   akzent: string;
   aktiv?: Ziel;
 }) {
+  // Startet immer im Ruhezustand (Kategoriefarbe, schwarzes Icon) und
+  // schaltet erst einen Frame nach dem Mount auf "eingefüllt" um, damit
+  // die aktive Kachel sichtbar von unten mit Schwarz einfüllt statt
+  // direkt im Endzustand zu erscheinen.
+  const [eingefuellt, setEingefuellt] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setEingefuellt(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
       {ZIELE.map((ziel) => {
-        const istAktiv = ziel.schluessel === aktiv;
+        const istAktiv = ziel.schluessel === aktiv && eingefuellt;
         return (
           <Link key={ziel.schluessel} href={`${ziel.hrefPraefix}/${buchinhaltId}`}>
             <div
               style={{
+                position: "relative",
                 width: 56,
                 height: 56,
-                borderRadius: "50%",
-                background: istAktiv ? "#24231F" : akzent,
-                border: "3px solid #24231F",
+                borderRadius: 22,
+                border: "5px solid #24231F",
                 boxSizing: "border-box",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                overflow: "hidden",
+                background: akzent,
               }}
             >
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: istAktiv ? "100%" : "0%",
+                  background: "#24231F",
+                  transition: "height .45s cubic-bezier(.4,0,.2,1)",
+                }}
+              />
               <svg
                 width="26"
                 height="26"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={istAktiv ? akzent : "#24231F"}
+                stroke="#24231F"
                 strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  opacity: istAktiv ? 0 : 1,
+                  transition: "opacity .3s ease .08s",
+                }}
+              >
+                {ziel.pfade}
+              </svg>
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={akzent}
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  opacity: istAktiv ? 1 : 0,
+                  transition: "opacity .3s ease .08s",
+                }}
               >
                 {ziel.pfade}
               </svg>
