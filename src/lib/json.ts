@@ -33,6 +33,10 @@
 // nichts davon, wird der ursprüngliche (aussagekräftigere) Parse-Fehler
 // weitergeworfen.
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 // Prüft bei einem Anführungszeichen an Position `index`, ob es das ECHTE
 // Ende des JSON-Strings ist. Bei , und : wird noch ein Zeichen weiter
 // geschaut: nur wenn danach ein neuer JSON-Wert beginnt (Anführungszeichen
@@ -133,6 +137,28 @@ function extrahiereJsonKern(text: string): string {
   return text.slice(start, ende + 1);
 }
 
+// Speichert den nicht parsbaren Rohtext zur Fehlersuche (alle drei
+// Reparaturversuche oben sind ausgeschöpft) in einer Datei ausserhalb des
+// Projekts, statt ihn nur in einer oft abgeschnittenen Konsolenzeile zu
+// verlieren — bei mehreren tausend Wörtern langen Zusammenfassungen (siehe
+// entwurf.ts, 09/2026) reicht die JSON.parse-Fehlermeldung allein nicht,
+// um die tatsächliche Bruchstelle zu finden. Best-effort: schlägt das
+// Schreiben selbst fehl (z.B. kein Schreibzugriff), wird nur null
+// zurückgegeben statt den eigentlichen Fehler zu verschleiern.
+function schreibeDebugDump(text: string): string | null {
+  try {
+    const ordner = path.join(os.tmpdir(), "alexandreia-json-fehler");
+    fs.mkdirSync(ordner, { recursive: true });
+
+    const dateiname = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`;
+    const zielpfad = path.join(ordner, dateiname);
+    fs.writeFileSync(zielpfad, text, "utf-8");
+    return zielpfad;
+  } catch {
+    return null;
+  }
+}
+
 export function jsonAusText(text: string): unknown {
   const bereinigt = text
     .trim()
@@ -157,6 +183,13 @@ export function jsonAusText(text: string): unknown {
   }
 
   // Alle Reparaturversuche gescheitert — der ursprüngliche Fehler zeigt die
-  // tatsächliche Bruchstelle im Originaltext am klarsten.
-  throw ursprünglicherFehler;
+  // tatsächliche Bruchstelle im Originaltext am klarsten. Rohtext zusätzlich
+  // zur Fehlersuche wegschreiben (siehe schreibeDebugDump oben).
+  const debugPfad = schreibeDebugDump(text);
+  const basisNachricht =
+    ursprünglicherFehler instanceof Error ? ursprünglicherFehler.message : String(ursprünglicherFehler);
+  const nachricht = debugPfad
+    ? `${basisNachricht} — Rohtext gespeichert unter: ${debugPfad}`
+    : basisNachricht;
+  throw new Error(nachricht, { cause: ursprünglicherFehler });
 }
