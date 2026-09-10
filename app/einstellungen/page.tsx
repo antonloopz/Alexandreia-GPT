@@ -58,7 +58,7 @@ export default async function EinstellungenSeite() {
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
         background: "var(--paper)",
@@ -66,9 +66,10 @@ export default async function EinstellungenSeite() {
         flexDirection: "column",
         gap: 24,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Einstellungen</span>
@@ -76,22 +77,27 @@ export default async function EinstellungenSeite() {
         <MenuButton />
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <span style={gruppenLabelStil}>Inhalt</span>
-        <Link href="/einstellungen/themenverteilung" style={zeileStil}>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
-            Themenverteilung anpassen
-          </span>
-          <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
-        </Link>
-      </div>
+      {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
+          Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:
+          oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <span style={gruppenLabelStil}>Inhalt</span>
+          <Link href="/einstellungen/themenverteilung" style={zeileStil}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
+              Themenverteilung anpassen
+            </span>
+            <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
+          </Link>
+        </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <span style={gruppenLabelStil}>Export</span>
-        <EinstellungenClient
-          obsidianAktiv={einstellungen?.obsidianExportAktiv ?? true}
-          ankiAktiv={einstellungen?.ankiExportAktiv ?? false}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <span style={gruppenLabelStil}>Export</span>
+          <EinstellungenClient
+            obsidianAktiv={einstellungen?.obsidianExportAktiv ?? true}
+            ankiAktiv={einstellungen?.ankiExportAktiv ?? false}
+          />
+        </div>
       </div>
     </main>
   );

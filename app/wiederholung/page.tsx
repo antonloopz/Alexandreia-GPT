@@ -80,7 +80,7 @@ export default async function WiederholungSeite() {
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
         background: "var(--paper)",
@@ -88,9 +88,10 @@ export default async function WiederholungSeite() {
         flexDirection: "column",
         gap: 20,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Wiederholung</span>
@@ -98,49 +99,52 @@ export default async function WiederholungSeite() {
         <MenuButton />
       </div>
 
-      <span
-        style={{
-          fontFamily: "Helvetica, Arial, sans-serif",
-          fontWeight: 600,
-          fontSize: 11,
-          letterSpacing: ".06em",
-          textTransform: "uppercase",
-          color: "rgba(36,35,31,.62)",
-        }}
-      >
-        {zeilen.length} fällig{zeilen.length > 0 ? `, aus ${buecherAnzahl} Buch${buecherAnzahl === 1 ? "" : "büchern"}` : ""}
-      </span>
-
-      {zeilen.length === 0 ? (
-        <div
+      {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
+          Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:
+          oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
+        <span
           style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 14,
-            textAlign: "center",
+            fontFamily: "Helvetica, Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 11,
+            letterSpacing: ".06em",
+            textTransform: "uppercase",
+            color: "rgba(36,35,31,.62)",
           }}
         >
-          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35 }}>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M7.5 12.5l3 3 6-6.5" />
-          </svg>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 250 }}>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>Alles nachgeholt</span>
-            <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
-              {naechsteFaelligkeit
-                ? `Keine Wiederholung fällig. Die nächste Karte wird am ${new Intl.DateTimeFormat("de-DE", {
-                    day: "numeric",
-                    month: "long",
-                  }).format(naechsteFaelligkeit)} fällig.`
-                : "Keine Wiederholung fällig. Sobald Lernkarten erstellt sind, erscheinen hier ihre Termine."}
-            </span>
+          {zeilen.length} fällig{zeilen.length > 0 ? `, aus ${buecherAnzahl} Buch${buecherAnzahl === 1 ? "" : "büchern"}` : ""}
+        </span>
+
+        {zeilen.length === 0 ? (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 14,
+              textAlign: "center",
+            }}
+          >
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.35 }}>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M7.5 12.5l3 3 6-6.5" />
+            </svg>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 250 }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>Alles nachgeholt</span>
+              <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
+                {naechsteFaelligkeit
+                  ? `Keine Wiederholung fällig. Die nächste Karte wird am ${new Intl.DateTimeFormat("de-DE", {
+                      day: "numeric",
+                      month: "long",
+                    }).format(naechsteFaelligkeit)} fällig.`
+                  : "Keine Wiederholung fällig. Sobald Lernkarten erstellt sind, erscheinen hier ihre Termine."}
+              </span>
+            </div>
           </div>
-        </div>
-      ) : (
-        <>
+        ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {zeilen.map((zeile) => (
               <Link
@@ -183,29 +187,29 @@ export default async function WiederholungSeite() {
               </Link>
             ))}
           </div>
+        )}
+      </div>
 
-          <div style={{ flex: 1 }} />
-
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Link href="/wiederholung/sitzung" aria-label="Sitzung starten">
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  background: "#24231F",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9.5 5.5 16 12l-6.5 6.5" />
-                </svg>
-              </div>
-            </Link>
-          </div>
-        </>
+      {zeilen.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+          <Link href="/wiederholung/sitzung" aria-label="Sitzung starten">
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background: "#24231F",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.5 5.5 16 12l-6.5 6.5" />
+              </svg>
+            </div>
+          </Link>
+        </div>
       )}
     </main>
   );

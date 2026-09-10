@@ -139,7 +139,7 @@ export default async function BookshelfSeite() {
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
         background: "var(--paper)",
@@ -147,9 +147,10 @@ export default async function BookshelfSeite() {
         flexDirection: "column",
         gap: 20,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Bibliothek</span>
@@ -157,6 +158,10 @@ export default async function BookshelfSeite() {
         <MenuButton />
       </div>
 
+      {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
+          Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:
+          oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
       <span
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
@@ -195,7 +200,7 @@ export default async function BookshelfSeite() {
           </div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           {heutigesBuch && (
             <div
               style={{
@@ -338,6 +343,7 @@ export default async function BookshelfSeite() {
           )}
         </div>
       )}
+      </div>
     </main>
   );
 }

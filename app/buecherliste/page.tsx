@@ -244,7 +244,7 @@ export default async function BuecherlisteSeite({
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
         background: "var(--paper)",
@@ -252,6 +252,7 @@ export default async function BuecherlisteSeite({
         flexDirection: "column",
         gap: 20,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
       <style>{`
@@ -261,7 +262,7 @@ export default async function BuecherlisteSeite({
         .buecherliste-abschnitt[open] > summary svg { transform: rotate(90deg); }
       `}</style>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Wunschliste</span>
@@ -278,6 +279,11 @@ export default async function BuecherlisteSeite({
           <MenuButton />
         </div>
       </div>
+
+      {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
+          Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:
+          oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
 
       {/* fehler=verworfen/technisch: aktuell nicht mehr erreichbar, seit
           buchJetztAufbereiten() im Hintergrund läuft (after(), kein Redirect
@@ -454,7 +460,7 @@ export default async function BuecherlisteSeite({
           </Link>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           {vorgemerkteZeilen.length > 0 && (
             <details className="buecherliste-abschnitt" open>
               <summary
@@ -506,6 +512,7 @@ export default async function BuecherlisteSeite({
           )}
         </div>
       )}
+      </div>
     </main>
   );
 }

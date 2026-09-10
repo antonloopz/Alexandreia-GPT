@@ -103,7 +103,7 @@ export default async function FortschrittSeite() {
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
         background: "var(--paper)",
@@ -111,9 +111,10 @@ export default async function FortschrittSeite() {
         flexDirection: "column",
         gap: 24,
         color: "var(--ink)",
+        overflow: "hidden",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Fortschritt</span>
@@ -121,89 +122,94 @@ export default async function FortschrittSeite() {
         <MenuButton />
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34 }}>{streak} Tage</span>
-        <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.65)" }}>Streak — dein bisher längster Lauf</span>
-      </div>
+      {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
+          Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:
+          oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34 }}>{streak} Tage</span>
+          <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.65)" }}>Streak — dein bisher längster Lauf</span>
+        </div>
 
-      <div style={{ display: "flex", gap: 10 }}>
-        <div
-          style={{
-            flex: 1,
-            boxSizing: "border-box",
-            padding: "12px 14px",
-            borderRadius: 14,
-            background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buecherGelesen.length}</span>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
-            Bücher gelesen
-          </span>
-        </div>
-        <div
-          style={{
-            flex: 1,
-            boxSizing: "border-box",
-            padding: "12px 14px",
-            borderRadius: 14,
-            background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{quizTrefferquote}</span>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
-            Quiz-Trefferquote
-          </span>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <span
-          style={{
-            fontFamily: "Helvetica, Arial, sans-serif",
-            fontWeight: 700,
-            fontSize: 12,
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "rgba(36,35,31,.6)",
-          }}
-        >
-          Diese Woche · Wiederholungen
-        </span>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 110, borderBottom: "1.5px solid #24231F" }}>
-          {zaehlerProTag.map((anzahl, i) => {
-            const istZukunft = i > heuteIndex;
-            if (istZukunft) {
-              return (
-                <div
-                  key={i}
-                  style={{
-                    width: 24,
-                    height: 14,
-                    background: "none",
-                    border: "1.5px solid #24231F",
-                    borderRadius: "4px 4px 0 0",
-                    boxSizing: "border-box",
-                  }}
-                />
-              );
-            }
-            const hoehe = anzahl === 0 ? 6 : Math.max(20, Math.round((anzahl / maxProTag) * 100));
-            return <div key={i} style={{ width: 24, height: hoehe, background: "#24231F", borderRadius: "4px 4px 0 0" }} />;
-          })}
-        </div>
-        <div style={{ display: "flex", gap: 14 }}>
-          {WOCHENTAGE.map((tag) => (
-            <span key={tag} style={{ width: 24, textAlign: "center", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10.5, color: "rgba(36,35,31,.6)" }}>
-              {tag}
+        <div style={{ display: "flex", gap: 10 }}>
+          <div
+            style={{
+              flex: 1,
+              boxSizing: "border-box",
+              padding: "12px 14px",
+              borderRadius: 14,
+              background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buecherGelesen.length}</span>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+              Bücher gelesen
             </span>
-          ))}
+          </div>
+          <div
+            style={{
+              flex: 1,
+              boxSizing: "border-box",
+              padding: "12px 14px",
+              borderRadius: 14,
+              background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{quizTrefferquote}</span>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+              Quiz-Trefferquote
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <span
+            style={{
+              fontFamily: "Helvetica, Arial, sans-serif",
+              fontWeight: 700,
+              fontSize: 12,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              color: "rgba(36,35,31,.6)",
+            }}
+          >
+            Diese Woche · Wiederholungen
+          </span>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 110, borderBottom: "1.5px solid #24231F" }}>
+            {zaehlerProTag.map((anzahl, i) => {
+              const istZukunft = i > heuteIndex;
+              if (istZukunft) {
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      width: 24,
+                      height: 14,
+                      background: "none",
+                      border: "1.5px solid #24231F",
+                      borderRadius: "4px 4px 0 0",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                );
+              }
+              const hoehe = anzahl === 0 ? 6 : Math.max(20, Math.round((anzahl / maxProTag) * 100));
+              return <div key={i} style={{ width: 24, height: hoehe, background: "#24231F", borderRadius: "4px 4px 0 0" }} />;
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 14 }}>
+            {WOCHENTAGE.map((tag) => (
+              <span key={tag} style={{ width: 24, textAlign: "center", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10.5, color: "rgba(36,35,31,.6)" }}>
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </main>
