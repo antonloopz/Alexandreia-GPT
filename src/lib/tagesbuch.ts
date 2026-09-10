@@ -23,7 +23,7 @@ import {
   repetitionselemente,
   wunschlisteneintraege,
 } from "../db/schema";
-import { and, desc, eq, lte, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, lte, notInArray, sql } from "drizzle-orm";
 
 export type TagesBuch = {
   buchinhaltId: string;
@@ -229,6 +229,54 @@ export async function bereiteBuecher(kontoId: string, limit = 3): Promise<Bereit
     .filter((b) => !gezeigtIds.has(b.buchinhaltId))
     .sort((a, b) => a.titel.localeCompare(b.titel))
     .slice(0, limit);
+}
+
+export type AbgeschlossenesBuch = {
+  buchinhaltId: string;
+  titel: string;
+  autor: string;
+  kategorie: string;
+};
+
+// Alle Bücher, die HEUTE (Kalendertag) abgeschlossen wurden — nicht nur das
+// offizielle "Buch heute". Seit Bookshelf kann man beliebig viele "Bereit"-
+// Bücher direkt öffnen (app/lesen/[id]/page.tsx ruft dafür sicherstelleGezeigt
+// auf) und am selben Tag fertig lesen — Home zeigte im "Heute geschafft"-
+// Zustand bisher aber nur das eine offizielle Buch heute, alle zusätzlich
+// heute abgeschlossenen Bücher gingen unter (Bug, 09/2026). Filtert über
+// abgeschlossenAm (Abschlusszeitpunkt), nicht datumGezeigt (Zeitpunkt des
+// ERSTEN Öffnens) — die können bei einem über mehrere Tage verteilt
+// gelesenen Buch auseinanderfallen. ausgeschlossenerBuchinhaltId blendet das
+// bereits separat als grosse Karte gezeigte Buch heute aus dieser Liste aus.
+export async function heuteAbgeschlosseneBuecher(
+  kontoId: string,
+  ausgeschlossenerBuchinhaltId?: string
+): Promise<AbgeschlossenesBuch[]> {
+  const heuteStart = new Date();
+  heuteStart.setHours(0, 0, 0, 0);
+  const morgenStart = new Date(heuteStart);
+  morgenStart.setDate(heuteStart.getDate() + 1);
+
+  const rows = await db
+    .select({
+      buchinhaltId: buchinhalte.id,
+      titel: buecher.titel,
+      autor: buecher.autor,
+      kategorie: buecher.kategorie,
+    })
+    .from(gezeigteBuecher)
+    .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(
+      and(
+        eq(gezeigteBuecher.kontoId, kontoId),
+        gte(gezeigteBuecher.abgeschlossenAm, heuteStart),
+        lt(gezeigteBuecher.abgeschlossenAm, morgenStart)
+      )
+    )
+    .orderBy(desc(gezeigteBuecher.abgeschlossenAm));
+
+  return rows.filter((r) => r.buchinhaltId !== ausgeschlossenerBuchinhaltId);
 }
 
 export async function faelligeWiederholungenAnzahl(kontoId: string): Promise<number> {
