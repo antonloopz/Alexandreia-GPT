@@ -1,9 +1,15 @@
 // app/buecherliste/AufbereitenButton.tsx
 //
 // Löst die Pipeline (Entwurf → Prüfung → Lernkarten/Quiz) sofort für ein
-// gewähltes Buch aus, statt auf den nächsten Cron-Lauf zu warten. Dauert
-// real 1-3 Minuten (echte Claude-API-Aufrufe) — zeigt deshalb sofort einen
-// Hinweistext an, damit es nicht wie ein hängender Button wirkt.
+// gewähltes Buch aus, statt auf den nächsten Cron-Lauf zu warten. Läuft
+// serverseitig im Hintergrund (siehe actions.ts, next/server after()) und
+// damit auch weiter, wenn diese Seite verlassen oder das Tab geschlossen
+// wird — dauert real trotzdem 1-3 Minuten (echte Claude-API-Aufrufe), der
+// Hinweistext hier ist deshalb rein lokale UI-Rückmeldung für den Moment des
+// Klicks, kein Live-Status der eigentlichen Verarbeitung: verlässt man die
+// Seite und kommt zurück, ist dieser Zustand weg, auch wenn im Hintergrund
+// noch weitergearbeitet wird — das fertige Buch erscheint dann einfach ohne
+// weitere Ankündigung in der Bibliothek.
 
 "use client";
 
@@ -25,7 +31,7 @@ export default function AufbereitenButton({ buchId }: { buchId: string }) {
           color: "rgba(36,35,31,.55)",
         }}
       >
-        Wird aufbereitet … (1–3 Min.)
+        Läuft im Hintergrund … (1–3 Min., Seite kann verlassen werden)
       </span>
     );
   }

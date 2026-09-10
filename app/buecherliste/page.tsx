@@ -279,6 +279,11 @@ export default async function BuecherlisteSeite({
         </div>
       </div>
 
+      {/* fehler=verworfen/technisch: aktuell nicht mehr erreichbar, seit
+          buchJetztAufbereiten() im Hintergrund läuft (after(), kein Redirect
+          mit Fehlerstatus mehr möglich, siehe actions.ts) — Banner bewusst
+          nicht entfernt, falls künftig wieder ein synchroner Fehlerweg
+          gebraucht wird (z.B. bei Polling-basiertem Live-Status). */}
       {fehler && (
         <div
           style={{

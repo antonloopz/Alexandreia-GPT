@@ -12,13 +12,27 @@
 // - buchJetztAufbereiten: sofortige, manuelle Ad-hoc-Produktion EINES
 //   gewählten Buchs — dieselbe Pipeline wie im Cron-Job
 //   (app/api/cron/produzieren/route.ts), nur ohne die automatische
-//   Kandidatenauswahl über vorschlaege(). Läuft synchron im Server Action
-//   (1-3 Minuten, echte Claude-API-Aufrufe inkl. Websuche) und leitet bei
-//   Erfolg direkt zum fertigen Buch weiter.
+//   Kandidatenauswahl über vorschlaege(). Lief ursprünglich synchron IN der
+//   Server Action (1-3 Minuten, echte Claude-API-Aufrufe inkl. Websuche) und
+//   leitete bei Erfolg direkt zum fertigen Buch weiter — das hing die ganze
+//   Verarbeitung an die eine offene Verbindung: Tab schliessen oder App
+//   wechseln konnte sie abbrechen, und ohne eigenes maxDuration drohte auf
+//   Vercel zusätzlich ein Server-seitiges Timeout weit vor den echten 1-3
+//   Minuten (09/2026, Pendenz "Jetzt aufbereiten im Hintergrund").
+//
+//   Jetzt: die Server Action kehrt sofort zurück (kein Warten, kein
+//   Timeout-Risiko mehr), die eigentliche Pipeline läuft über next/server
+//   after() weiter — GENAU wie schon der Umfang-Nachschlag in
+//   buecherliste/page.tsx — und damit unabhängig davon, ob die Seite noch
+//   offen ist. Preis dafür: kein automatischer Sprung zur fertigen
+//   Leseseite mehr (der Buchinhalt existiert ja erst NACH der Antwort) und
+//   kein Live-Fehlerbanner bei Misserfolg — Fehler landen im Server-Log,
+//   und ein gescheitertes Buch bleibt einfach unverändert auf der
+//   Wunschliste stehen (statt bei Erfolg zu verschwinden).
 
 "use server";
 
-import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "../../src/db";
 import { buecher, wunschlisteneintraege } from "../../src/db/schema";
@@ -35,35 +49,33 @@ export async function prioritaetUmschalten(eintragId: string, aktiv: boolean) {
 }
 
 export async function buchJetztAufbereiten(buchId: string) {
-  let buchinhaltId: string | null = null;
-  let fehler: "verworfen" | "technisch" | null = null;
+  after(async () => {
+    try {
+      const ergebnis = await pipelineSchritt(buchId);
+      if (ergebnis.status === "verworfen") {
+        console.error(`buchJetztAufbereiten(${buchId}): Entwurf verworfen (Prüfung nicht bestanden).`);
+        return;
+      }
 
-  try {
-    const ergebnis = await pipelineSchritt(buchId);
-    if (ergebnis.status === "verworfen") {
-      fehler = "verworfen";
-    } else {
       const [buch] = await db.select().from(buecher).where(eq(buecher.id, buchId));
       if (!buch) {
-        fehler = "technisch";
-      } else {
-        await erstelleLernkartenUndQuiz(ergebnis.buchinhaltId, buch.titel, buch.autor);
-        buchinhaltId = ergebnis.buchinhaltId;
+        console.error(`buchJetztAufbereiten(${buchId}): Buch nach erfolgreicher Produktion nicht gefunden.`);
+        return;
       }
+      await erstelleLernkartenUndQuiz(ergebnis.buchinhaltId, buch.titel, buch.autor);
+    } catch (e) {
+      // Landet im Server-Log (Terminal bei "npm run dev", Vercel-Logs in
+      // Produktion) — kein Live-Fehlerbanner mehr möglich, da die Antwort an
+      // den Browser längst raus ist, bevor dieser Block überhaupt läuft.
+      console.error(`buchJetztAufbereiten(${buchId}) fehlgeschlagen:`, e);
+    } finally {
+      // Erst NACH der eigentlichen Arbeit revalidieren, nicht schon beim
+      // sofortigen Rückgabewert der Server Action — sonst würde nichts
+      // Neues sichtbar, weil der Buchinhalt zu dem Zeitpunkt noch gar nicht
+      // existiert.
+      revalidatePath("/buecherliste");
+      revalidatePath("/bookshelf");
+      revalidatePath("/");
     }
-  } catch (e) {
-    // Bisher wurde der eigentliche Fehler hier komplett verschluckt — man
-    // sah nur "technisch" im UI, aber nie WARUM. Jetzt landet die echte
-    // Fehlermeldung im Server-Log (Terminal bei "npm run dev", Vercel-Logs
-    // in Produktion), ohne das Nutzer-facing Verhalten zu ändern.
-    console.error(`buchJetztAufbereiten(${buchId}) fehlgeschlagen:`, e);
-    fehler = "technisch";
-  }
-
-  // redirect() wirft intern — bewusst AUSSERHALB des try/catch aufgerufen,
-  // sonst würde der eigene catch-Block den Redirect abfangen.
-  if (buchinhaltId) {
-    redirect(`/lesen/${buchinhaltId}`);
-  }
-  redirect(`/buecherliste?fehler=${fehler}`);
+  });
 }
