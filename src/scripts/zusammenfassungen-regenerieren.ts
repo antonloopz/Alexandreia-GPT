@@ -16,8 +16,12 @@
 // einzelnen Fehler NICHT den ganzen Lauf ab (Fehler werden geloggt, dann
 // geht's mit dem nächsten Buch weiter).
 //
-// Ausführen mit:            npx tsx src/scripts/zusammenfassungen-regenerieren.ts
-// Nur die ersten N testen:   npx tsx src/scripts/zusammenfassungen-regenerieren.ts --limit=3
+// Ausführen mit:              npx tsx src/scripts/zusammenfassungen-regenerieren.ts
+// Nur die ersten N testen:     npx tsx src/scripts/zusammenfassungen-regenerieren.ts --limit=3
+// Nur bestimmte Titel (z.B.
+// nach einem Fehlschlag erneut
+// versuchen), komma-getrennt,
+// exakter Titel-Text:          npx tsx src/scripts/zusammenfassungen-regenerieren.ts --titel="Meditationen,Der Staat"
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -29,6 +33,11 @@ function wortanzahl(text: string): number {
 async function main() {
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));
   const limit = limitArg ? Number(limitArg.split("=")[1]) : undefined;
+
+  const titelArg = process.argv.find((a) => a.startsWith("--titel="));
+  const titelFilter = titelArg
+    ? new Set(titelArg.slice("--titel=".length).split(",").map((t) => t.trim()))
+    : undefined;
 
   const { db } = await import("../db");
   const { buchinhalte, buecher } = await import("../db/schema");
@@ -49,6 +58,7 @@ async function main() {
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(inArray(buchinhalte.status, ["geprueft", "im_vorrat"]));
 
+  if (titelFilter) zeilen = zeilen.filter((z) => titelFilter.has(z.titel));
   if (limit) zeilen = zeilen.slice(0, limit);
 
   console.log(`${zeilen.length} Buchinhalt(e) werden neu zusammengefasst.\n`);

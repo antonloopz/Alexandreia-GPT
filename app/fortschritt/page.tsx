@@ -2,7 +2,14 @@
 //
 // Vierter sekundärer Screen: reine Statistik-Ansicht, kein Aktionsbutton.
 // Streak = längste je erreichte Tage-Folge (src/lib/streak.ts, nicht die
-// aktuelle wie auf Home/Abschluss). "Bücher gelesen" wie im Archiv gezählt.
+// aktuelle wie auf Home/Abschluss). "Bücher gelesen" = Anzahl
+// gezeigteBuecher-Zeilen dieses Kontos mit gesetztem abgeschlossenAm (siehe
+// app/abschluss/[id]/page.tsx) — NICHT mehr wie zuvor "datumGezeigt !=
+// heute" (Bug, 09/2026): seit Bookshelf können an einem Tag mehrere Bücher
+// geöffnet/abgeschlossen werden (gepinntes Buch + beliebig viele
+// "Bereit"-Bücher), weshalb diese Bedingung alle heute abgeschlossenen
+// Bücher fälschlich NICHT mitzählte — und umgekehrt ein an einem früheren
+// Tag nur GEZEIGTES, aber nie fertig gelesenes Buch fälschlich MITZÄHLTE.
 // Quiz-Trefferquote summiert gezeigteBuecher.quizRichtigAnzahl/
 // quizGesamtAnzahl über alle Bücher dieses Kontos (siehe
 // app/abschluss/[id]/page.tsx, wo beide einmalig pro Buch gesetzt werden) —
@@ -14,7 +21,7 @@
 
 import { db } from "../../src/db";
 import { buchinhalte, buecher, gezeigteBuecher, konten, repetitionselemente } from "../../src/db/schema";
-import { and, eq, gte, lt, ne } from "drizzle-orm";
+import { and, eq, gte, isNotNull, lt } from "drizzle-orm";
 import { laengsterStreak } from "../../src/lib/streak";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
@@ -57,7 +64,7 @@ export default async function FortschrittSeite() {
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .where(and(eq(gezeigteBuecher.kontoId, konto.id), ne(gezeigteBuecher.datumGezeigt, heute)));
+    .where(and(eq(gezeigteBuecher.kontoId, konto.id), isNotNull(gezeigteBuecher.abgeschlossenAm)));
 
   const quizErgebnisse = await db
     .select({ richtig: gezeigteBuecher.quizRichtigAnzahl, gesamt: gezeigteBuecher.quizGesamtAnzahl })
