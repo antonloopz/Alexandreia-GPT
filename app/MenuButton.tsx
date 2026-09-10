@@ -80,7 +80,7 @@ export default function MenuButton() {
   }, []);
 
   return (
-    <div style={{ display: "flex", width: "100%", gap: 8, marginTop: 12, flexShrink: 0 }}>
+    <div style={{ display: "flex", width: "100%", justifyContent: "space-between", marginTop: 12, flexShrink: 0 }}>
       {EINTRAEGE.map((eintrag) => {
         const aktiv = pathname === eintrag.href;
         return (
@@ -90,11 +90,10 @@ export default function MenuButton() {
             aria-label={eintrag.label}
             onClick={() => menuNavigationStarten(pathname)}
             style={{
-              flex: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              padding: "8px 0",
+              padding: "8px 10px",
               borderRadius: 999,
               background: aktiv ? "#24231F" : "rgba(36,35,31,.08)",
             }}

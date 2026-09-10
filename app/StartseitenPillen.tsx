@@ -53,12 +53,11 @@ export default function StartseitenPillen({
   const wiederholungPfade = EINTRAEGE.find((e) => e.href === "/wiederholung")!.pfade;
 
   const pillStyle: CSSProperties = {
-    flex: 1,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    padding: "6px 0",
+    padding: "6px 10px",
     borderRadius: 999,
     background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
   };
@@ -68,7 +67,7 @@ export default function StartseitenPillen({
   }
 
   return (
-    <div style={{ display: "flex", width: "100%", gap: 8 }}>
+    <div style={{ display: "flex", width: "100%", justifyContent: "space-between" }}>
       <Link
         href="/wiederholung"
         aria-label={`${faellig} fällige Wiederholung${faellig === 1 ? "" : "en"}`}
