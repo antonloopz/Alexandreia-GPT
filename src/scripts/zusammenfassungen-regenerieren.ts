@@ -20,8 +20,11 @@
 // Nur die ersten N testen:     npx tsx src/scripts/zusammenfassungen-regenerieren.ts --limit=3
 // Nur bestimmte Titel (z.B.
 // nach einem Fehlschlag erneut
-// versuchen), komma-getrennt,
-// exakter Titel-Text:          npx tsx src/scripts/zusammenfassungen-regenerieren.ts --titel="Meditationen,Der Staat"
+// versuchen), mit "|" getrennt
+// (NICHT Komma — Titel können
+// selbst ein Komma enthalten,
+// z.B. "Thinking, Fast and
+// Slow"), exakter Titel-Text:  npx tsx src/scripts/zusammenfassungen-regenerieren.ts --titel="Meditationen|Der Staat"
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -34,9 +37,13 @@ async function main() {
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));
   const limit = limitArg ? Number(limitArg.split("=")[1]) : undefined;
 
+  // "|" statt Komma als Trenner — Buchtitel können selbst ein Komma
+  // enthalten (z.B. "Thinking, Fast and Slow"), das dann fälschlich als
+  // Trenner interpretiert würde (Bug 09/2026: --titel="Thinking, Fast and
+  // Slow" fand 0 Treffer, weil es in zwei Nicht-Titel aufgespalten wurde).
   const titelArg = process.argv.find((a) => a.startsWith("--titel="));
   const titelFilter = titelArg
-    ? new Set(titelArg.slice("--titel=".length).split(",").map((t) => t.trim()))
+    ? new Set(titelArg.slice("--titel=".length).split("|").map((t) => t.trim()))
     : undefined;
 
   const { db } = await import("../db");
