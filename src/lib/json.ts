@@ -18,7 +18,13 @@
 //    zitierter Begriff) — JSON.parse hält den String dort fälschlich für
 //    beendet und scheitert danach mit "Unexpected token" am nächsten
 //    Zeichen. Wird mit steigender Textlänge (09/2026: deutlich
-//    ausführlichere Zusammenfassungen) häufiger.
+//    ausführlichere Zusammenfassungen) häufiger. Ein Blick nur auf das
+//    NÄCHSTE Zeichen reicht dabei nicht: ein Zitat kann direkt von einem
+//    Komma gefolgt sein, das ganz normale Satzzeichen ist ("Zitat", schrieb
+//    er weiter) — das sieht genau wie ein echtes JSON-Feldende aus. Deshalb
+//    prüft pruefeEchtesStringende() bei , und : zusätzlich das Zeichen
+//    DANACH: nur wenn dort ein neuer JSON-Wert beginnt (typischerweise ein
+//    Anführungszeichen für den nächsten Schlüssel), gilt es als echtes Ende.
 //
 // Statt bei jedem seltenen Ausrutscher den ganzen (teuren, mehrminütigen)
 // Pipeline-Schritt zu verwerfen, wird hier mehrstufig repariert: zuerst der
@@ -26,6 +32,42 @@
 // zusätzlich die rohen Steuerzeichen und Anführungszeichen escaped. Hilft
 // nichts davon, wird der ursprüngliche (aussagekräftigere) Parse-Fehler
 // weitergeworfen.
+
+// Prüft bei einem Anführungszeichen an Position `index`, ob es das ECHTE
+// Ende des JSON-Strings ist. Bei , und : wird noch ein Zeichen weiter
+// geschaut: nur wenn danach ein neuer JSON-Wert beginnt (Anführungszeichen
+// für den nächsten Schlüssel/String, Ziffer, {, [, -, oder der Anfang von
+// true/false/null), gilt das Komma/der Doppelpunkt als echte JSON-Struktur
+// und nicht als normales Satzzeichen im Fliesstext.
+function pruefeEchtesStringende(text: string, index: number): boolean {
+  let j = index + 1;
+  while (j < text.length && /\s/.test(text[j])) j++;
+  const danach = text[j];
+
+  if (danach === undefined) return true;
+  if (danach === "}" || danach === "]") return true;
+
+  if (danach === ",") {
+    let k = j + 1;
+    while (k < text.length && /\s/.test(text[k])) k++;
+    return text[k] === '"';
+  }
+
+  if (danach === ":") {
+    let k = j + 1;
+    while (k < text.length && /\s/.test(text[k])) k++;
+    const wert = text[k];
+    return (
+      wert === '"' ||
+      wert === "{" ||
+      wert === "[" ||
+      wert === "-" ||
+      (wert !== undefined && /[0-9tfn]/.test(wert))
+    );
+  }
+
+  return false;
+}
 
 function repariereRoheStringSteuerzeichen(text: string): string {
   let ergebnis = "";
@@ -47,15 +89,7 @@ function repariereRoheStringSteuerzeichen(text: string): string {
         continue;
       }
       if (zeichen === '"') {
-        // Echtes Stringende erkennen: danach folgt (nach Leerraum) eines
-        // von , : } ] oder gar nichts mehr — sonst ist es ein rohes
-        // Anführungszeichen MITTEN im Text (Fall 3 oben), das dann hier
-        // escaped wird, statt den String fälschlich zu beenden.
-        let j = i + 1;
-        while (j < text.length && /\s/.test(text[j])) j++;
-        const danach = text[j];
-        const echtesEnde = danach === undefined || ",:}]".includes(danach);
-        if (echtesEnde) {
+        if (pruefeEchtesStringende(text, i)) {
           ergebnis += zeichen;
           inString = false;
         } else {
