@@ -99,70 +99,85 @@ export default function NavKreise({
         const istAktiv = ziel.schluessel === aktiv && eingefuellt;
         return (
           <Link key={ziel.schluessel} href={`${ziel.hrefPraefix}/${buchinhaltId}`}>
-            <div
-              style={{
-                position: "relative",
-                width: 56,
-                height: 56,
-                borderRadius: 22,
-                border: "5px solid #24231F",
-                boxSizing: "border-box",
-                overflow: "hidden",
-                background: akzent,
-              }}
-            >
+            <div style={{ position: "relative", width: 56, height: 56 }}>
+              {/* Rahmen als eigene Ebene, getrennt vom Clipping-Container
+                  darunter — border + overflow:hidden + border-radius auf
+                  demselben Element lässt in Safari/WebKit sonst einen
+                  1px-Spalt an den Ecken frei, durch den der Hintergrund
+                  durchschimmert (siehe Bugreport 09/2026). */}
               <div
                 aria-hidden
                 style={{
                   position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: istAktiv ? "100%" : "0%",
-                  background: "#24231F",
-                  transition: "height .45s cubic-bezier(.4,0,.2,1)",
+                  inset: 0,
+                  borderRadius: 22,
+                  border: "5px solid #24231F",
+                  boxSizing: "border-box",
+                  pointerEvents: "none",
                 }}
               />
-              <svg
-                width="26"
-                height="26"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#24231F"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <div
                 style={{
                   position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  opacity: istAktiv ? 0 : 1,
-                  transition: "opacity .3s ease .08s",
+                  inset: 5,
+                  borderRadius: 17,
+                  overflow: "hidden",
+                  background: akzent,
                 }}
               >
-                {ziel.pfade}
-              </svg>
-              <svg
-                width="26"
-                height="26"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={akzent}
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  opacity: istAktiv ? 1 : 0,
-                  transition: "opacity .3s ease .08s",
-                }}
-              >
-                {ziel.pfade}
-              </svg>
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: istAktiv ? "100%" : "0%",
+                    background: "#24231F",
+                    transition: "height .45s cubic-bezier(.4,0,.2,1)",
+                  }}
+                />
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#24231F"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    opacity: istAktiv ? 0 : 1,
+                    transition: "opacity .3s ease .08s",
+                  }}
+                >
+                  {ziel.pfade}
+                </svg>
+                <svg
+                  width="26"
+                  height="26"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={akzent}
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    opacity: istAktiv ? 1 : 0,
+                    transition: "opacity .3s ease .08s",
+                  }}
+                >
+                  {ziel.pfade}
+                </svg>
+              </div>
             </div>
           </Link>
         );

@@ -2,13 +2,16 @@
 //
 // Navigationsreihe (Pillen), auf jedem Screen wiederverwendet — ersetzt das
 // frühere Dropdown-Menü (Icon + Overlay) durch vier immer sichtbare
-// Pillen-Buttons, gleichmässig über die volle Seitenbreite verteilt, in
-// identischer Grösse. Wird als eigene Zeile UNTER dem jeweiligen
-// Seiten-Header gerendert (nicht mehr in dessen rechte Ecke gequetscht,
-// 09/2026, Pendenz "Pillenbuttons gleichmässig über die Breite verteilen").
+// Pillen-Buttons. Gleiche Anordnung wie auf der Startseite (09/2026,
+// Pendenz "gleiche Anordnung wie auf der Titelseite"): zwei Gruppen, links
+// und rechts aufgerückt, statt gleichmässig über die volle Breite verteilt
+// — links Bibliothek, Wunschliste, Wiederholung; rechts Einstellungen
+// (identische Reihenfolge wie StartseitenPillen.tsx, nur ohne die dort
+// zusätzliche Streak-Pille). Wird als eigene Zeile UNTER dem jeweiligen
+// Seiten-Header gerendert (nicht in dessen rechte Ecke gequetscht).
 //
-// "Fortschritt" ist hier bewusst NICHT mehr enthalten — die Fortschritt-
-// Seite ist stattdessen über den Streak-Pill auf der Startseite erreichbar
+// "Fortschritt" ist hier bewusst NICHT enthalten — die Fortschritt-Seite
+// ist stattdessen über den Streak-Pill auf der Startseite erreichbar
 // (09/2026, Pendenz "Fortschritt-Button streichen, Streak führt dorthin").
 //
 // Die Pille des aktuell aktiven Screens ist dunkel hervorgehoben (dient als
@@ -70,6 +73,46 @@ export const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[
   },
 ];
 
+function Pille({
+  eintrag,
+  aktiv,
+  pathname,
+}: {
+  eintrag: (typeof EINTRAEGE)[number];
+  aktiv: boolean;
+  pathname: string;
+}) {
+  return (
+    <Link
+      href={eintrag.href}
+      aria-label={eintrag.label}
+      onClick={() => menuNavigationStarten(pathname)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "8px 10px",
+        borderRadius: 999,
+        background: aktiv ? "#24231F" : "rgba(36,35,31,.08)",
+        flexShrink: 0,
+      }}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={aktiv ? "#F2F4EF" : "#24231F"}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {eintrag.pfade}
+      </svg>
+    </Link>
+  );
+}
+
 export default function MenuButton() {
   const pathname = usePathname();
 
@@ -79,40 +122,21 @@ export default function MenuButton() {
     menuKetteAktualisieren();
   }, []);
 
+  const bibliothek = EINTRAEGE.find((e) => e.href === "/bookshelf")!;
+  const wunschliste = EINTRAEGE.find((e) => e.href === "/buecherliste")!;
+  const wiederholung = EINTRAEGE.find((e) => e.href === "/wiederholung")!;
+  const einstellungen = EINTRAEGE.find((e) => e.href === "/einstellungen")!;
+
   return (
-    <div style={{ display: "flex", width: "100%", justifyContent: "space-between", marginTop: 12, flexShrink: 0 }}>
-      {EINTRAEGE.map((eintrag) => {
-        const aktiv = pathname === eintrag.href;
-        return (
-          <Link
-            key={eintrag.href}
-            href={eintrag.href}
-            aria-label={eintrag.label}
-            onClick={() => menuNavigationStarten(pathname)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "8px 10px",
-              borderRadius: 999,
-              background: aktiv ? "#24231F" : "rgba(36,35,31,.08)",
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={aktiv ? "#F2F4EF" : "#24231F"}
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {eintrag.pfade}
-            </svg>
-          </Link>
-        );
-      })}
+    <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", marginTop: 12, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Pille eintrag={bibliothek} aktiv={pathname === bibliothek.href} pathname={pathname} />
+        <Pille eintrag={wunschliste} aktiv={pathname === wunschliste.href} pathname={pathname} />
+        <Pille eintrag={wiederholung} aktiv={pathname === wiederholung.href} pathname={pathname} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Pille eintrag={einstellungen} aktiv={pathname === einstellungen.href} pathname={pathname} />
+      </div>
     </div>
   );
 }
