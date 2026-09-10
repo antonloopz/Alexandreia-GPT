@@ -200,7 +200,9 @@ export default async function Home() {
             </span>
           </div>
         </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        {/* Streak-Pill führt auf die Fortschritt-Seite (09/2026, Pendenz
+            "Fortschritt-Button streichen, Streak führt stattdessen dorthin"). */}
+        <Link href="/fortschritt" aria-label="Fortschritt">
           <div
             style={{
               display: "flex",
@@ -209,6 +211,7 @@ export default async function Home() {
               padding: "6px 12px",
               borderRadius: 999,
               background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
+              flexShrink: 0,
             }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -218,9 +221,9 @@ export default async function Home() {
               {streak}
             </span>
           </div>
-          <MenuButton />
-        </div>
+        </Link>
       </div>
+      <MenuButton />
 
       {buch.abgeschlossen ? (
         <>

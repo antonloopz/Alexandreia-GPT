@@ -61,8 +61,8 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Wiederholung</span>
         </div>
-        <MenuButton />
       </div>
+      <MenuButton />
 
       <span
         style={{

@@ -76,8 +76,8 @@ export default function LernkartenClient({
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Lernkarten</span>
         </div>
-        <MenuButton />
       </div>
+      <MenuButton />
 
       <span
         style={{

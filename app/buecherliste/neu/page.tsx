@@ -71,8 +71,8 @@ export default async function NeuesBuchSeite({
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Neues Buch</span>
         </div>
-        <MenuButton />
       </div>
+      <MenuButton />
 
       {kategorieFehler && (
         <div

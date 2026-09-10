@@ -1,11 +1,18 @@
 // app/MenuButton.tsx
 //
 // Navigationsreihe (Pillen), auf jedem Screen wiederverwendet — ersetzt das
-// frühere Dropdown-Menü (Icon + Overlay) durch fünf immer sichtbare
-// Pillen-Buttons am oberen Rand, im gleichen Stil wie die Streak-Pille auf
-// dem Homescreen: kein Aufklappen mehr nötig, alle Ziele sind direkt
-// antippbar. Die Pille des aktuell aktiven Screens ist dunkel hervorgehoben
-// (dient als "Du bist hier"), alle anderen hell.
+// frühere Dropdown-Menü (Icon + Overlay) durch vier immer sichtbare
+// Pillen-Buttons, gleichmässig über die volle Seitenbreite verteilt, in
+// identischer Grösse. Wird als eigene Zeile UNTER dem jeweiligen
+// Seiten-Header gerendert (nicht mehr in dessen rechte Ecke gequetscht,
+// 09/2026, Pendenz "Pillenbuttons gleichmässig über die Breite verteilen").
+//
+// "Fortschritt" ist hier bewusst NICHT mehr enthalten — die Fortschritt-
+// Seite ist stattdessen über den Streak-Pill auf der Startseite erreichbar
+// (09/2026, Pendenz "Fortschritt-Button streichen, Streak führt dorthin").
+//
+// Die Pille des aktuell aktiven Screens ist dunkel hervorgehoben (dient als
+// "Du bist hier"), alle anderen hell.
 //
 // Führt nebenbei weiterhin die "Menü-Kette" für SchliessenButton mit (siehe
 // menuNavigation.ts, Bug 09/2026): bei jedem Seitenaufruf wird vermerkt, ob
@@ -52,17 +59,6 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
     ),
   },
   {
-    href: "/fortschritt",
-    label: "Fortschritt",
-    pfade: (
-      <>
-        <line x1="5.5" y1="18.5" x2="5.5" y2="12.5" />
-        <line x1="12" y1="18.5" x2="12" y2="8.5" />
-        <line x1="18.5" y1="18.5" x2="18.5" y2="5.5" />
-      </>
-    ),
-  },
-  {
     href: "/einstellungen",
     label: "Einstellungen",
     pfade: (
@@ -84,7 +80,7 @@ export default function MenuButton() {
   }, []);
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+    <div style={{ display: "flex", width: "100%", gap: 8, marginTop: 12, flexShrink: 0 }}>
       {EINTRAEGE.map((eintrag) => {
         const aktiv = pathname === eintrag.href;
         return (
@@ -94,18 +90,18 @@ export default function MenuButton() {
             aria-label={eintrag.label}
             onClick={() => menuNavigationStarten(pathname)}
             style={{
+              flex: 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              padding: "6px 8px",
+              padding: "8px 0",
               borderRadius: 999,
               background: aktiv ? "#24231F" : "rgba(36,35,31,.08)",
-              flexShrink: 0,
             }}
           >
             <svg
-              width="14"
-              height="14"
+              width="16"
+              height="16"
               viewBox="0 0 24 24"
               fill="none"
               stroke={aktiv ? "#F2F4EF" : "#24231F"}

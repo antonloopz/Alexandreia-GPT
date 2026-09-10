@@ -150,8 +150,8 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Lesen</span>
         </div>
-        <MenuButton />
       </div>
+      <MenuButton />
 
       <span
         style={{

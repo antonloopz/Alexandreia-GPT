@@ -276,9 +276,9 @@ export default async function BuecherlisteSeite({
               </svg>
             </div>
           </Link>
-          <MenuButton />
         </div>
       </div>
+      <MenuButton />
 
       {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
           Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:

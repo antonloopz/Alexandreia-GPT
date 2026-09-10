@@ -58,8 +58,8 @@ export default function KernaussagenClient({
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Kernaussagen</span>
         </div>
-        <MenuButton />
       </div>
+      <MenuButton />
 
       <span
         style={{

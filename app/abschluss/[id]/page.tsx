@@ -155,8 +155,8 @@ export default async function AbschlussSeite({
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Abschluss</span>
-        <MenuButton />
       </div>
+      <MenuButton />
 
       <div
         style={{
