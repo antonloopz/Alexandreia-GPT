@@ -10,6 +10,15 @@
 // HINWEIS: ursprünglich mit der Google Books API gebaut, die aber für
 // unauthentifizierte Anfragen ein Tageskontingent von 0 hat (Stand
 // 09/2026) — deshalb Wechsel auf Open Library.
+//
+// FALLBACK (09/2026, "praktisch bei allen Büchern fehlt der Umfang"):
+// Titel+Autor als EIN Suchfilter ist zu strikt, sobald die Autoren-
+// Schreibweise nicht exakt zu Open Librarys Katalogisierung passt (z.B.
+// "Mark Aurel" vs. "Marcus Aurelius", "Fjodor Dostojewski" vs. "Fyodor
+// Dostoevsky") — dann liefert die Suche null Dokumente, statt nur keine
+// Seitenzahl. Deshalb zuerst mit Titel+Autor versuchen, bei keinem Treffer
+// zusätzlich nur mit dem Titel (ohne Autor-Filter) — der erste brauchbare
+// Treffer (mit Seitenzahl) gewinnt.
 
 import { eq } from "drizzle-orm";
 import { db } from "../db";
@@ -19,19 +28,23 @@ type OpenLibraryDoc = {
   number_of_pages_median?: number;
 };
 
-export async function umfangNachschlagen(titel: string, autor: string): Promise<string | null> {
+async function seitenzahlSuchen(titel: string, autor: string): Promise<number | null> {
   try {
     const params = new URLSearchParams({
       title: titel,
-      author: autor,
       fields: "title,author_name,number_of_pages_median",
       limit: "5",
     });
+    if (autor) params.set("author", autor);
+
     const url = `https://openlibrary.org/search.json?${params.toString()}`;
     const res = await fetch(url, { headers: { "User-Agent": "Alexandreia/1.0 (privates Buchprojekt)" } });
 
     if (!res.ok) {
-      console.error(`[umfangNachschlagen] HTTP ${res.status} für "${titel}" von ${autor}:`, await res.text());
+      console.error(
+        `[umfangNachschlagen] HTTP ${res.status} für "${titel}"${autor ? ` von ${autor}` : ""}:`,
+        await res.text()
+      );
       return null;
     }
 
@@ -40,15 +53,30 @@ export async function umfangNachschlagen(titel: string, autor: string): Promise<
       (doc) => typeof doc.number_of_pages_median === "number" && doc.number_of_pages_median > 0
     );
 
-    // Kein Median-Wert für dieses Werk (z.B. unregelmässig editierte
-    // Mehrbänder) — legitimer, erwarteter Fall, kein Fehler.
-    if (!treffer?.number_of_pages_median) return null;
+    if (!treffer?.number_of_pages_median) {
+      // Legitimer, erwarteter Fall (z.B. unregelmässig editierte
+      // Mehrbänder) — trotzdem geloggt, damit sich bei Bedarf nachvollziehen
+      // lässt, ob es an fehlenden Seitenzahl-Daten liegt (Dokumente
+      // gefunden, aber ohne number_of_pages_median) oder an keinerlei Treffer.
+      console.log(
+        `[umfangNachschlagen] Kein Seitenzahl-Treffer für "${titel}"${autor ? ` von ${autor}` : ""} ` +
+          `(${data.docs?.length ?? 0} Dokument(e) gefunden).`
+      );
+      return null;
+    }
 
-    return `${treffer.number_of_pages_median} Seiten`;
+    return treffer.number_of_pages_median;
   } catch (err) {
-    console.error("[umfangNachschlagen] Fehler für", `"${titel}" von ${autor}:`, err);
+    console.error(`[umfangNachschlagen] Fehler für "${titel}"${autor ? ` von ${autor}` : ""}:`, err);
     return null;
   }
+}
+
+export async function umfangNachschlagen(titel: string, autor: string): Promise<string | null> {
+  const seitenzahl =
+    (autor ? await seitenzahlSuchen(titel, autor) : null) ?? (await seitenzahlSuchen(titel, ""));
+  if (!seitenzahl) return null;
+  return `${seitenzahl} Seiten`;
 }
 // Liefert den vorhandenen Umfang zurück, oder schlägt ihn nach und
 // persistiert ihn (Cache-Writeback, damit derselbe Titel nicht bei jedem
