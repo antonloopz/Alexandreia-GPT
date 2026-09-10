@@ -38,7 +38,7 @@ const feldStil: React.CSSProperties = {
   border: "1.5px solid #24231F",
   background: "none",
   fontFamily: "'Work Sans', Arial, sans-serif",
-  fontSize: 15,
+  fontSize: 17,
   color: "#24231F",
   textAlign: "center",
   flexShrink: 0,
@@ -83,12 +83,12 @@ export default async function ThemenverteilungSeite() {
               <path d="M14.5 5.5 8 12l6.5 6.5" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Themenverteilung</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Themenverteilung</span>
         </div>
       </div>
       <MenuButton />
 
-      <span style={{ fontSize: 13.5, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
+      <span style={{ fontSize: 15.5, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
         Mindestbestand pro Kategorie — sinkt der Vorrat an fertigen Büchern einer Kategorie
         darunter, wird sie beim nächsten automatischen Lauf bevorzugt aufgefüllt. Standard: {STANDARD_MINDESTBESTAND}.
       </span>
@@ -99,7 +99,7 @@ export default async function ThemenverteilungSeite() {
             <div key={kategorie} style={zeileStil}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[kategorie] ?? "#ccc", flexShrink: 0 }} />
-                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
+                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
                   {KATEGORIE_LABEL[kategorie] ?? kategorie}
                 </span>
               </div>

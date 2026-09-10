@@ -73,7 +73,7 @@ function GeschafftKarte({
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
             fontWeight: 600,
-            fontSize: 11,
+            fontSize: 13,
             letterSpacing: ".04em",
             textTransform: "uppercase",
             color: "rgba(251,250,247,.65)",
@@ -81,12 +81,12 @@ function GeschafftKarte({
         >
           Heute geschafft — {kategorieLabel}
         </span>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 16, color: "#FBFAF7" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 18, color: "#FBFAF7" }}>
           {titel}
         </span>
       </div>
       <Link href={`/lesen/${buchinhaltId}`} aria-label="Nochmal ansehen">
-        <span style={{ color: "rgba(251,250,247,.7)", fontSize: 18 }}>›</span>
+        <span style={{ color: "rgba(251,250,247,.7)", fontSize: 20 }}>›</span>
       </Link>
     </div>
   );
@@ -119,10 +119,10 @@ export default async function Home() {
           gap: 12,
         }}
       >
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>
           Noch kein Buch bereit
         </span>
-        <span style={{ fontSize: 14, color: "rgba(36,35,31,.7)" }}>
+        <span style={{ fontSize: 16, color: "rgba(36,35,31,.7)" }}>
           Es ist noch kein Buchinhalt mit Status &quot;im_vorrat&quot;. Erst die Pipeline
           (Vorschlag → Entwurf → Prüfung → Lernkarten/Quiz) für mindestens ein Buch
           durchlaufen lassen.
@@ -186,7 +186,7 @@ export default async function Home() {
                 style={{
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
-                  fontSize: 11,
+                  fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.62)",
@@ -208,10 +208,10 @@ export default async function Home() {
                     }}
                   >
                     <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                      <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
+                      <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
                         {wb.titel}
                       </span>
-                      <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{wb.autor}</span>
+                      <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{wb.autor}</span>
                     </div>
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#24231F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -224,7 +224,7 @@ export default async function Home() {
             </div>
           ) : (
             <div style={{ flex: 1, minHeight: 0 }}>
-              <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
+              <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
                 Kein weiteres Buch bereit — bald kommt automatisch Nachschub.
               </span>
             </div>
@@ -241,10 +241,10 @@ export default async function Home() {
                 background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
               }}
             >
-              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14 }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16 }}>
                 Alle Bücher in der Bibliothek
               </span>
-              <span style={{ color: "rgba(36,35,31,.6)", fontSize: 16 }}>›</span>
+              <span style={{ color: "rgba(36,35,31,.6)", fontSize: 18 }}>›</span>
             </div>
           </Link>
         </>
@@ -256,7 +256,7 @@ export default async function Home() {
                 style={{
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
-                  fontSize: 12,
+                  fontSize: 14,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.62)",
@@ -264,18 +264,18 @@ export default async function Home() {
               >
                 {kategorieLabel}
               </span>
-              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22, lineHeight: 1.1 }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 24, lineHeight: 1.1 }}>
                 {buch.titel}
               </span>
-              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16, color: "rgba(36,35,31,.7)" }}>
                 {buch.autor}
               </span>
               {umfangZeileAusWortanzahl(buch.umfang, buch.wortanzahl) && (
-                <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.55)" }}>
+                <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.55)" }}>
                   {umfangZeileAusWortanzahl(buch.umfang, buch.wortanzahl)}
                 </span>
               )}
-              <span style={{ fontSize: 16, lineHeight: 1.5 }}>{buch.teaser}</span>
+              <span style={{ fontSize: 18, lineHeight: 1.5 }}>{buch.teaser}</span>
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>

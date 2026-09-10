@@ -59,7 +59,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
               <line x1="18" y1="6" x2="6" y2="18" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Wiederholung</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Wiederholung</span>
         </div>
       </div>
       <MenuButton />
@@ -68,7 +68,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
           fontWeight: 600,
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: ".06em",
           textTransform: "uppercase",
           color: "rgba(36,35,31,.62)",
@@ -92,7 +92,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
             />
           ))}
         </div>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 12, color: "rgba(36,35,31,.7)" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
           {index + 1} / {karten.length}
         </span>
       </div>
@@ -113,7 +113,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
               style={{
                 fontFamily: "Helvetica, Arial, sans-serif",
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 14,
                 letterSpacing: ".06em",
                 textTransform: "uppercase",
                 color: "rgba(36,35,31,.6)",
@@ -121,7 +121,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
             >
               Frage
             </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19, lineHeight: 1.35 }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 21, lineHeight: 1.35 }}>
               {aktuelle.frage}
             </span>
           </div>
@@ -131,7 +131,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
               style={{
                 fontFamily: "Helvetica, Arial, sans-serif",
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 14,
                 letterSpacing: ".06em",
                 textTransform: "uppercase",
                 color: "rgba(36,35,31,.6)",
@@ -139,7 +139,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
             >
               Antwort
             </span>
-            <span style={{ fontSize: 15, lineHeight: 1.5 }}>{aktuelle.antwort}</span>
+            <span style={{ fontSize: 17, lineHeight: 1.5 }}>{aktuelle.antwort}</span>
           </div>
         </div>
       </div>
@@ -167,7 +167,7 @@ function BewertungsChip({ label, onClick }: { label: string; onClick: () => void
         textAlign: "center",
         fontFamily: "Helvetica, Arial, sans-serif",
         fontWeight: 600,
-        fontSize: 12.5,
+        fontSize: 14.5,
         color: "#24231F",
         cursor: "pointer",
       }}

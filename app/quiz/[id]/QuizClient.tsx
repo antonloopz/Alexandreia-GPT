@@ -101,7 +101,7 @@ export default function QuizClient({
       >
         <StatusBarColor farbe={akzent} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Auswertung</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Auswertung</span>
         </div>
         <MenuButton />
 
@@ -109,7 +109,7 @@ export default function QuizClient({
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
             fontWeight: 600,
-            fontSize: 11,
+            fontSize: 13,
             letterSpacing: ".06em",
             textTransform: "uppercase",
             color: "rgba(36,35,31,.62)",
@@ -131,7 +131,7 @@ export default function QuizClient({
                 gap: 10,
               }}
             >
-              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15, lineHeight: 1.35 }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17, lineHeight: 1.35 }}>
                 {eintrag.frage}
               </span>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -139,13 +139,13 @@ export default function QuizClient({
                   <line x1="7" y1="7" x2="17" y2="17" />
                   <line x1="17" y1="7" x2="7" y2="17" />
                 </svg>
-                <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.7)" }}>{eintrag.gewaehlt}</span>
+                <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.7)" }}>{eintrag.gewaehlt}</span>
               </div>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 2, flexShrink: 0 }}>
                   <path d="M8.5 12.3l2.3 2.3 4.7-5" />
                 </svg>
-                <span style={{ fontSize: 14, lineHeight: 1.5, fontWeight: 600 }}>{eintrag.richtig}</span>
+                <span style={{ fontSize: 16, lineHeight: 1.5, fontWeight: 600 }}>{eintrag.richtig}</span>
               </div>
             </div>
           ))}
@@ -202,7 +202,7 @@ export default function QuizClient({
               <path d="M14.5 5.5 8 12l6.5 6.5" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Quiz</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Quiz</span>
         </div>
       </div>
       <MenuButton />
@@ -211,7 +211,7 @@ export default function QuizClient({
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
           fontWeight: 600,
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: ".06em",
           textTransform: "uppercase",
           color: "rgba(36,35,31,.62)",
@@ -235,7 +235,7 @@ export default function QuizClient({
             />
           ))}
         </div>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 12, color: "rgba(36,35,31,.7)" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
           {index + 1} / {fragen.length}
         </span>
       </div>
@@ -246,7 +246,7 @@ export default function QuizClient({
             style={{
               fontFamily: "Helvetica, Arial, sans-serif",
               fontWeight: 700,
-              fontSize: 12,
+              fontSize: 14,
               letterSpacing: ".06em",
               textTransform: "uppercase",
               color: "rgba(36,35,31,.6)",
@@ -254,7 +254,7 @@ export default function QuizClient({
           >
             Frage {index + 1}
           </span>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20, lineHeight: 1.3 }}>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22, lineHeight: 1.3 }}>
             {aktuelle.frage}
           </span>
         </div>
@@ -288,7 +288,7 @@ export default function QuizClient({
                   style={{
                     fontFamily: "Helvetica, Arial, sans-serif",
                     fontWeight: zeigeAlsRichtig ? 600 : 500,
-                    fontSize: 14.5,
+                    fontSize: 16.5,
                     color: zeigeAlsRichtig ? "#FBFAF7" : "#24231F",
                   }}
                 >

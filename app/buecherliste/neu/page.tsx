@@ -26,14 +26,14 @@ const feldStil: React.CSSProperties = {
   border: "1.5px solid #24231F",
   background: "none",
   fontFamily: "'Work Sans', Arial, sans-serif",
-  fontSize: 15,
+  fontSize: 17,
   color: "#24231F",
 };
 
 const labelStil: React.CSSProperties = {
   fontFamily: "Helvetica, Arial, sans-serif",
   fontWeight: 700,
-  fontSize: 12,
+  fontSize: 14,
   letterSpacing: ".06em",
   textTransform: "uppercase",
   color: "rgba(36,35,31,.6)",
@@ -69,7 +69,7 @@ export default async function NeuesBuchSeite({
               <line x1="18" y1="6" x2="6" y2="18" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Neues Buch</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Neues Buch</span>
         </div>
       </div>
       <MenuButton />
@@ -81,7 +81,7 @@ export default async function NeuesBuchSeite({
             padding: "10px 14px",
             borderRadius: 10,
             background: "rgba(36,35,31,.08)",
-            fontSize: 13,
+            fontSize: 15,
             lineHeight: 1.4,
           }}
         >
@@ -161,7 +161,7 @@ export default async function NeuesBuchSeite({
             defaultChecked={vorbelegung.bald === "on"}
             style={{ width: 18, height: 18, accentColor: "#24231F" }}
           />
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5 }}>Bald lesen (priorisieren)</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5 }}>Bald lesen (priorisieren)</span>
         </label>
 
         <div style={{ flex: 1 }} />

@@ -94,7 +94,7 @@ export default function StartseitenPillen({
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             {wiederholungPfade}
           </svg>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>{faellig}</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>{faellig}</span>
         </Link>
       </div>
 
@@ -103,7 +103,7 @@ export default function StartseitenPillen({
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 4.5h12v15l-6-4-6 4Z" />
           </svg>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>{streak}</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>{streak}</span>
         </Link>
 
         <Link href={einstellungen.href} aria-label={einstellungen.label} onClick={klick} style={pillStyle}>

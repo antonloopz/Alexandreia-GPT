@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 const gruppenLabelStil: React.CSSProperties = {
   fontFamily: "Helvetica, Arial, sans-serif",
   fontWeight: 700,
-  fontSize: 12,
+  fontSize: 14,
   letterSpacing: ".06em",
   textTransform: "uppercase",
   color: "rgba(36,35,31,.6)",
@@ -72,7 +72,7 @@ export default async function EinstellungenSeite() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Einstellungen</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Einstellungen</span>
         </div>
       </div>
       <MenuButton />
@@ -84,10 +84,10 @@ export default async function EinstellungenSeite() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <span style={gruppenLabelStil}>Inhalt</span>
           <Link href="/einstellungen/themenverteilung" style={zeileStil}>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
               Themenverteilung anpassen
             </span>
-            <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
+            <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>›</span>
           </Link>
         </div>
 

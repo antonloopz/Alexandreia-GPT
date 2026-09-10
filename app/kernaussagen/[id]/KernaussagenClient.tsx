@@ -56,7 +56,7 @@ export default function KernaussagenClient({
               <path d="M14.5 5.5 8 12l6.5 6.5" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Kernaussagen</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Kernaussagen</span>
         </div>
       </div>
       <MenuButton />
@@ -65,7 +65,7 @@ export default function KernaussagenClient({
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
           fontWeight: 600,
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: ".06em",
           textTransform: "uppercase",
           color: "rgba(36,35,31,.62)",
@@ -89,7 +89,7 @@ export default function KernaussagenClient({
             />
           ))}
         </div>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 12, color: "rgba(36,35,31,.7)" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
           {index + 1} / {kernaussagen.length}
         </span>
       </div>
@@ -99,7 +99,7 @@ export default function KernaussagenClient({
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
             fontWeight: 700,
-            fontSize: 13,
+            fontSize: 15,
             letterSpacing: ".04em",
             textTransform: "uppercase",
             color: "rgba(36,35,31,.7)",
@@ -107,10 +107,10 @@ export default function KernaussagenClient({
         >
           Kernaussage {index + 1}
         </span>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 27, lineHeight: 1.2 }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 29, lineHeight: 1.2 }}>
           {aktuelle.text}
         </span>
-        <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6 }}>{aktuelle.erklaerung}</p>
+        <p style={{ margin: 0, fontSize: 18, lineHeight: 1.6 }}>{aktuelle.erklaerung}</p>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>

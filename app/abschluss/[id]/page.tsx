@@ -154,7 +154,7 @@ export default async function AbschlussSeite({
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Abschluss</span>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Abschluss</span>
       </div>
       <MenuButton />
 
@@ -173,7 +173,7 @@ export default async function AbschlussSeite({
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
             fontWeight: 600,
-            fontSize: 11,
+            fontSize: 13,
             letterSpacing: ".06em",
             textTransform: "uppercase",
             color: "rgba(36,35,31,.62)",
@@ -183,10 +183,10 @@ export default async function AbschlussSeite({
         </span>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 32, lineHeight: 1.15 }}>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34, lineHeight: 1.15 }}>
             Geschafft
           </span>
-          <span style={{ fontSize: 15, lineHeight: 1.5, color: "rgba(36,35,31,.75)", maxWidth: 280 }}>
+          <span style={{ fontSize: 17, lineHeight: 1.5, color: "rgba(36,35,31,.75)", maxWidth: 280 }}>
             Zusammenfassung, {kernaussagenAnzahl} Kernaussage{kernaussagenAnzahl === 1 ? "" : "n"}, {lernkartenAnzahl}{" "}
             Lernkarte{lernkartenAnzahl === 1 ? "" : "n"} und Quiz abgeschlossen.
           </span>
@@ -205,7 +205,7 @@ export default async function AbschlussSeite({
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 4.5h12v15l-6-4-6 4Z" />
           </svg>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 16 }}>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 18 }}>
             {streak} Tage Streak
           </span>
         </div>
@@ -222,10 +222,10 @@ export default async function AbschlussSeite({
               gap: 2,
             }}
           >
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
               {richtigAnzahl} / {quizfragenAnzahl}
             </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 13, color: "rgba(36,35,31,.65)" }}>
               im Quiz richtig
             </span>
           </div>
@@ -240,10 +240,10 @@ export default async function AbschlussSeite({
               gap: 2,
             }}
           >
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
               {geplanteWiederholungen}
             </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 13, color: "rgba(36,35,31,.65)" }}>
               Wiederholungen geplant
             </span>
           </div>

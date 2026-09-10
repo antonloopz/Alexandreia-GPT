@@ -54,7 +54,7 @@ function Abschnitt({
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
             fontWeight: 700,
-            fontSize: 13,
+            fontSize: 15,
             letterSpacing: ".04em",
             textTransform: "uppercase",
             color: "rgba(36,35,31,.7)",
@@ -148,7 +148,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
               <path d="M14.5 5.5 8 12l6.5 6.5" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Lesen</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Lesen</span>
         </div>
       </div>
       <MenuButton />
@@ -157,7 +157,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
           fontWeight: 600,
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: ".06em",
           textTransform: "uppercase",
           color: "rgba(36,35,31,.62)",
@@ -172,33 +172,33 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
             {zusammenfassungsAbschnitte.map((abschnitt, i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {abschnitt.titel && (
-                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
+                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
                     {abschnitt.titel}
                   </span>
                 )}
-                <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{abschnitt.body}</p>
+                <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{abschnitt.body}</p>
               </div>
             ))}
           </div>
         </Abschnitt>
 
         <Abschnitt label="Entstehungsgeschichte" hinweis={vh.entstehungsgeschichte}>
-          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{zeile.entstehungsgeschichte}</p>
+          <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{zeile.entstehungsgeschichte}</p>
         </Abschnitt>
 
         {zeile.autorenhintergrund && (
           <Abschnitt label="Autor" hinweis={vh.autorenhintergrund}>
-            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55 }}>{zeile.autorenhintergrund}</p>
+            <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{zeile.autorenhintergrund}</p>
           </Abschnitt>
         )}
 
         {zeile.kernzitatOriginal && (
           <Abschnitt label="Kernzitat" hinweis={vh.kernzitat}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, fontStyle: "italic" }}>
+              <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55, fontStyle: "italic" }}>
                 „{zeile.kernzitatOriginal}“
               </p>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "rgba(36,35,31,.7)" }}>
+              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.7)" }}>
                 {zeile.kernzitatUebersetzung}
               </p>
             </div>

@@ -12,7 +12,7 @@ import { prioritaetUmschalten } from "./actions";
 const basisStil: CSSProperties = {
   fontFamily: "Helvetica, Arial, sans-serif",
   fontWeight: 600,
-  fontSize: 11.5,
+  fontSize: 13.5,
   padding: "6px 10px",
   borderRadius: 999,
   border: "1px solid rgba(36,35,31,.25)",

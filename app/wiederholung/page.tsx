@@ -94,7 +94,7 @@ export default async function WiederholungSeite() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Wiederholung</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Wiederholung</span>
         </div>
       </div>
       <MenuButton />
@@ -107,7 +107,7 @@ export default async function WiederholungSeite() {
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
             fontWeight: 600,
-            fontSize: 11,
+            fontSize: 13,
             letterSpacing: ".06em",
             textTransform: "uppercase",
             color: "rgba(36,35,31,.62)",
@@ -133,8 +133,8 @@ export default async function WiederholungSeite() {
               <path d="M7.5 12.5l3 3 6-6.5" />
             </svg>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 250 }}>
-              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>Alles nachgeholt</span>
-              <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19 }}>Alles nachgeholt</span>
+              <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
                 {naechsteFaelligkeit
                   ? `Keine Wiederholung fällig. Die nächste Karte wird am ${new Intl.DateTimeFormat("de-DE", {
                       day: "numeric",
@@ -171,7 +171,7 @@ export default async function WiederholungSeite() {
                     style={{
                       fontFamily: "Helvetica, Arial, sans-serif",
                       fontWeight: 600,
-                      fontSize: 11,
+                      fontSize: 13,
                       letterSpacing: ".04em",
                       textTransform: "uppercase",
                       color: "rgba(36,35,31,.55)",
@@ -179,11 +179,11 @@ export default async function WiederholungSeite() {
                   >
                     {zeile.titel} · Lernkarte
                   </span>
-                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14 }}>
+                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16 }}>
                     {zeile.lernkarteFrage ?? "—"}
                   </span>
                 </div>
-                <span style={{ color: "rgba(36,35,31,.5)", fontSize: 16 }}>›</span>
+                <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>›</span>
               </Link>
             ))}
           </div>

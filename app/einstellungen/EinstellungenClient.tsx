@@ -53,13 +53,13 @@ export default function EinstellungenClient({
   return (
     <>
       <button onClick={obsidianUmschalten} style={zeileStil}>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
           Obsidian-Export
         </span>
         <Toggle aktiv={obsidian} />
       </button>
       <button onClick={ankiUmschalten} style={zeileStil}>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5, color: "#24231F" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
           Anki-Export
         </span>
         <Toggle aktiv={anki} />

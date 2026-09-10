@@ -143,7 +143,7 @@ export default function NavKreise({
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="#24231F"
-                  strokeWidth="1.6"
+                  strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   style={{
@@ -163,7 +163,7 @@ export default function NavKreise({
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke={akzent}
-                  strokeWidth="1.6"
+                  strokeWidth="1.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   style={{

@@ -74,7 +74,7 @@ export default function LernkartenClient({
               <path d="M14.5 5.5 8 12l6.5 6.5" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Lernkarten</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Lernkarten</span>
         </div>
       </div>
       <MenuButton />
@@ -83,7 +83,7 @@ export default function LernkartenClient({
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
           fontWeight: 600,
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: ".06em",
           textTransform: "uppercase",
           color: "rgba(36,35,31,.62)",
@@ -107,7 +107,7 @@ export default function LernkartenClient({
             />
           ))}
         </div>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 12, color: "rgba(36,35,31,.7)" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
           {index + 1} / {lernkarten.length}
         </span>
       </div>
@@ -128,7 +128,7 @@ export default function LernkartenClient({
               style={{
                 fontFamily: "Helvetica, Arial, sans-serif",
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 14,
                 letterSpacing: ".06em",
                 textTransform: "uppercase",
                 color: "rgba(36,35,31,.6)",
@@ -136,7 +136,7 @@ export default function LernkartenClient({
             >
               Frage
             </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19, lineHeight: 1.35 }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 21, lineHeight: 1.35 }}>
               {aktuelle.frage}
             </span>
           </div>
@@ -146,7 +146,7 @@ export default function LernkartenClient({
               style={{
                 fontFamily: "Helvetica, Arial, sans-serif",
                 fontWeight: 700,
-                fontSize: 12,
+                fontSize: 14,
                 letterSpacing: ".06em",
                 textTransform: "uppercase",
                 color: "rgba(36,35,31,.6)",
@@ -154,7 +154,7 @@ export default function LernkartenClient({
             >
               Antwort
             </span>
-            <span style={{ fontSize: 15, lineHeight: 1.5 }}>{aktuelle.antwort}</span>
+            <span style={{ fontSize: 17, lineHeight: 1.5 }}>{aktuelle.antwort}</span>
           </div>
         </div>
       </div>
@@ -186,7 +186,7 @@ function BewertungsChip({ label, onClick }: { label: string; onClick: () => void
         textAlign: "center",
         fontFamily: "Helvetica, Arial, sans-serif",
         fontWeight: 600,
-        fontSize: 12.5,
+        fontSize: 14.5,
         color: "#24231F",
         cursor: "pointer",
       }}

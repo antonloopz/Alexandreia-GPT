@@ -75,7 +75,7 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
               style={{
                 fontFamily: "Helvetica, Arial, sans-serif",
                 fontWeight: 600,
-                fontSize: 11,
+                fontSize: 13,
                 letterSpacing: ".04em",
                 textTransform: "uppercase",
                 color: "rgba(36,35,31,.55)",
@@ -89,7 +89,7 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
             style={{
               fontFamily: "Helvetica, Arial, sans-serif",
               fontWeight: 600,
-              fontSize: 11,
+              fontSize: 13,
               letterSpacing: ".04em",
               textTransform: "uppercase",
               color: "rgba(36,35,31,.55)",
@@ -98,13 +98,13 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
             Noch nicht zugeordnet
           </span>
         )}
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
           {zeile.titel ?? zeile.rohTitel}
         </span>
         {(zeile.autor ?? zeile.rohAutor) && (
-          <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
+          <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
         )}
-        {zeile.umfang && <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>{zeile.umfang}</span>}
+        {zeile.umfang && <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>{zeile.umfang}</span>}
         {zeile.buchId && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
             <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
@@ -235,7 +235,7 @@ export default async function BuecherlisteSeite({
     borderRadius: 999,
     fontFamily: "Helvetica, Arial, sans-serif",
     fontWeight: 600,
-    fontSize: 12.5,
+    fontSize: 14.5,
     background: farbe ? hexZuRgba(farbe, aktiv ? 0.9 : 0.16) : aktiv ? "#24231F" : "rgba(36,35,31,.08)",
     color: farbe ? "rgba(36,35,31,.85)" : aktiv ? "#FBFAF7" : "rgba(36,35,31,.75)",
   });
@@ -265,7 +265,7 @@ export default async function BuecherlisteSeite({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Wunschliste</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Wunschliste</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <Link href="/buecherliste/neu" aria-label="Buch hinzufügen">
@@ -297,7 +297,7 @@ export default async function BuecherlisteSeite({
             padding: "10px 14px",
             borderRadius: 10,
             background: "rgba(36,35,31,.08)",
-            fontSize: 13,
+            fontSize: 15,
             lineHeight: 1.4,
           }}
         >
@@ -311,7 +311,7 @@ export default async function BuecherlisteSeite({
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
           fontWeight: 600,
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: ".06em",
           textTransform: "uppercase",
           color: "rgba(36,35,31,.62)",
@@ -347,7 +347,7 @@ export default async function BuecherlisteSeite({
             style={{
               fontFamily: "Helvetica, Arial, sans-serif",
               fontWeight: 600,
-              fontSize: 11,
+              fontSize: 13,
               letterSpacing: ".06em",
               textTransform: "uppercase",
               color: "rgba(36,35,31,.5)",
@@ -355,7 +355,7 @@ export default async function BuecherlisteSeite({
           >
             Als Nächstes automatisch dran
           </span>
-          <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.7)", lineHeight: 1.5 }}>
+          <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.7)", lineHeight: 1.5 }}>
             {naechsteKandidaten.map((k) => k.titel).join(" · ")}
           </span>
         </div>
@@ -370,7 +370,7 @@ export default async function BuecherlisteSeite({
             cursor: "pointer",
             fontFamily: "Helvetica, Arial, sans-serif",
             fontWeight: 600,
-            fontSize: 11,
+            fontSize: 13,
             letterSpacing: ".06em",
             textTransform: "uppercase",
             color: "rgba(36,35,31,.62)",
@@ -397,15 +397,15 @@ export default async function BuecherlisteSeite({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[k.kategorie] ?? "#ccc", flexShrink: 0 }} />
-                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 13 }}>
+                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 15 }}>
                     {KATEGORIE_LABEL[k.kategorie] ?? k.kategorie}
                   </span>
                 </div>
-                <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)", flexShrink: 0 }}>
+                <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)", flexShrink: 0 }}>
                   {k.bestand}/{k.mindestbestand}
                 </span>
               </div>
-              <span style={{ fontSize: 12, color: k.bestand < k.mindestbestand ? "rgba(36,35,31,.75)" : "rgba(36,35,31,.45)" }}>
+              <span style={{ fontSize: 14, color: k.bestand < k.mindestbestand ? "rgba(36,35,31,.75)" : "rgba(36,35,31,.45)" }}>
                 {k.bestand < k.mindestbestand
                   ? k.naechsterKandidat
                     ? `Als Nächstes: ${k.naechsterKandidat.titel} (${k.naechsterKandidat.autor})`
@@ -436,8 +436,8 @@ export default async function BuecherlisteSeite({
             <path d="M12 6.5v11" />
           </svg>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 250 }}>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>Alles vorbereitet</span>
-            <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19 }}>Alles vorbereitet</span>
+            <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
               Jedes Buch auf deiner Liste ist schon produziert — schau in der Bibliothek vorbei, oder füge Neues hinzu.
             </span>
           </div>
@@ -454,9 +454,9 @@ export default async function BuecherlisteSeite({
             textAlign: "center",
           }}
         >
-          <span style={{ fontSize: 14, color: "rgba(36,35,31,.65)" }}>Keine Einträge in dieser Kategorie.</span>
+          <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>Keine Einträge in dieser Kategorie.</span>
           <Link href="/buecherliste">
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
+            <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
           </Link>
         </div>
       ) : (
@@ -471,7 +471,7 @@ export default async function BuecherlisteSeite({
                   cursor: "pointer",
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
-                  fontSize: 11,
+                  fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.5)",
@@ -497,7 +497,7 @@ export default async function BuecherlisteSeite({
                 style={{
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
-                  fontSize: 11,
+                  fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.5)",

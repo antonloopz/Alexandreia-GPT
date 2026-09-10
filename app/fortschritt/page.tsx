@@ -117,7 +117,7 @@ export default async function FortschrittSeite() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Fortschritt</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Fortschritt</span>
         </div>
       </div>
       <MenuButton />
@@ -127,8 +127,8 @@ export default async function FortschrittSeite() {
           oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34 }}>{streak} Tage</span>
-          <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.65)" }}>Streak — dein bisher längster Lauf</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 36 }}>{streak} Tage</span>
+          <span style={{ fontSize: 15.5, color: "rgba(36,35,31,.65)" }}>Streak — dein bisher längster Lauf</span>
         </div>
 
         <div style={{ display: "flex", gap: 10 }}>
@@ -144,8 +144,8 @@ export default async function FortschrittSeite() {
               gap: 2,
             }}
           >
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buecherGelesen.length}</span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19 }}>{buecherGelesen.length}</span>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 13, color: "rgba(36,35,31,.65)" }}>
               Bücher gelesen
             </span>
           </div>
@@ -161,8 +161,8 @@ export default async function FortschrittSeite() {
               gap: 2,
             }}
           >
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{quizTrefferquote}</span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 11, color: "rgba(36,35,31,.65)" }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19 }}>{quizTrefferquote}</span>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 13, color: "rgba(36,35,31,.65)" }}>
               Quiz-Trefferquote
             </span>
           </div>
@@ -173,7 +173,7 @@ export default async function FortschrittSeite() {
             style={{
               fontFamily: "Helvetica, Arial, sans-serif",
               fontWeight: 700,
-              fontSize: 12,
+              fontSize: 14,
               letterSpacing: ".06em",
               textTransform: "uppercase",
               color: "rgba(36,35,31,.6)",
@@ -205,7 +205,7 @@ export default async function FortschrittSeite() {
           </div>
           <div style={{ display: "flex", gap: 14 }}>
             {WOCHENTAGE.map((tag) => (
-              <span key={tag} style={{ width: 24, textAlign: "center", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 10.5, color: "rgba(36,35,31,.6)" }}>
+              <span key={tag} style={{ width: 24, textAlign: "center", fontFamily: "Helvetica, Arial, sans-serif", fontSize: 12.5, color: "rgba(36,35,31,.6)" }}>
                 {tag}
               </span>
             ))}

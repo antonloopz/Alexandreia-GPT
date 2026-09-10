@@ -153,7 +153,7 @@ export default async function BookshelfSeite() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Bibliothek</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Bibliothek</span>
         </div>
       </div>
       <MenuButton />
@@ -166,7 +166,7 @@ export default async function BookshelfSeite() {
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
           fontWeight: 600,
-          fontSize: 11,
+          fontSize: 13,
           letterSpacing: ".06em",
           textTransform: "uppercase",
           color: "rgba(36,35,31,.62)",
@@ -193,8 +193,8 @@ export default async function BookshelfSeite() {
             <line x1="10" y1="13" x2="14" y2="13" />
           </svg>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 250 }}>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>Noch keine Bücher fertig</span>
-            <span style={{ fontSize: 14, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19 }}>Noch keine Bücher fertig</span>
+            <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
               Sobald die Pipeline das erste Buch produziert hat, erscheint es hier.
             </span>
           </div>
@@ -218,7 +218,7 @@ export default async function BookshelfSeite() {
                   style={{
                     fontFamily: "Helvetica, Arial, sans-serif",
                     fontWeight: 600,
-                    fontSize: 11,
+                    fontSize: 13,
                     letterSpacing: ".04em",
                     textTransform: "uppercase",
                     color: "rgba(251,250,247,.65)",
@@ -226,12 +226,12 @@ export default async function BookshelfSeite() {
                 >
                   Heute · {KATEGORIE_LABEL[heutigesBuch.kategorie] ?? heutigesBuch.kategorie}
                 </span>
-                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15, color: "#FBFAF7" }}>
+                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17, color: "#FBFAF7" }}>
                   {heutigesBuch.titel}
                 </span>
-                <span style={{ fontSize: 12.5, color: "rgba(251,250,247,.75)" }}>{heutigesBuch.autor}</span>
+                <span style={{ fontSize: 14.5, color: "rgba(251,250,247,.75)" }}>{heutigesBuch.autor}</span>
                 {umfangZeileAusText(heutigesBuch.umfang, heutigesBuch.zusammenfassung) && (
-                  <span style={{ fontSize: 11.5, color: "rgba(251,250,247,.55)" }}>
+                  <span style={{ fontSize: 13.5, color: "rgba(251,250,247,.55)" }}>
                     {umfangZeileAusText(heutigesBuch.umfang, heutigesBuch.zusammenfassung)}
                   </span>
                 )}
@@ -245,7 +245,7 @@ export default async function BookshelfSeite() {
                 style={{
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
-                  fontSize: 11,
+                  fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.5)",
@@ -268,10 +268,10 @@ export default async function BookshelfSeite() {
                 >
                   <BuchIcon kategorie={buch.kategorie} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>{buch.titel}</span>
-                    <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{buch.autor}</span>
+                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buch.titel}</span>
+                    <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{buch.autor}</span>
                     {umfangZeileAusText(buch.umfang, buch.zusammenfassung) && (
-                      <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>
+                      <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
                         {umfangZeileAusText(buch.umfang, buch.zusammenfassung)}
                       </span>
                     )}
@@ -294,7 +294,7 @@ export default async function BookshelfSeite() {
                 style={{
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
-                  fontSize: 11,
+                  fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.5)",
@@ -317,15 +317,15 @@ export default async function BookshelfSeite() {
                 >
                   <BuchIcon kategorie={buch.kategorie} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>{buch.titel}</span>
-                    <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>
+                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buch.titel}</span>
+                    <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>
                       {buch.autor} · gelesen{" "}
                       {new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" }).format(
                         statusProBuchinhalt.get(buch.buchinhaltId)!.abgeschlossenAm!
                       )}
                     </span>
                     {umfangZeileAusText(buch.umfang, buch.zusammenfassung) && (
-                      <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>
+                      <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
                         {umfangZeileAusText(buch.umfang, buch.zusammenfassung)}
                       </span>
                     )}
