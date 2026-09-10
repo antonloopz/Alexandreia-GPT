@@ -27,7 +27,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { menuKetteAktualisieren, menuNavigationStarten } from "./menuNavigation";
 
-const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
+export const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
   {
     href: "/wiederholung",
     label: "Wiederholung",

@@ -22,7 +22,7 @@ import {
 import { umfangZeileAusWortanzahl } from "../src/lib/darstellung";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../src/lib/kategorien";
 import { aktuellerStreak } from "../src/lib/streak";
-import MenuButton from "./MenuButton";
+import StartseitenPillen from "./StartseitenPillen";
 import NavKreise from "./NavKreise";
 import StatusBarColor from "./StatusBarColor";
 
@@ -174,56 +174,12 @@ export default async function Home() {
       }}
     >
       <StatusBarColor farbe={akzent} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        {/* Fällige Wiederholungen — bewusst als knapper Icon+Zahl-Pill oben
-            links statt als eigene volle Zeile weiter unten (09/2026, Pendenz
-            "Wiederholungsanzeige nach oben links"), gleiche Grösse/Optik wie
-            der Streak-Pill oben rechts, nur ohne Textlabel. */}
-        <Link href="/wiederholung" aria-label={`${faellig} fällige Wiederholung${faellig === 1 ? "" : "en"}`}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 999,
-              background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
-              flexShrink: 0,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4.5" y="7" width="13" height="9" rx="1.5" transform="rotate(-6 11 11.5)" />
-              <rect x="6.5" y="8.5" width="13" height="9" rx="1.5" />
-            </svg>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>
-              {faellig}
-            </span>
-          </div>
-        </Link>
-        {/* Streak-Pill führt auf die Fortschritt-Seite (09/2026, Pendenz
-            "Fortschritt-Button streichen, Streak führt stattdessen dorthin"). */}
-        <Link href="/fortschritt" aria-label="Fortschritt">
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 999,
-              background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
-              flexShrink: 0,
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 4.5h12v15l-6-4-6 4Z" />
-            </svg>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>
-              {streak}
-            </span>
-          </div>
-        </Link>
-      </div>
-      <MenuButton />
+      {/* Einheitliche Pillenreihe: Wiederholung, Bibliothek, Wunschliste,
+          Fortschritt (via Streak-Zahl), Einstellungen — alle gleich gross,
+          gleichmässig über die volle Breite verteilt, EINE Zeile statt
+          vorher zwei getrennte mit doppelter Wiederholung-Pille (09/2026,
+          Pendenz "Buttons vereinheitlichen"). */}
+      <StartseitenPillen faellig={faellig} streak={streak} akzent={akzent} />
 
       {buch.abgeschlossen ? (
         <>
