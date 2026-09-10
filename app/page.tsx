@@ -17,13 +17,11 @@ import {
   faelligeWiederholungenAnzahl,
   bereiteBuecher,
   heuteAbgeschlosseneBuecher,
-  naechsteBuecherVorschau,
 } from "../src/lib/tagesbuch";
 import { umfangZeileAusWortanzahl } from "../src/lib/darstellung";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../src/lib/kategorien";
 import { aktuellerStreak } from "../src/lib/streak";
 import StartseitenPillen from "./StartseitenPillen";
-import NavKreise from "./NavKreise";
 import StatusBarColor from "./StatusBarColor";
 
 export const dynamic = "force-dynamic";
@@ -149,14 +147,6 @@ export default async function Home() {
   const weitereHeuteAbgeschlossen = buch.abgeschlossen
     ? await heuteAbgeschlosseneBuecher(konto.id, buch.buchinhaltId)
     : [];
-  // Vorschau der nächsten 2 Bücher gemäss Kategorie-Rotation, unterhalb des
-  // Buchs heute (09/2026, Pendenz "Startseite umbauen") — nur relevant,
-  // solange das Buch heute noch nicht abgeschlossen ist (danach zeigt Home
-  // stattdessen "Weiterlesen", siehe weitereBuecher oben).
-  const vorschauBuecher = !buch.abgeschlossen
-    ? await naechsteBuecherVorschau(konto.id, buch.buchinhaltId, buch.kategorie, 2)
-    : [];
-
   return (
     <main
       style={{
@@ -308,78 +298,10 @@ export default async function Home() {
               </Link>
             </div>
 
-            {vorschauBuecher.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <span
-                  style={{
-                    fontFamily: "Helvetica, Arial, sans-serif",
-                    fontWeight: 600,
-                    fontSize: 11,
-                    letterSpacing: ".06em",
-                    textTransform: "uppercase",
-                    color: "rgba(36,35,31,.5)",
-                  }}
-                >
-                  Als Nächstes gemäss Rotation
-                </span>
-                {vorschauBuecher.map((vb) => (
-                  <Link key={vb.buchinhaltId} href={`/lesen/${vb.buchinhaltId}`}>
-                    <div
-                      style={{
-                        boxSizing: "border-box",
-                        padding: "14px 16px",
-                        borderRadius: 14,
-                        background: `linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), ${akzent}`,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 2,
-                              background: KATEGORIE_FARBE[vb.kategorie] ?? "#ccc",
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span
-                            style={{
-                              fontFamily: "Helvetica, Arial, sans-serif",
-                              fontWeight: 600,
-                              fontSize: 11,
-                              letterSpacing: ".04em",
-                              textTransform: "uppercase",
-                              color: "rgba(36,35,31,.55)",
-                            }}
-                          >
-                            {KATEGORIE_LABEL[vb.kategorie] ?? vb.kategorie}
-                          </span>
-                        </div>
-                        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
-                          {vb.titel}
-                        </span>
-                        <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{vb.autor}</span>
-                        {umfangZeileAusWortanzahl(vb.umfang, vb.wortanzahl) && (
-                          <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>
-                            {umfangZeileAusWortanzahl(vb.umfang, vb.wortanzahl)}
-                          </span>
-                        )}
-                      </div>
-                      <span style={{ color: "rgba(36,35,31,.6)", fontSize: 16 }}>›</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
           </div>
         </>
       )}
 
-      {!buch.abgeschlossen && <NavKreise buchinhaltId={buch.buchinhaltId} akzent={akzent} />}
     </main>
   );
 }
