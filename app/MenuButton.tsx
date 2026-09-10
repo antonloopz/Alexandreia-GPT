@@ -1,20 +1,21 @@
 // app/MenuButton.tsx
 //
-// Menü-Icon + Overlay, auf jedem Screen wiederverwendet — kein eigener
-// Screen/Route "/menue", sondern ein Overlay über dem aktuellen Bildschirm
-// (fixed positioniert, Scrim + Karte), genau wie im Menue.dc.html-Mockup.
-// Icon wechselt zwischen Chevron (zu) und × (offen). Karte ist immer
-// papierfarben, unabhängig von der Kategoriefarbe des Hintergrundscreens.
+// Navigationsreihe (Pillen), auf jedem Screen wiederverwendet — ersetzt das
+// frühere Dropdown-Menü (Icon + Overlay) durch fünf immer sichtbare
+// Pillen-Buttons am oberen Rand, im gleichen Stil wie die Streak-Pille auf
+// dem Homescreen: kein Aufklappen mehr nötig, alle Ziele sind direkt
+// antippbar. Die Pille des aktuell aktiven Screens ist dunkel hervorgehoben
+// (dient als "Du bist hier"), alle anderen hell.
 //
-// Führt nebenbei die "Menü-Kette" für SchliessenButton mit (siehe
+// Führt nebenbei weiterhin die "Menü-Kette" für SchliessenButton mit (siehe
 // menuNavigation.ts, Bug 09/2026): bei jedem Seitenaufruf wird vermerkt, ob
-// diese Seite gerade über einen Klick auf einen Menü-Eintrag erreicht wurde
+// diese Seite gerade über einen Klick auf eine dieser Pillen erreicht wurde
 // (Kette geht weiter, Anker bleibt) oder auf einem anderen Weg (neue Kette,
 // Anker wird diese Seite).
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { menuKetteAktualisieren, menuNavigationStarten } from "./menuNavigation";
@@ -74,7 +75,6 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
 ];
 
 export default function MenuButton() {
-  const [offen, setOffen] = useState(false);
   const pathname = usePathname();
 
   // Läuft genau einmal beim Mount dieser Seite (eine neue Seite bedeutet
@@ -84,88 +84,40 @@ export default function MenuButton() {
   }, []);
 
   return (
-    <>
-      <button
-        onClick={() => setOffen((o) => !o)}
-        aria-label={offen ? "Menü schliessen" : "Menü öffnen"}
-        style={{
-          width: 32,
-          height: 32,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          border: "none",
-          background: "none",
-          padding: 0,
-          cursor: "pointer",
-        }}
-      >
-        {offen ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="6" y1="6" x2="18" y2="18" />
-            <line x1="18" y1="6" x2="6" y2="18" />
-          </svg>
-        ) : (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 9.5 12 15.5 18 9.5" />
-          </svg>
-        )}
-      </button>
-
-      {offen && (
-        <>
-          <div
-            onClick={() => setOffen(false)}
-            aria-hidden
-            style={{ position: "fixed", inset: 0, background: "rgba(36,35,31,.45)", zIndex: 40 }}
-          />
-          <div
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+      {EINTRAEGE.map((eintrag) => {
+        const aktiv = pathname === eintrag.href;
+        return (
+          <Link
+            key={eintrag.href}
+            href={eintrag.href}
+            aria-label={eintrag.label}
+            onClick={() => menuNavigationStarten(pathname)}
             style={{
-              position: "fixed",
-              top: 64,
-              right: 16,
-              width: 246,
-              boxSizing: "border-box",
-              background: "#F2F4EF",
-              border: "1.5px solid #24231F",
-              borderRadius: 16,
-              padding: 8,
               display: "flex",
-              flexDirection: "column",
-              gap: 2,
-              zIndex: 41,
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "6px 8px",
+              borderRadius: 999,
+              background: aktiv ? "#24231F" : "rgba(36,35,31,.08)",
+              flexShrink: 0,
             }}
           >
-            {EINTRAEGE.map((eintrag) => (
-              <Link
-                key={eintrag.href}
-                href={eintrag.href}
-                onClick={() => {
-                  setOffen(false);
-                  menuNavigationStarten(pathname);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 12px",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                  color: "#24231F",
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  {eintrag.pfade}
-                </svg>
-                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14.5 }}>
-                  {eintrag.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
-    </>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={aktiv ? "#F2F4EF" : "#24231F"}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {eintrag.pfade}
+            </svg>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
