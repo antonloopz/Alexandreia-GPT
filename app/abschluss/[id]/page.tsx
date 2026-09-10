@@ -49,6 +49,21 @@ export default async function AbschlussSeite({
 
   const [konto] = await db.select().from(konten).limit(1);
 
+  // Bereits gespeichertes Ergebnis dieser Zeile — Grundlage für den
+  // Anzeige-Fallback unten (Bug 09/2026: bisher wurde bei einem Besuch
+  // OHNE frischen ?richtig=-Parameter, z.B. Direktlink oder erneuter
+  // Aufruf nach bereits abgeschlossenem Quiz, immer "0 von N" angezeigt,
+  // obwohl das echte Ergebnis längst gespeichert war).
+  const [bestehendeZeile] = konto
+    ? await db
+        .select({
+          abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
+          quizRichtigAnzahl: gezeigteBuecher.quizRichtigAnzahl,
+        })
+        .from(gezeigteBuecher)
+        .where(and(eq(gezeigteBuecher.kontoId, konto.id), eq(gezeigteBuecher.buchinhaltId, id)))
+    : [];
+
   const [{ n: kernaussagenAnzahl }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(kernaussagen)
@@ -66,7 +81,11 @@ export default async function AbschlussSeite({
     .innerJoin(kernaussagen, eq(quizfragen.kernaussageId, kernaussagen.id))
     .where(eq(kernaussagen.buchinhaltId, id));
 
-  const richtigAnzahl = Number(richtig ?? 0);
+  // Frischer Abschluss (von QuizClient mit ?richtig=N verlinkt): Wert aus
+  // der URL. Sonst (siehe bestehendeZeile oben): das schon gespeicherte
+  // Ergebnis, statt fälschlich 0 anzuzeigen.
+  const richtigAnzahl =
+    richtig !== undefined ? Number(richtig) : bestehendeZeile?.quizRichtigAnzahl ?? 0;
 
   // Markiert die gezeigteBuecher-Zeile dieses Buchs als abgeschlossen und
   // schreibt das Quiz-Ergebnis fest — Home nutzt abgeschlossenAm
