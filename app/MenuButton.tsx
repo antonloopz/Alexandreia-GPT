@@ -5,11 +5,19 @@
 // (fixed positioniert, Scrim + Karte), genau wie im Menue.dc.html-Mockup.
 // Icon wechselt zwischen Chevron (zu) und × (offen). Karte ist immer
 // papierfarben, unabhängig von der Kategoriefarbe des Hintergrundscreens.
+//
+// Führt nebenbei die "Menü-Kette" für SchliessenButton mit (siehe
+// menuNavigation.ts, Bug 09/2026): bei jedem Seitenaufruf wird vermerkt, ob
+// diese Seite gerade über einen Klick auf einen Menü-Eintrag erreicht wurde
+// (Kette geht weiter, Anker bleibt) oder auf einem anderen Weg (neue Kette,
+// Anker wird diese Seite).
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { menuKetteAktualisieren, menuNavigationStarten } from "./menuNavigation";
 
 const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
   {
@@ -67,6 +75,13 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
 
 export default function MenuButton() {
   const [offen, setOffen] = useState(false);
+  const pathname = usePathname();
+
+  // Läuft genau einmal beim Mount dieser Seite (eine neue Seite bedeutet
+  // immer eine neue MenuButton-Instanz, siehe Kommentar oben).
+  useEffect(() => {
+    menuKetteAktualisieren();
+  }, []);
 
   return (
     <>
@@ -126,7 +141,10 @@ export default function MenuButton() {
               <Link
                 key={eintrag.href}
                 href={eintrag.href}
-                onClick={() => setOffen(false)}
+                onClick={() => {
+                  setOffen(false);
+                  menuNavigationStarten(pathname);
+                }}
                 style={{
                   display: "flex",
                   alignItems: "center",
