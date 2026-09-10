@@ -4,16 +4,18 @@
 // grosser Pillen, an den Rändern aufgerückt (09/2026, Pendenz "Buttons
 // bleiben klein, Zwischenraum statt Streckung, in zwei Gruppen an den
 // Rändern"):
-//   links:  Wiederholung (Icon+Zahl) · Bibliothek · Wunschliste · Fortschritt
-//   rechts: Streak (Icon+Zahl) · Einstellungen
+//   links:  Bibliothek · Wunschliste · Wiederholung (Icon+Zahl)
+//   rechts: Streak (Icon+Zahl, führt zur Fortschritt-Seite) · Einstellungen
 // Innerhalb einer Gruppe sitzen die Pillen dicht beieinander (kleiner
 // fester Abstand), zwischen den beiden Gruppen bleibt der Rest der Breite
 // als Freiraum (justify-content: space-between auf die zwei Gruppen, nicht
-// auf einzelne Pillen).
+// auf einzelne Pillen). Kein separates Fortschritt-Icon mehr — die
+// Streak-Pille übernimmt diese Rolle bereits (siehe StartseitenPillen-
+// Historie, 09/2026).
 //
 // Wiederholung und Streak zeigen zusätzlich ihre Zahl (fällige
-// Wiederholungen bzw. aktueller Streak) — Bibliothek, Wunschliste,
-// Fortschritt und Einstellungen sind reine Icon-Pillen.
+// Wiederholungen bzw. aktueller Streak) — Bibliothek, Wunschliste und
+// Einstellungen sind reine Icon-Pillen.
 //
 // Home (app/page.tsx) ist ein Server Component und kann daher selbst keine
 // Klick-Handler/useEffects haben — deshalb dieser kleine Client-Wrapper,
@@ -71,18 +73,6 @@ export default function StartseitenPillen({
   return (
     <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Link
-          href="/wiederholung"
-          aria-label={`${faellig} fällige Wiederholung${faellig === 1 ? "" : "en"}`}
-          onClick={klick}
-          style={pillStyle}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            {wiederholungPfade}
-          </svg>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>{faellig}</span>
-        </Link>
-
         <Link href={bibliothek.href} aria-label={bibliothek.label} onClick={klick} style={pillStyle}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             {bibliothek.pfade}
@@ -95,12 +85,16 @@ export default function StartseitenPillen({
           </svg>
         </Link>
 
-        <Link href="/fortschritt" aria-label="Fortschritt" onClick={klick} style={pillStyle}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="5.5" y1="18.5" x2="5.5" y2="12.5" />
-            <line x1="12" y1="18.5" x2="12" y2="8.5" />
-            <line x1="18.5" y1="18.5" x2="18.5" y2="5.5" />
+        <Link
+          href="/wiederholung"
+          aria-label={`${faellig} fällige Wiederholung${faellig === 1 ? "" : "en"}`}
+          onClick={klick}
+          style={pillStyle}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            {wiederholungPfade}
           </svg>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>{faellig}</span>
         </Link>
       </div>
 
