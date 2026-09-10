@@ -21,6 +21,7 @@ import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
 import { kategorieUebersicht, vorschlaege } from "../../src/lib/vorschlag";
 import { sicherstelleUmfang } from "../../src/lib/umfang";
 import MenuButton from "../MenuButton";
+import SchliessenButton from "../SchliessenButton";
 import PrioritaetToggle from "./PrioritaetToggle";
 import AufbereitenButton from "./AufbereitenButton";
 
@@ -111,12 +112,7 @@ export default async function BuecherlisteSeite({
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/" aria-label="Schliessen">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="6" y1="6" x2="18" y2="18" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
-          </Link>
+          <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Wunschliste</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>

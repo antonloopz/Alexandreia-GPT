@@ -12,12 +12,12 @@
 // (keine Historie), unterzählt das, wenn eine Karte mehrfach in derselben
 // Woche bewertet wird.
 
-import Link from "next/link";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, gezeigteBuecher, konten, repetitionselemente } from "../../src/db/schema";
 import { and, eq, gte, lt, ne } from "drizzle-orm";
 import { laengsterStreak } from "../../src/lib/streak";
 import MenuButton from "../MenuButton";
+import SchliessenButton from "../SchliessenButton";
 
 export const dynamic = "force-dynamic";
 
@@ -108,12 +108,7 @@ export default async function FortschrittSeite() {
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/" aria-label="Schliessen">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="6" y1="6" x2="18" y2="18" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-            </svg>
-          </Link>
+          <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20 }}>Fortschritt</span>
         </div>
         <MenuButton />
