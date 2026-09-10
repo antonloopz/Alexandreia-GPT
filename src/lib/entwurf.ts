@@ -23,6 +23,24 @@ const MODELL = "claude-sonnet-5";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Gemeinsame Zusammenfassungs-Regel für entwurfErstellen() UND
+// zusammenfassungNeuErstellen() (Nachzieh-Lauf über bereits produzierte
+// Bücher, siehe unten) — an einer Stelle gepflegt, damit beide Prompts nie
+// auseinanderlaufen.
+const ZUSAMMENFASSUNG_REGEL =
+  'Zusammenfassung: ausführlich und vertiefend, KEIN knapper Überblick oder ' +
+  'Klappentext-Stil. Ziel ist, dass Leser:innen die zentralen Gedankengänge ' +
+  'wirklich nachvollziehen, nicht nur ihren Titel kennen. Sachbücher/Ratgeber/' +
+  'Philosophie/Wissenschaft: typischerweise 1800–3200 Wörter, gegliedert in ' +
+  '3–6 mit "## Zwischentitel" betitelte Abschnitte, die je einen ' +
+  'Argumentationsstrang, ein zentrales Konzept oder Experiment vertiefen ' +
+  '(konkrete Beispiele/Studien/Begriffe benennen, nicht nur andeuten). ' +
+  'Erzählende Werke (Romane, literarische Klassiker): volle Nacherzählung von ' +
+  'Handlung, Figuren und Motiven, typischerweise 1000–1800 Wörter, ab ca. 400 ' +
+  'Wörtern ebenfalls mit Zwischentiteln gliedern. Diese Bandbreiten sind ' +
+  'Richtwerte, keine harte Grenze — ein Werk mit besonders viel Substanz darf ' +
+  'auch länger ausfallen.';
+
 type Vertrauenshinweis = "verifiziert" | "eingeordnet";
 
 type EntwurfJSON = {
@@ -71,7 +89,7 @@ export async function entwurfErstellen(
 Nutze die Web-Suche aktiv, um Fakten (Entstehungsjahr, Kontext, ggf. Zitat) abzusichern, statt nur aus vorhandenem Wissen zu arbeiten.
 
 Regeln:
-- Zusammenfassungslänge richtet sich am Inhalt aus, keine feste Vorgabe — bei längeren Zusammenfassungen mit "## Zwischentitel" in Absätze gliedern statt einem durchgehenden Block.
+- ${ZUSAMMENFASSUNG_REGEL}
 - Kernaussagen: so viele wie das Buch tatsächlich hergibt (keine Zielzahl), jede mit kurzem Thesentitel (text) und erklärendem Fliesstext (erklaerung).
 - Kernzitat: ${kernzitatErlaubt ? "dieses Werk ist ein literarischer Klassiker — liefere ein kulturell verankertes, wortgetreues Kernzitat in der Originalsprache UND in deutscher Übersetzung. Prüfe Wortlaut und Übersetzung gegen mindestens eine verlässliche Quelle und bleib bei EINER Schreibweise/Transliteration des Originaltitels, auch wenn mehrere kursieren." : "dieses Werk ist kein literarischer Klassiker — kernzitat_original und kernzitat_uebersetzung müssen null sein."}
 - Für jedes Feld (zusammenfassung, entstehungsgeschichte, autorenhintergrund, kernzitat) einen Vertrauenshinweis: "verifiziert" (durch Recherche bestätigt) oder "eingeordnet" (plausibel eingeschätzt, aber nicht wortgetreu geprüft). WICHTIG: gibt es kein Kernzitat (kernzitat_original/kernzitat_uebersetzung = null), dann MUSS vertrauenshinweise.kernzitat ebenfalls null sein — niemals "verifiziert" oder "eingeordnet" für ein nicht vorhandenes Zitat.
@@ -94,7 +112,7 @@ Regeln:
 
   const message = await client.messages.create({
     model: MODELL,
-    max_tokens: 12000,
+    max_tokens: 16000,
     system: systemPrompt,
     tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 6 }],
     messages: [
@@ -134,6 +152,55 @@ function pruefeEntwurfVollstaendigkeit(entwurf: EntwurfJSON): void {
   }
 }
 
+// Regeneriert NUR die Zusammenfassung eines bereits vorhandenen Buchinhalts,
+// mit derselben (09/2026 verschärften) Ausführlichkeits-Regel wie
+// entwurfErstellen() oben — für den Nachzieh-Lauf über bereits produzierte
+// Bücher (siehe src/scripts/zusammenfassungen-regenerieren.ts). Rührt
+// bewusst NUR die Zusammenfassung an, nicht Entstehungsgeschichte/
+// Autorenhintergrund/Kernzitat/Kernaussagen — sonst wären Lernkarten,
+// Quizfragen und der Wiederholungs-Fortschritt, die an den bestehenden
+// Kernaussagen hängen, unnötig gefährdet.
+export async function zusammenfassungNeuErstellen(
+  titel: string,
+  autor: string,
+  kategorie: string,
+  originalsprache: string
+): Promise<{ zusammenfassung: string; vertrauenshinweis: Vertrauenshinweis }> {
+  const systemPrompt = `Du schreibst für Alexandreia die Zusammenfassung eines Buchs neu — ausführlicher und vertiefender als eine bisherige, zu knappe Fassung. Zielsprache für den Text ist Deutsch, unabhängig von der Originalsprache des Werks. Nutze die Web-Suche, um Inhalt und Argumentation abzusichern.
+
+Regeln:
+- ${ZUSAMMENFASSUNG_REGEL}
+- Vertrauenshinweis: "verifiziert" (durch Recherche bestätigt) oder "eingeordnet" (plausibel eingeschätzt, aber nicht wortgetreu geprüft).
+- Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text davor oder danach:
+
+{
+  "zusammenfassung": string,
+  "vertrauenshinweis": "verifiziert" | "eingeordnet"
+}`;
+
+  const message = await client.messages.create({
+    model: MODELL,
+    max_tokens: 12000,
+    system: systemPrompt,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 4 }],
+    messages: [
+      {
+        role: "user",
+        content: `Buch: "${titel}" von ${autor}. Kategorie: ${kategorie}. Originalsprache: ${originalsprache}.`,
+      },
+    ],
+  });
+
+  const text = await letzterTextblock(message);
+  const ergebnis = jsonAusText(text) as { zusammenfassung: string; vertrauenshinweis: Vertrauenshinweis };
+
+  if (!ergebnis.zusammenfassung?.trim()) {
+    throw new Error(`Neue Zusammenfassung für "${titel}" leer oder ungültig.`);
+  }
+
+  return ergebnis;
+}
+
 export async function entwurfPruefen(
   titel: string,
   autor: string,
@@ -145,7 +212,7 @@ Prüfkriterien:
 - Ist ein eventuelles Kernzitat wortgetreu korrekt (Originalsprache + Übersetzung)?
 - Sind historische/biografische Angaben (Entstehungsjahr, Kontext, Autorenfakten) korrekt?
 - Ist der Text in sich kohärent und widerspruchsfrei (z.B. einheitliche Schreibweise von Titeln/Namen über alle Felder hinweg)?
-- Ist die Länge der Zusammenfassung dem Inhalt angemessen (weder unnötig gekürzt noch aufgebläht)?
+- Ist die Zusammenfassung ausführlich und vertiefend genug (siehe Vorgabe im Entwurf: mehrere Abschnitte, konkrete Beispiele/Argumentationsstränge — keine knappe Überblicks- oder Klappentext-Fassung)? Zu kurz und oberflächlich ist ein Fehler. "Aufgebläht" gilt nur bei echten Wiederholungen oder Füllstoff ohne Substanz — reine Ausführlichkeit ist kein Mangel.
 - Ist vertrauenshinweise.kernzitat null, wenn kein Kernzitat vorhanden ist (kernzitat_original/kernzitat_uebersetzung = null)? Ein Vertrauenshinweis für ein nicht vorhandenes Zitat ist ein Fehler.
 
 Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text davor oder danach:
