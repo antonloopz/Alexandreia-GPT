@@ -63,17 +63,32 @@ type PruefungJSON = {
   probleme: string[];
 };
 
-async function letzterTextblock(message: Anthropic.Message): Promise<string> {
-  const textBloecke = message.content.filter((b) => b.type === "text");
-  const letzter = textBloecke[textBloecke.length - 1];
-  if (!letzter || letzter.type !== "text") {
+// Extrahiert den GESAMTEN Textanteil der Modellantwort — nicht nur den
+// letzten Textblock (frühere Version, Bug 09/2026). Bei aktiver Websuche
+// kann Claude seine Antwort in mehrere separate "text"-Blöcke aufteilen,
+// unterbrochen von tool_use/tool_result-Blöcken (z.B. eine weitere Suche
+// NACH dem eigentlichen JSON, gefolgt von ein paar abschliessenden Sätzen
+// in einem neuen Textblock). Wer dann nur den letzten Block nimmt, bekommt
+// bloss diesen kurzen, mitten im Satz beginnenden Rest — das JSON selbst
+// steckte längst in einem früheren Block. Das sah lange wie ein
+// Escaping-Bug in json.ts aus (die Vorschau im Parse-Fehler begann exakt
+// mit so einem Satzfragment, z.B. ". Genau darin liegt…"), war aber dieser
+// Architekturfehler hier: alle Textblöcke in Ankunftsreihenfolge
+// aneinanderzuhängen ergibt wieder den vollständigen, zusammenhängenden
+// Text (bei nur einem Block ist das ein No-Op, ändert also nichts an
+// bisher schon funktionierenden Fällen).
+async function gesamtText(message: Anthropic.Message): Promise<string> {
+  const textBloecke = message.content.filter(
+    (b): b is Extract<Anthropic.Message["content"][number], { type: "text" }> => b.type === "text"
+  );
+  if (textBloecke.length === 0) {
     throw new Error(
       `Keine Textantwort vom Modell erhalten (stop_reason: ${message.stop_reason}). ` +
         `Häufigste Ursache: max_tokens zu knapp bemessen für die Websuche-Ergebnisse — ` +
         `Antwort bricht vor der finalen JSON-Ausgabe ab.`
     );
   }
-  return letzter.text;
+  return textBloecke.map((b) => b.text).join("");
 }
 
 export async function entwurfErstellen(
@@ -123,7 +138,7 @@ Regeln:
     ],
   });
 
-  const text = await letzterTextblock(message);
+  const text = await gesamtText(message);
   const entwurf = jsonAusText(text) as EntwurfJSON;
   pruefeEntwurfVollstaendigkeit(entwurf);
   return entwurf;
@@ -191,7 +206,7 @@ Regeln:
     ],
   });
 
-  const text = await letzterTextblock(message);
+  const text = await gesamtText(message);
   const ergebnis = jsonAusText(text) as { zusammenfassung: string; vertrauenshinweis: Vertrauenshinweis };
 
   if (!ergebnis.zusammenfassung?.trim()) {
@@ -237,7 +252,7 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
     ],
   });
 
-  const text = await letzterTextblock(message);
+  const text = await gesamtText(message);
   return jsonAusText(text) as PruefungJSON;
 }
 
