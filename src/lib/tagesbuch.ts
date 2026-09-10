@@ -226,15 +226,28 @@ export async function sicherstelleGezeigt(
 }
 
 // "Bereit zum Weiterlesen": fertig produzierte ("im_vorrat") Bücher, die
-// diesem Konto noch nie gezeigt wurden — dieselbe Auswahl wie Bookshelfs
-// "Bereit"-Abschnitt, hier aber nur die ersten `limit` (alphabetisch), für
-// den kompakten Vorschlagsblock auf Home nach Abschluss des Tagesbuchs.
+// diesem Konto entweder noch nie gezeigt wurden ODER schon geöffnet, aber
+// nicht fertig gelesen sind (abgeschlossenAm noch null) — dieselbe Auswahl
+// wie Bookshelfs "Bereit"-Abschnitt, hier aber nur die ersten `limit`
+// (alphabetisch), für den kompakten Vorschlagsblock auf Home nach Abschluss
+// des Tagesbuchs.
+//
+// Bug-Fix 09/2026 (Pendenz "Wunschliste: Bestand ungelesener Bücher pro
+// Kategorie"): filterte bisher jedes Buch mit IRGENDEINER gezeigteBuecher-
+// Zeile raus, unabhängig von abgeschlossenAm — ein begonnenes, aber nicht
+// fertig gelesenes Buch verschwand dadurch aus dieser Liste, obwohl es in
+// Bookshelfs "Bereit"-Abschnitt (der explizit nach abgeschlossenAm
+// unterscheidet, nicht nach blossem "schon mal gezeigt") weiterhin auftaucht
+// — Diskrepanz zwischen Home und Bibliothek. weitereBuecher() wird nur
+// aufgerufen, wenn buch.abgeschlossen bereits true ist (app/page.tsx), das
+// heutige Buch hat zu dem Zeitpunkt also selbst schon abgeschlossenAm
+// gesetzt und wird hier korrekt mit ausgeschlossen.
 export async function bereiteBuecher(kontoId: string, limit = 3): Promise<BereitesBuch[]> {
   const gezeigt = await db
-    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId })
+    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, abgeschlossenAm: gezeigteBuecher.abgeschlossenAm })
     .from(gezeigteBuecher)
     .where(eq(gezeigteBuecher.kontoId, kontoId));
-  const gezeigtIds = new Set(gezeigt.map((r) => r.buchinhaltId));
+  const abgeschlossenIds = new Set(gezeigt.filter((r) => r.abgeschlossenAm !== null).map((r) => r.buchinhaltId));
 
   const kandidaten = await db
     .select({
@@ -248,7 +261,7 @@ export async function bereiteBuecher(kontoId: string, limit = 3): Promise<Bereit
     .where(eq(buchinhalte.status, "im_vorrat"));
 
   return kandidaten
-    .filter((b) => !gezeigtIds.has(b.buchinhaltId))
+    .filter((b) => !abgeschlossenIds.has(b.buchinhaltId))
     .sort((a, b) => a.titel.localeCompare(b.titel))
     .slice(0, limit);
 }
@@ -332,21 +345,23 @@ export async function naechsteBuecherVorschau(
   return ergebnis;
 }
 
-// Bestand "bereit, aber noch ungelesen" GRUPPIERT pro Kategorie — dieselbe
-// Auswahl wie bereiteBuecher() oben (im_vorrat UND diesem Konto noch nie
-// gezeigt), hier aber als Kategorie->Anzahl-Map statt flacher Liste. Für die
-// Wunschliste, Kategorie-Filter-Chips (09/2026, Pendenz "Wunschliste:
-// Kategoriebuttons farbig + Bestand ungelesener Bücher zeigen") — bewusst
-// eine eigene Zählung statt bestandProKategorie() aus vorschlag.ts: die
-// zählt ALLE "im_vorrat"-Bücher, unabhängig davon, ob das Konto sie schon
-// gelesen hat, und beantwortet damit eine andere Frage (Produktions-Nachschub
-// statt "was kann ich mir als Nächstes vornehmen").
+// Bestand "bereit, aber noch nicht gelesen" GRUPPIERT pro Kategorie —
+// dieselbe Auswahl wie bereiteBuecher() oben (im_vorrat UND abgeschlossenAm
+// noch null, schliesst also auch begonnene, aber nicht fertig gelesene
+// Bücher mit ein — deckungsgleich mit Bookshelfs "Bereit"-Abschnitt), hier
+// aber als Kategorie->Anzahl-Map statt flacher Liste. Für die Wunschliste,
+// Kategorie-Filter-Chips (09/2026, Pendenz "Wunschliste: Kategoriebuttons
+// farbig + Bestand ungelesener Bücher zeigen") — bewusst eine eigene
+// Zählung statt bestandProKategorie() aus vorschlag.ts: die zählt ALLE
+// "im_vorrat"-Bücher, unabhängig davon, ob das Konto sie schon gelesen hat,
+// und beantwortet damit eine andere Frage (Produktions-Nachschub statt "was
+// kann ich mir als Nächstes vornehmen").
 export async function bestandUngelesenProKategorie(kontoId: string): Promise<Map<string, number>> {
   const gezeigt = await db
-    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId })
+    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, abgeschlossenAm: gezeigteBuecher.abgeschlossenAm })
     .from(gezeigteBuecher)
     .where(eq(gezeigteBuecher.kontoId, kontoId));
-  const gezeigtIds = new Set(gezeigt.map((r) => r.buchinhaltId));
+  const abgeschlossenIds = new Set(gezeigt.filter((r) => r.abgeschlossenAm !== null).map((r) => r.buchinhaltId));
 
   const kandidaten = await db
     .select({ buchinhaltId: buchinhalte.id, kategorie: buecher.kategorie })
@@ -356,7 +371,7 @@ export async function bestandUngelesenProKategorie(kontoId: string): Promise<Map
 
   const ergebnis = new Map<string, number>();
   for (const k of kandidaten) {
-    if (gezeigtIds.has(k.buchinhaltId)) continue;
+    if (abgeschlossenIds.has(k.buchinhaltId)) continue;
     ergebnis.set(k.kategorie, (ergebnis.get(k.kategorie) ?? 0) + 1);
   }
   return ergebnis;
