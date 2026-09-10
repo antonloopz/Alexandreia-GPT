@@ -174,7 +174,32 @@ export default async function Home() {
       }}
     >
       <StatusBarColor farbe={akzent} />
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {/* Fällige Wiederholungen — bewusst als knapper Icon+Zahl-Pill oben
+            links statt als eigene volle Zeile weiter unten (09/2026, Pendenz
+            "Wiederholungsanzeige nach oben links"), gleiche Grösse/Optik wie
+            der Streak-Pill oben rechts, nur ohne Textlabel. */}
+        <Link href="/wiederholung" aria-label={`${faellig} fällige Wiederholung${faellig === 1 ? "" : "en"}`}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 999,
+              background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
+              flexShrink: 0,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4.5" y="7" width="13" height="9" rx="1.5" transform="rotate(-6 11 11.5)" />
+              <rect x="6.5" y="8.5" width="13" height="9" rx="1.5" />
+            </svg>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 13 }}>
+              {faellig}
+            </span>
+          </div>
+        </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <div
             style={{
@@ -394,30 +419,6 @@ export default async function Home() {
           </div>
         </>
       )}
-
-      <Link href="/wiederholung">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "14px 16px",
-            borderRadius: 14,
-            background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4.5" y="7" width="13" height="9" rx="1.5" transform="rotate(-6 11 11.5)" />
-              <rect x="6.5" y="8.5" width="13" height="9" rx="1.5" />
-            </svg>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14 }}>
-              {faellig} fällige Wiederholung{faellig === 1 ? "" : "en"}
-            </span>
-          </div>
-          <span style={{ color: "rgba(36,35,31,.6)", fontSize: 16 }}>›</span>
-        </div>
-      </Link>
 
       {!buch.abgeschlossen && <NavKreise buchinhaltId={buch.buchinhaltId} akzent={akzent} />}
     </main>
