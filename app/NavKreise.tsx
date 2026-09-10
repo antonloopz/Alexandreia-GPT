@@ -3,7 +3,7 @@
 // Vier-Kacheln-Navigation zwischen den Hauptscreens eines Buchs (Lesen,
 // Kernaussagen, Lernkarten, Quiz). Quadrate mit stark abgerundeten Ecken
 // statt echter Kreise (09/2026, Pendenz "Design Kreisbuttons"), gleiche
-// Grösse wie zuvor (56px), dickerer Rahmen (5px statt 3px). Aktiver
+// Grösse wie zuvor (56px), dünnerer Rahmen (1px, zuvor 5px). Aktiver
 // Screen: Kachel schwarz gefüllt, Icon in Kategoriefarbe. Inaktive
 // Screens: Kachel in Kategoriefarbe, Icon schwarz — exakt die Farblogik
 // der vorherigen Kreise, nur mit neuer Form.
@@ -111,7 +111,7 @@ export default function NavKreise({
                   position: "absolute",
                   inset: 0,
                   borderRadius: 22,
-                  border: "5px solid #24231F",
+                  border: "1px solid #24231F",
                   boxSizing: "border-box",
                   pointerEvents: "none",
                 }}
@@ -119,8 +119,8 @@ export default function NavKreise({
               <div
                 style={{
                   position: "absolute",
-                  inset: 5,
-                  borderRadius: 17,
+                  inset: 1,
+                  borderRadius: 21,
                   overflow: "hidden",
                   background: akzent,
                 }}
