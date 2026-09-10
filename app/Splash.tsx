@@ -211,7 +211,20 @@ export default function Splash() {
       aria-hidden="true"
       style={{
         position: "fixed",
-        inset: 0,
+        // Bug 09/2026: ein schlicht mit inset:0 positioniertes fixed-Element
+        // liess oben einen Streifen in der Statusleisten-Farbe stehen (body
+        // { padding-top: env(safe-area-inset-top) } aus globals.css scheint
+        // im iOS-Standalone-Modus die Ausgangsposition von fixed-Elementen
+        // mit zu verschieben, statt sie wie spezifiziert relativ zum reinen
+        // Viewport zu berechnen — siehe bereits dokumentierter, verwandter
+        // Bug im Kommentar zu body { padding-top: ... } in globals.css).
+        // Fix: top/height explizit um genau diesen Versatz kompensieren,
+        // statt sich auf inset:0 zu verlassen.
+        top: "calc(env(safe-area-inset-top, 0px) * -1)",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: "calc(100% + env(safe-area-inset-top, 0px))",
         zIndex: 9999,
         background: WEISS,
         opacity: ausblenden ? 0 : 1,
