@@ -12,7 +12,14 @@ import Link from "next/link";
 import { db } from "../src/db";
 import { konten, gezeigteBuecher } from "../src/db/schema";
 import { eq } from "drizzle-orm";
-import { naechstesBuchFuerHeute, faelligeWiederholungenAnzahl, bereiteBuecher, heuteAbgeschlosseneBuecher } from "../src/lib/tagesbuch";
+import {
+  naechstesBuchFuerHeute,
+  faelligeWiederholungenAnzahl,
+  bereiteBuecher,
+  heuteAbgeschlosseneBuecher,
+  naechsteBuecherVorschau,
+} from "../src/lib/tagesbuch";
+import { umfangZeileAusWortanzahl } from "../src/lib/darstellung";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../src/lib/kategorien";
 import { aktuellerStreak } from "../src/lib/streak";
 import MenuButton from "./MenuButton";
@@ -142,6 +149,13 @@ export default async function Home() {
   const weitereHeuteAbgeschlossen = buch.abgeschlossen
     ? await heuteAbgeschlosseneBuecher(konto.id, buch.buchinhaltId)
     : [];
+  // Vorschau der nächsten 2 Bücher gemäss Kategorie-Rotation, unterhalb des
+  // Buchs heute (09/2026, Pendenz "Startseite umbauen") — nur relevant,
+  // solange das Buch heute noch nicht abgeschlossen ist (danach zeigt Home
+  // stattdessen "Weiterlesen", siehe weitereBuecher oben).
+  const vorschauBuecher = !buch.abgeschlossen
+    ? await naechsteBuecherVorschau(konto.id, buch.buchinhaltId, buch.kategorie, 2)
+    : [];
 
   return (
     <main
@@ -262,7 +276,7 @@ export default async function Home() {
         </>
       ) : (
         <>
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", overflowY: "auto" }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 24 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span
                 style={{
@@ -274,7 +288,7 @@ export default async function Home() {
                   color: "rgba(36,35,31,.62)",
                 }}
               >
-                Dein Buch heute — {kategorieLabel}
+                {kategorieLabel}
               </span>
               <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22, lineHeight: 1.1 }}>
                 {buch.titel}
@@ -282,28 +296,90 @@ export default async function Home() {
               <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 14, color: "rgba(36,35,31,.7)" }}>
                 {buch.autor}
               </span>
+              {umfangZeileAusWortanzahl(buch.umfang, buch.wortanzahl) && (
+                <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.55)" }}>
+                  {umfangZeileAusWortanzahl(buch.umfang, buch.wortanzahl)}
+                </span>
+              )}
               <span style={{ fontSize: 16, lineHeight: 1.5 }}>{buch.teaser}</span>
             </div>
-          </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Buch heute starten">
-              <div
-                style={{
-                  width: 56,
-                  height: 32,
-                  borderRadius: 999,
-                  background: "#24231F",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9.5 5.5 16 12l-6.5 6.5" />
-                </svg>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Buch heute starten">
+                <div
+                  style={{
+                    width: 56,
+                    height: 32,
+                    borderRadius: 999,
+                    background: "#24231F",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9.5 5.5 16 12l-6.5 6.5" />
+                  </svg>
+                </div>
+              </Link>
+            </div>
+
+            {vorschauBuecher.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <span
+                  style={{
+                    fontFamily: "Helvetica, Arial, sans-serif",
+                    fontWeight: 600,
+                    fontSize: 11,
+                    letterSpacing: ".06em",
+                    textTransform: "uppercase",
+                    color: "rgba(36,35,31,.5)",
+                  }}
+                >
+                  Als Nächstes gemäss Rotation
+                </span>
+                {vorschauBuecher.map((vb) => (
+                  <Link key={vb.buchinhaltId} href={`/lesen/${vb.buchinhaltId}`}>
+                    <div
+                      style={{
+                        boxSizing: "border-box",
+                        padding: "14px 16px",
+                        borderRadius: 14,
+                        background: `linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), ${akzent}`,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                        <span
+                          style={{
+                            fontFamily: "Helvetica, Arial, sans-serif",
+                            fontWeight: 600,
+                            fontSize: 11,
+                            letterSpacing: ".04em",
+                            textTransform: "uppercase",
+                            color: "rgba(36,35,31,.55)",
+                          }}
+                        >
+                          {KATEGORIE_LABEL[vb.kategorie] ?? vb.kategorie}
+                        </span>
+                        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
+                          {vb.titel}
+                        </span>
+                        <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{vb.autor}</span>
+                        {umfangZeileAusWortanzahl(vb.umfang, vb.wortanzahl) && (
+                          <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>
+                            {umfangZeileAusWortanzahl(vb.umfang, vb.wortanzahl)}
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ color: "rgba(36,35,31,.6)", fontSize: 16 }}>›</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </Link>
+            )}
           </div>
         </>
       )}

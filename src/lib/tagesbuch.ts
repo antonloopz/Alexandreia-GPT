@@ -24,6 +24,7 @@ import {
   wunschlisteneintraege,
 } from "../db/schema";
 import { and, desc, eq, gte, lt, lte, notInArray, sql } from "drizzle-orm";
+import { wortanzahl } from "./darstellung";
 
 export type TagesBuch = {
   buchinhaltId: string;
@@ -32,6 +33,13 @@ export type TagesBuch = {
   autor: string;
   kategorie: string;
   teaser: string;
+  // Umfang Original (Seitenangabe) + Wortanzahl der Zusammenfassung, für
+  // Homes Anzeige "Kategorie, Titel, Wordcount, Autor" (09/2026, Pendenz
+  // "Startseite umbauen") — dieselben Werte, die auch die Bibliothek zeigt
+  // (siehe darstellung.ts), hier schon vorgerechnet statt des vollen
+  // Zusammenfassungstexts, den Home sonst gar nicht bräuchte.
+  umfang: string | null;
+  wortanzahl: number;
   kernaussagenAnzahl: number;
   // true sobald die gezeigteBuecher-Zeile ein abgeschlossenAm trägt (siehe
   // app/abschluss/[id]/page.tsx) — Home zeigt dann nicht mehr den vollen
@@ -44,6 +52,14 @@ export type BereitesBuch = {
   titel: string;
   autor: string;
   kategorie: string;
+};
+
+// Wie BereitesBuch, zusätzlich mit Umfangsangabe — für Homes
+// Rotations-Vorschau (naechsteBuecherVorschau unten), die dieselbe
+// Umfangsangabe wie das Buch heute zeigt.
+export type RotationsVorschauBuch = BereitesBuch & {
+  umfang: string | null;
+  wortanzahl: number;
 };
 
 function heuteDatum(): Date {
@@ -72,6 +88,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
+      umfang: buecher.umfang,
       zusammenfassung: buchinhalte.zusammenfassung,
       abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
     })
@@ -92,6 +109,8 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       autor: bereitsHeute.autor,
       kategorie: bereitsHeute.kategorie,
       teaser: teaserAus(bereitsHeute.zusammenfassung),
+      umfang: bereitsHeute.umfang,
+      wortanzahl: wortanzahl(bereitsHeute.zusammenfassung),
       kernaussagenAnzahl: anzahl[0]?.n ?? 0,
       abgeschlossen: bereitsHeute.abgeschlossenAm !== null,
     };
@@ -115,6 +134,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
+      umfang: buecher.umfang,
       zusammenfassung: buchinhalte.zusammenfassung,
     })
     .from(buchinhalte)
@@ -158,6 +178,8 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
     autor: gewaehlt.autor,
     kategorie: gewaehlt.kategorie,
     teaser: teaserAus(gewaehlt.zusammenfassung),
+    umfang: gewaehlt.umfang,
+    wortanzahl: wortanzahl(gewaehlt.zusammenfassung),
     kernaussagenAnzahl: anzahl[0]?.n ?? 0,
     abgeschlossen: false,
   };
@@ -229,6 +251,85 @@ export async function bereiteBuecher(kontoId: string, limit = 3): Promise<Bereit
     .filter((b) => !gezeigtIds.has(b.buchinhaltId))
     .sort((a, b) => a.titel.localeCompare(b.titel))
     .slice(0, limit);
+}
+
+// Simuliert, welche(s) Buch/Bücher gemäss der Kategorie-Rotation aus
+// naechstesBuchFuerHeute() als Nächstes(s) dran wäre(n) — OHNE dabei
+// irgendeine gezeigteBuecher-Zeile anzulegen (reine Vorschau, kein
+// Seiteneffekt). Für Home, Abschnitt "Als Nächstes gem. Rotation" unterhalb
+// des Buchs heute (09/2026, Pendenz "Startseite umbauen").
+//
+// Simuliert dafür denselben Auswahlschritt wie naechstesBuchFuerHeute
+// mehrfach hintereinander: die am längsten nicht gezeigte Kategorie kommt
+// zuerst dran, danach gilt ihr "letztes Zeigedatum" für den nächsten
+// Simulationsschritt als aktualisiert (auf einen fortlaufend erhöhten
+// Zeitstempel) — sonst würde derselbe Schritt immer wieder dieselbe
+// Kategorie wählen, solange sie nicht WIRKLICH gezeigt wurde.
+export async function naechsteBuecherVorschau(
+  kontoId: string,
+  heutigerBuchinhaltId: string,
+  heutigeKategorie: string,
+  anzahl = 2
+): Promise<RotationsVorschauBuch[]> {
+  const bisherGezeigt = await db
+    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, kategorie: buecher.kategorie, datum: gezeigteBuecher.datumGezeigt })
+    .from(gezeigteBuecher)
+    .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(eq(gezeigteBuecher.kontoId, kontoId))
+    .orderBy(desc(gezeigteBuecher.datumGezeigt));
+
+  const ausgeschlosseneIds = new Set(bisherGezeigt.map((r) => r.buchinhaltId));
+  ausgeschlosseneIds.add(heutigerBuchinhaltId);
+
+  const kandidaten = await db
+    .select({
+      buchinhaltId: buchinhalte.id,
+      titel: buecher.titel,
+      autor: buecher.autor,
+      kategorie: buecher.kategorie,
+      umfang: buecher.umfang,
+      zusammenfassung: buchinhalte.zusammenfassung,
+    })
+    .from(buchinhalte)
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(eq(buchinhalte.status, "im_vorrat"));
+
+  let pool = kandidaten.filter((k) => !ausgeschlosseneIds.has(k.buchinhaltId));
+
+  const letzteKategorieDatum = new Map<string, number>();
+  for (const r of bisherGezeigt) {
+    if (!letzteKategorieDatum.has(r.kategorie)) {
+      letzteKategorieDatum.set(r.kategorie, new Date(r.datum).getTime());
+    }
+  }
+  // Das heute gewählte Buch zählt ab sofort ebenfalls als "gerade dran
+  // gewesen" — sonst würde die Vorschau dieselbe Kategorie gleich nochmal
+  // an erster Stelle zeigen.
+  let simuliertesJetzt = Date.now();
+  letzteKategorieDatum.set(heutigeKategorie, simuliertesJetzt);
+
+  const ergebnis: RotationsVorschauBuch[] = [];
+  while (ergebnis.length < anzahl && pool.length > 0) {
+    simuliertesJetzt += 1;
+    const sortiert = [...pool].sort((a, b) => {
+      const da = letzteKategorieDatum.get(a.kategorie) ?? 0;
+      const db_ = letzteKategorieDatum.get(b.kategorie) ?? 0;
+      return da - db_;
+    });
+    const gewaehlt = sortiert[0];
+    ergebnis.push({
+      buchinhaltId: gewaehlt.buchinhaltId,
+      titel: gewaehlt.titel,
+      autor: gewaehlt.autor,
+      kategorie: gewaehlt.kategorie,
+      umfang: gewaehlt.umfang,
+      wortanzahl: wortanzahl(gewaehlt.zusammenfassung),
+    });
+    letzteKategorieDatum.set(gewaehlt.kategorie, simuliertesJetzt);
+    pool = pool.filter((k) => k.buchinhaltId !== gewaehlt.buchinhaltId);
+  }
+  return ergebnis;
 }
 
 export type AbgeschlossenesBuch = {
