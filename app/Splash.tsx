@@ -25,7 +25,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { KATEGORIE_FARBE } from "../src/lib/kategorien";
 
 type Form =
@@ -189,13 +189,38 @@ export default function Splash() {
   const [ausblenden, setAusblenden] = useState(false);
   const [sichtbar, setSichtbar] = useState(true);
 
+  const vorherigeStatusfarbe = useRef<string | null>(null);
+
   useEffect(() => {
+    // Bug 09/2026: ein fixed positioniertes Overlay allein deckt die
+    // Statusleisten-Fläche auf iOS im Standalone-Modus nicht zuverlässig
+    // ab (zwei Geometrie-Varianten — inset:0 und ein negativ verschobenes
+    // top/height — liessen beide oben bzw. oben+unten einen Streifen in
+    // der zuletzt gesetzten --status-farbe durchschimmern, siehe body {
+    // padding-top: env(safe-area-inset-top) } in globals.css). Robuster
+    // Fix: das eigentliche Problem ist die FARBE in diesem Streifen, nicht
+    // die Deckung des Overlays — also --status-farbe (siehe
+    // StatusBarColor.tsx) für die Dauer des Splash einfach auf Weiss
+    // setzen, exakt wie es jede Seite für ihre eigene Akzentfarbe tut.
+    // Vorherigen Wert merken und beim Ausblenden zurücksetzen, sonst geht
+    // Homes bereits gesetzte Akzentfarbe verloren (kein erneutes Mounten
+    // von StatusBarColor nach dem Splash).
+    vorherigeStatusfarbe.current = document.body.style.getPropertyValue("--status-farbe") || null;
+    document.body.style.setProperty("--status-farbe", WEISS);
+
     // Erzeugung erst per requestAnimationFrame anstossen (analog
     // NavKreise.tsx) statt setState synchron im Effekt-Body aufzurufen —
     // vermeidet die react-hooks/set-state-in-effect-Warnung, ändert am
     // Timing (ein Frame, unmerklich) nichts.
     const frame = requestAnimationFrame(() => setMuster(buildBuecherregal()));
-    const fadeTimer = setTimeout(() => setAusblenden(true), HOLD_MS);
+    const fadeTimer = setTimeout(() => {
+      setAusblenden(true);
+      if (vorherigeStatusfarbe.current) {
+        document.body.style.setProperty("--status-farbe", vorherigeStatusfarbe.current);
+      } else {
+        document.body.style.removeProperty("--status-farbe");
+      }
+    }, HOLD_MS);
     const hideTimer = setTimeout(() => setSichtbar(false), HOLD_MS + FADE_MS);
     return () => {
       cancelAnimationFrame(frame);
@@ -211,20 +236,7 @@ export default function Splash() {
       aria-hidden="true"
       style={{
         position: "fixed",
-        // Bug 09/2026: ein schlicht mit inset:0 positioniertes fixed-Element
-        // liess oben einen Streifen in der Statusleisten-Farbe stehen (body
-        // { padding-top: env(safe-area-inset-top) } aus globals.css scheint
-        // im iOS-Standalone-Modus die Ausgangsposition von fixed-Elementen
-        // mit zu verschieben, statt sie wie spezifiziert relativ zum reinen
-        // Viewport zu berechnen — siehe bereits dokumentierter, verwandter
-        // Bug im Kommentar zu body { padding-top: ... } in globals.css).
-        // Fix: top/height explizit um genau diesen Versatz kompensieren,
-        // statt sich auf inset:0 zu verlassen.
-        top: "calc(env(safe-area-inset-top, 0px) * -1)",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: "calc(100% + env(safe-area-inset-top, 0px))",
+        inset: 0,
         zIndex: 9999,
         background: WEISS,
         opacity: ausblenden ? 0 : 1,
