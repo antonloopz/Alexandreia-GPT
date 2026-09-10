@@ -15,7 +15,12 @@
 //
 // Wiederholung und Streak zeigen zusätzlich ihre Zahl (fällige
 // Wiederholungen bzw. aktueller Streak) — Bibliothek, Wunschliste und
-// Einstellungen sind reine Icon-Pillen.
+// Einstellungen sind reine Icon-Pillen. Alle fünf Pillen haben trotzdem
+// exakt dieselbe Höhe UND Breite (fixe PILL_GROESSE statt auto-Breite via
+// Padding, 09/2026 — zuvor liess die variable Breite die Icon+Zahl-Pillen
+// deutlich breiter als die reinen Icon-Pillen wirken, siehe Screenshot).
+// PILL_GROESSE ist bewusst so gewählt, dass auch zweistellige Zahlen
+// (Streak/fällige Wiederholungen > 9) noch bequem Platz haben.
 //
 // Home (app/page.tsx) ist ein Server Component und kann daher selbst keine
 // Klick-Handler/useEffects haben — deshalb dieser kleine Client-Wrapper,
@@ -55,12 +60,15 @@ export default function StartseitenPillen({
   const einstellungen = EINTRAEGE.find((e) => e.href === "/einstellungen")!;
   const wiederholungPfade = EINTRAEGE.find((e) => e.href === "/wiederholung")!.pfade;
 
+  const PILL_GROESSE = 38;
+
   const pillStyle: CSSProperties = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    padding: "6px 10px",
+    gap: 4,
+    width: PILL_GROESSE,
+    height: PILL_GROESSE,
     borderRadius: 999,
     background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
     flexShrink: 0,
