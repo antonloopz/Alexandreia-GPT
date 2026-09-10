@@ -5,8 +5,10 @@
 // die Historie, aber weil die Content-Pipeline oft schneller produziert als
 // ein Buch pro Tag gezeigt wird, wartet meist noch einiges an fertigen,
 // noch nie gezeigten Büchern im Vorrat. Drei Bereiche: heutiges Buch
-// (gepinnt), "Gelesen" (Historie, wie bisher Archiv), "Bereit" (fertig,
-// aber diesem Konto noch nie gezeigt — direkt lesbar über "Jetzt lesen").
+// (gepinnt), "Gelesen" (abgeschlossenAm gesetzt — wirklich fertig gelesen,
+// nicht nur schon mal geöffnet, siehe statusProBuchinhalt unten, Bug-Fix
+// 09/2026), "Bereit" (noch nie geöffnet ODER geöffnet, aber Quiz nicht
+// abgeschlossen — beides direkt (weiter-)lesbar über "Jetzt lesen").
 // Bewusst kein Coverbild (dafür gibt's aktuell keine Datenquelle) —
 // Kategorie-farbiges Icon als Platzhalter, wie zuvor in Archiv.
 
@@ -81,27 +83,41 @@ export default async function BookshelfSeite() {
     .where(eq(buchinhalte.status, "im_vorrat"));
 
   const gezeigtRows = await db
-    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, datumGezeigt: gezeigteBuecher.datumGezeigt })
+    .select({
+      buchinhaltId: gezeigteBuecher.buchinhaltId,
+      datumGezeigt: gezeigteBuecher.datumGezeigt,
+      abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
+    })
     .from(gezeigteBuecher)
     .where(eq(gezeigteBuecher.kontoId, konto.id));
 
-  const letztesDatumProBuchinhalt = new Map<string, Date>();
+  // Pro Buchinhalt gibt es je Konto höchstens eine Zeile (sicherstelleGezeigt
+  // in tagesbuch.ts ist idempotent) — ob sie abgeschlossenAm trägt,
+  // entscheidet allein über "Gelesen" vs. "Bereit" (Bug-Fix 09/2026: vorher
+  // zählte schon das reine Öffnen als "gelesen", auch ohne abgeschlossenes
+  // Quiz — und ohne Weiterlesen-Link liess sich ein so "gelesenes", aber nie
+  // fertig gelesenes Buch danach gar nicht mehr öffnen).
+  const statusProBuchinhalt = new Map<string, { datumGezeigt: Date; abgeschlossenAm: Date | null }>();
   for (const zeile of gezeigtRows) {
     if (zeile.buchinhaltId === heutigesBuch?.buchinhaltId) continue; // separat gepinnt
-    const bestehend = letztesDatumProBuchinhalt.get(zeile.buchinhaltId);
-    if (!bestehend || zeile.datumGezeigt > bestehend) {
-      letztesDatumProBuchinhalt.set(zeile.buchinhaltId, zeile.datumGezeigt);
-    }
+    statusProBuchinhalt.set(zeile.buchinhaltId, {
+      datumGezeigt: zeile.datumGezeigt,
+      abgeschlossenAm: zeile.abgeschlossenAm,
+    });
   }
 
   const uebrige = alleImVorrat.filter((b) => b.buchinhaltId !== heutigesBuch?.buchinhaltId);
 
   const gelesen = uebrige
-    .filter((b) => letztesDatumProBuchinhalt.has(b.buchinhaltId))
-    .sort((a, b) => letztesDatumProBuchinhalt.get(b.buchinhaltId)!.getTime() - letztesDatumProBuchinhalt.get(a.buchinhaltId)!.getTime());
+    .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm != null)
+    .sort(
+      (a, b) =>
+        statusProBuchinhalt.get(b.buchinhaltId)!.abgeschlossenAm!.getTime() -
+        statusProBuchinhalt.get(a.buchinhaltId)!.abgeschlossenAm!.getTime()
+    );
 
   const bereit = uebrige
-    .filter((b) => !letztesDatumProBuchinhalt.has(b.buchinhaltId))
+    .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm == null)
     .sort((a, b) => a.titel.localeCompare(b.titel));
 
   const gesamtAnzahl = alleImVorrat.length;
@@ -283,7 +299,7 @@ export default async function BookshelfSeite() {
                     <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>
                       {buch.autor} · gelesen{" "}
                       {new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" }).format(
-                        letztesDatumProBuchinhalt.get(buch.buchinhaltId)!
+                        statusProBuchinhalt.get(buch.buchinhaltId)!.abgeschlossenAm!
                       )}
                     </span>
                     {buch.umfang && (
