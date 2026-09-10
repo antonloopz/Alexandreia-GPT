@@ -120,7 +120,11 @@ export default async function AbschlussSeite({
     <main
       style={{
         width: "100%",
-        minHeight: "100dvh",
+        // Fix wie bei Home/Lesen/Kernaussagen/Lernkarten/Quiz (09/2026): body
+        // hat env(safe-area-inset-top) als eigenes padding-top, das zu
+        // minHeight:100dvh addiert wurde -> ganze Seite musste gescrollt
+        // werden, um den unteren Button zu sehen.
+        height: "calc(100dvh - env(safe-area-inset-top, 0px))",
         boxSizing: "border-box",
         padding: 16,
         background: akzent,
