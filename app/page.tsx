@@ -352,18 +352,29 @@ export default async function Home() {
                       }}
                     >
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                        <span
-                          style={{
-                            fontFamily: "Helvetica, Arial, sans-serif",
-                            fontWeight: 600,
-                            fontSize: 11,
-                            letterSpacing: ".04em",
-                            textTransform: "uppercase",
-                            color: "rgba(36,35,31,.55)",
-                          }}
-                        >
-                          {KATEGORIE_LABEL[vb.kategorie] ?? vb.kategorie}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 2,
+                              background: KATEGORIE_FARBE[vb.kategorie] ?? "#ccc",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontFamily: "Helvetica, Arial, sans-serif",
+                              fontWeight: 600,
+                              fontSize: 11,
+                              letterSpacing: ".04em",
+                              textTransform: "uppercase",
+                              color: "rgba(36,35,31,.55)",
+                            }}
+                          >
+                            {KATEGORIE_LABEL[vb.kategorie] ?? vb.kategorie}
+                          </span>
+                        </div>
                         <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
                           {vb.titel}
                         </span>
