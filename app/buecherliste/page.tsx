@@ -31,9 +31,9 @@ export const dynamic = "force-dynamic";
 export default async function BuecherlisteSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ fehler?: string }>;
+  searchParams: Promise<{ fehler?: string; kategorie?: string }>;
 }) {
-  const { fehler } = await searchParams;
+  const { fehler, kategorie: kategorieFilter } = await searchParams;
   const [konto] = await db.select().from(konten).limit(1);
 
   if (!konto) {
@@ -79,6 +79,24 @@ export default async function BuecherlisteSeite({
     return (a.titel ?? a.rohTitel ?? "").localeCompare(b.titel ?? b.rohTitel ?? "");
   });
 
+  // Kategorie-Filter (09/2026, Pendenz "Wunschliste nach Kategorien
+  // filtern") — rein über den ?kategorie=-Query-Parameter, damit der
+  // Server Component bleibt (kein eigener Client-State nötig). "ohne"
+  // steht für Einträge ohne zugeordnete Kategorie (rohTitel/rohAutor, noch
+  // kein Datenbank-Abgleich). Nur Kategorien anzeigen, die auf der Liste
+  // TATSÄCHLICH vorkommen — sonst stünden bei einer kleinen Wunschliste
+  // meist leere Filter-Chips da.
+  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) =>
+    zeilen.some((z) => z.kategorie === k)
+  );
+  const ohneKategorieVorhanden = zeilen.some((z) => z.kategorie === null);
+
+  const gefilterteZeilen = !kategorieFilter
+    ? zeilen
+    : kategorieFilter === "ohne"
+      ? zeilen.filter((z) => z.kategorie === null)
+      : zeilen.filter((z) => z.kategorie === kategorieFilter);
+
   // Umfang für ALLE angezeigten Einträge nachschlagen (nicht nur die
   // gerade vorgeschlagenen) — sonst bleibt die Angabe bei den meisten
   // Büchern auf der Liste leer, weil vorschlaege() nur die knappen
@@ -100,6 +118,17 @@ export default async function BuecherlisteSeite({
         await sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang, zeile.umfangGeprueftAm);
       })
     );
+  });
+
+  const kategorieChipStyle = (aktiv: boolean) => ({
+    display: "inline-block" as const,
+    padding: "6px 12px",
+    borderRadius: 999,
+    fontFamily: "Helvetica, Arial, sans-serif",
+    fontWeight: 600,
+    fontSize: 12.5,
+    background: aktiv ? "#24231F" : "rgba(36,35,31,.08)",
+    color: aktiv ? "#FBFAF7" : "rgba(36,35,31,.75)",
   });
 
   return (
@@ -168,8 +197,26 @@ export default async function BuecherlisteSeite({
           color: "rgba(36,35,31,.62)",
         }}
       >
-        {zeilen.length} noch nicht vorbereitet
+        {kategorieFilter ? `${gefilterteZeilen.length} von ${zeilen.length}` : zeilen.length} noch nicht vorbereitet
       </span>
+
+      {kategorienVorhanden.length + (ohneKategorieVorhanden ? 1 : 0) > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Link href="/buecherliste">
+            <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
+          </Link>
+          {kategorienVorhanden.map((k) => (
+            <Link key={k} href={`/buecherliste?kategorie=${encodeURIComponent(k)}`}>
+              <span style={kategorieChipStyle(kategorieFilter === k)}>{KATEGORIE_LABEL[k] ?? k}</span>
+            </Link>
+          ))}
+          {ohneKategorieVorhanden && (
+            <Link href="/buecherliste?kategorie=ohne">
+              <span style={kategorieChipStyle(kategorieFilter === "ohne")}>Nicht zugeordnet</span>
+            </Link>
+          )}
+        </div>
+      )}
 
       {naechsteKandidaten.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -272,9 +319,26 @@ export default async function BuecherlisteSeite({
             </span>
           </div>
         </div>
+      ) : gefilterteZeilen.length === 0 ? (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            textAlign: "center",
+          }}
+        >
+          <span style={{ fontSize: 14, color: "rgba(36,35,31,.65)" }}>Keine Einträge in dieser Kategorie.</span>
+          <Link href="/buecherliste">
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
+          </Link>
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
-          {zeilen.map((zeile) => (
+          {gefilterteZeilen.map((zeile) => (
             <div
               key={zeile.id}
               style={{
