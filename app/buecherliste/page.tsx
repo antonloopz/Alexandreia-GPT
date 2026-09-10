@@ -28,6 +28,83 @@ import AufbereitenButton from "./AufbereitenButton";
 
 export const dynamic = "force-dynamic";
 
+type WunschlisteZeile = {
+  id: string;
+  rohTitel: string | null;
+  rohAutor: string | null;
+  bald: boolean;
+  buchId: string | null;
+  titel: string | null;
+  autor: string | null;
+  kategorie: string | null;
+  umfang: string | null;
+};
+
+// Eine Wunschlisten-Zeile — von beiden Abschnitten (vorgemerkt/übrige)
+// genutzt, damit die Karten-Gestaltung an einer Stelle bleibt statt
+// zweimal dupliziert zu werden.
+function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
+  return (
+    <div
+      style={{
+        boxSizing: "border-box",
+        padding: "14px 16px",
+        borderRadius: 14,
+        background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+        {zeile.kategorie ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[zeile.kategorie] ?? "#ccc", flexShrink: 0 }} />
+            <span
+              style={{
+                fontFamily: "Helvetica, Arial, sans-serif",
+                fontWeight: 600,
+                fontSize: 11,
+                letterSpacing: ".04em",
+                textTransform: "uppercase",
+                color: "rgba(36,35,31,.55)",
+              }}
+            >
+              {KATEGORIE_LABEL[zeile.kategorie] ?? zeile.kategorie}
+            </span>
+          </div>
+        ) : (
+          <span
+            style={{
+              fontFamily: "Helvetica, Arial, sans-serif",
+              fontWeight: 600,
+              fontSize: 11,
+              letterSpacing: ".04em",
+              textTransform: "uppercase",
+              color: "rgba(36,35,31,.55)",
+            }}
+          >
+            Noch nicht zugeordnet
+          </span>
+        )}
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
+          {zeile.titel ?? zeile.rohTitel}
+        </span>
+        {(zeile.autor ?? zeile.rohAutor) && (
+          <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
+        )}
+        {zeile.umfang && <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>{zeile.umfang}</span>}
+        {zeile.buchId && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+            <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
+            <AufbereitenButton buchId={zeile.buchId} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default async function BuecherlisteSeite({
   searchParams,
 }: {
@@ -96,6 +173,15 @@ export default async function BuecherlisteSeite({
     : kategorieFilter === "ohne"
       ? zeilen.filter((z) => z.kategorie === null)
       : zeilen.filter((z) => z.kategorie === kategorieFilter);
+
+  // Klare Abgrenzung vorgemerkt/nicht vorgemerkt statt nur stiller Sortierung
+  // + kleinem Flaggen-Icon (09/2026, Pendenz "Wunschliste: abgrenzen
+  // zwischen vorgemerkt und noch nicht vorgemerkt") — zwei eigene
+  // Abschnitte, analog "Bereit"/"Gelesen" in der Bibliothek. gefilterteZeilen
+  // ist schon nach bald sortiert, die Aufteilung erhält also die
+  // alphabetische Reihenfolge innerhalb jeder Gruppe.
+  const vorgemerkteZeilen = gefilterteZeilen.filter((z) => z.bald);
+  const uebrigeZeilen = gefilterteZeilen.filter((z) => !z.bald);
 
   // Umfang für ALLE angezeigten Einträge nachschlagen (nicht nur die
   // gerade vorgeschlagenen) — sonst bleibt die Angabe bei den meisten
@@ -337,75 +423,46 @@ export default async function BuecherlisteSeite({
           </Link>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
-          {gefilterteZeilen.map((zeile) => (
-            <div
-              key={zeile.id}
-              style={{
-                boxSizing: "border-box",
-                padding: "14px 16px",
-                borderRadius: 14,
-                background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                {zeile.kategorie ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[zeile.kategorie] ?? "#ccc", flexShrink: 0 }} />
-                    <span
-                      style={{
-                        fontFamily: "Helvetica, Arial, sans-serif",
-                        fontWeight: 600,
-                        fontSize: 11,
-                        letterSpacing: ".04em",
-                        textTransform: "uppercase",
-                        color: "rgba(36,35,31,.55)",
-                      }}
-                    >
-                      {KATEGORIE_LABEL[zeile.kategorie] ?? zeile.kategorie}
-                    </span>
-                  </div>
-                ) : (
-                  <span
-                    style={{
-                      fontFamily: "Helvetica, Arial, sans-serif",
-                      fontWeight: 600,
-                      fontSize: 11,
-                      letterSpacing: ".04em",
-                      textTransform: "uppercase",
-                      color: "rgba(36,35,31,.55)",
-                    }}
-                  >
-                    Noch nicht zugeordnet
-                  </span>
-                )}
-                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 15 }}>
-                  {zeile.titel ?? zeile.rohTitel}
-                </span>
-                {(zeile.autor ?? zeile.rohAutor) && (
-                  <span style={{ fontSize: 12.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
-                )}
-                {zeile.umfang && (
-                  <span style={{ fontSize: 11.5, color: "rgba(36,35,31,.5)" }}>{zeile.umfang}</span>
-                )}
-                {zeile.buchId && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                    <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
-                    <AufbereitenButton buchId={zeile.buchId} />
-                  </div>
-                )}
-              </div>
-              {zeile.bald && (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <path d="M6 3.5v17" />
-                  <path d="M6 4h11l-3 3.5 3 3.5H6" />
-                </svg>
-              )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24, overflowY: "auto" }}>
+          {vorgemerkteZeilen.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <span
+                style={{
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 11,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  color: "rgba(36,35,31,.5)",
+                }}
+              >
+                Vorgemerkt für nächsten Lauf ({vorgemerkteZeilen.length})
+              </span>
+              {vorgemerkteZeilen.map((zeile) => (
+                <WunschlisteKarte key={zeile.id} zeile={zeile} />
+              ))}
             </div>
-          ))}
+          )}
+
+          {uebrigeZeilen.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <span
+                style={{
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 11,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  color: "rgba(36,35,31,.5)",
+                }}
+              >
+                Noch nicht vorgemerkt ({uebrigeZeilen.length})
+              </span>
+              {uebrigeZeilen.map((zeile) => (
+                <WunschlisteKarte key={zeile.id} zeile={zeile} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </main>
