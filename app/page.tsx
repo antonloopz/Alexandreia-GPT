@@ -10,18 +10,15 @@
 
 import Link from "next/link";
 import { db } from "../src/db";
-import { konten, gezeigteBuecher } from "../src/db/schema";
-import { eq } from "drizzle-orm";
+import { konten } from "../src/db/schema";
 import {
   naechstesBuchFuerHeute,
-  faelligeWiederholungenAnzahl,
   bereiteBuecher,
   heuteAbgeschlosseneBuecher,
 } from "../src/lib/tagesbuch";
 import { umfangZeileAusWortanzahl } from "../src/lib/darstellung";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../src/lib/kategorien";
-import { aktuellerStreak } from "../src/lib/streak";
-import StartseitenPillen from "./StartseitenPillen";
+import MenuButton from "./MenuButton";
 import StatusBarColor from "./StatusBarColor";
 
 export const dynamic = "force-dynamic";
@@ -131,13 +128,6 @@ export default async function Home() {
     );
   }
 
-  const gezeigteDaten = await db
-    .select({ datum: gezeigteBuecher.datumGezeigt })
-    .from(gezeigteBuecher)
-    .where(eq(gezeigteBuecher.kontoId, konto.id));
-  const streak = aktuellerStreak(gezeigteDaten.map((d) => d.datum));
-
-  const faellig = await faelligeWiederholungenAnzahl(konto.id);
   const akzent = KATEGORIE_FARBE[buch.kategorie] ?? "var(--paper)";
   const kategorieLabel = KATEGORIE_LABEL[buch.kategorie] ?? buch.kategorie;
   const weitereBuecher = buch.abgeschlossen ? await bereiteBuecher(konto.id, 3) : [];
@@ -164,12 +154,12 @@ export default async function Home() {
       }}
     >
       <StatusBarColor farbe={akzent} />
-      {/* Einheitliche Pillenreihe: Wiederholung, Bibliothek, Wunschliste,
-          Fortschritt (via Streak-Zahl), Einstellungen — alle gleich gross,
-          gleichmässig über die volle Breite verteilt, EINE Zeile statt
-          vorher zwei getrennte mit doppelter Wiederholung-Pille (09/2026,
-          Pendenz "Buttons vereinheitlichen"). */}
-      <StartseitenPillen faellig={faellig} streak={streak} akzent={akzent} />
+      {/* Nur noch der Menü-Trigger (drei Balken, kein Pillen-Hintergrund) —
+          Bibliothek/Wunschliste/Wiederholung/Fortschritt/Einstellungen sind
+          jetzt ausschliesslich über das Dropdown-Overlay erreichbar
+          (09/2026, Pendenz "Buttons entfernen, nur über Dropdownmenü
+          aufrufbar"). Gleiche Komponente wie auf allen Unterseiten. */}
+      <MenuButton />
 
       {buch.abgeschlossen ? (
         <>
