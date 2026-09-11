@@ -10,7 +10,14 @@
 //
 // Trigger bewusst OHNE Pillen-/Kreis-Hintergrund (anders als die früheren
 // Buttons) — reine drei Balken, kein Wechsel-Icon beim Öffnen (Schliessen
-// funktioniert über Tap auf den Scrim oder einen Menü-Eintrag).
+// funktioniert über Tap auf den Scrim oder einen Menü-Eintrag). Rechtsbündig
+// auf allen Seiten (eigene volle-Breite-Zeile mit justify-content: flex-end
+// hier im Component, nicht pro Seite nachgezogen).
+//
+// Die drei Balken sind ausschliesslich das Trigger-Icon — der Menü-Eintrag
+// "Einstellungen" selbst zeigt weiterhin das Zahnrad (09/2026: sonst zwei
+// optisch identische Balken-Icons, einmal aussen als Trigger, einmal innen
+// als Listeneintrag — verwirrend).
 //
 // Führt nebenbei die "Menü-Kette" für SchliessenButton mit (siehe
 // menuNavigation.ts, Bug 09/2026): bei jedem Seitenaufruf wird vermerkt, ob
@@ -72,9 +79,8 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
     label: "Einstellungen",
     pfade: (
       <>
-        <path d="M4 7h16" />
-        <path d="M4 12h16" />
-        <path d="M4 17h16" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10.5a1.7 1.7 0 0 0 1.04-1.56V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10.5a1.7 1.7 0 0 0 1.56 1.04h.09a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04Z" />
       </>
     ),
   },
@@ -90,28 +96,30 @@ export default function MenuButton() {
 
   return (
     <>
-      <button
-        onClick={() => setOffen((o) => !o)}
-        aria-label={offen ? "Menü schliessen" : "Menü öffnen"}
-        style={{
-          width: 32,
-          height: 32,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          border: "none",
-          background: "none",
-          padding: 0,
-          cursor: "pointer",
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 7h16" />
-          <path d="M4 12h16" />
-          <path d="M4 17h16" />
-        </svg>
-      </button>
+      <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+        <button
+          onClick={() => setOffen((o) => !o)}
+          aria-label={offen ? "Menü schliessen" : "Menü öffnen"}
+          style={{
+            width: 32,
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            border: "none",
+            background: "none",
+            padding: 0,
+            cursor: "pointer",
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 7h16" />
+            <path d="M4 12h16" />
+            <path d="M4 17h16" />
+          </svg>
+        </button>
+      </div>
 
       {offen && (
         <>
