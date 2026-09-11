@@ -10,15 +10,36 @@
 // Seite und kommt zurück, ist dieser Zustand weg, auch wenn im Hintergrund
 // noch weitergearbeitet wird — das fertige Buch erscheint dann einfach ohne
 // weitere Ankündigung in der Bibliothek.
+//
+// In der kostenfreien Testumgebung (siehe src/lib/testmodus.ts) ist dieser
+// Button durch einen Hinweis ersetzt statt einfach ausgeblendet — löst
+// echte Claude-API-Kosten aus, soll dort also gar nicht erst klickbar sein.
 
 "use client";
 
 import { useState, useTransition } from "react";
 import { buchJetztAufbereiten } from "./actions";
+import { kiDeaktiviert } from "../../src/lib/testmodus";
 
 export default function AufbereitenButton({ buchId }: { buchId: string }) {
   const [gestartet, setGestartet] = useState(false);
   const [, startTransition] = useTransition();
+
+  if (kiDeaktiviert()) {
+    return (
+      <span
+        style={{
+          fontFamily: "Helvetica, Arial, sans-serif",
+          fontWeight: 600,
+          fontSize: 13.5,
+          padding: "6px 10px",
+          color: "rgba(36,35,31,.4)",
+        }}
+      >
+        In der Testversion deaktiviert
+      </span>
+    );
+  }
 
   if (gestartet) {
     return (

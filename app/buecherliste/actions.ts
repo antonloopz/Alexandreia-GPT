@@ -39,6 +39,7 @@ import { buecher, wunschlisteneintraege } from "../../src/db/schema";
 import { eq } from "drizzle-orm";
 import { pipelineSchritt } from "../../src/lib/entwurf";
 import { erstelleLernkartenUndQuiz } from "../../src/lib/lernkarten";
+import { kiDeaktiviert } from "../../src/lib/testmodus";
 
 export async function prioritaetUmschalten(eintragId: string, aktiv: boolean) {
   await db
@@ -49,6 +50,15 @@ export async function prioritaetUmschalten(eintragId: string, aktiv: boolean) {
 }
 
 export async function buchJetztAufbereiten(buchId: string) {
+  // Kostenfreie Testumgebung: löst echte Claude-API-Aufrufe aus, deshalb
+  // hier zusätzlich serverseitig abgesichert (der Button ist dort zwar
+  // schon durch einen Hinweis ersetzt, aber diese Action bleibt technisch
+  // aufrufbar). Siehe src/lib/testmodus.ts.
+  if (kiDeaktiviert()) {
+    console.error(`buchJetztAufbereiten(${buchId}): übersprungen — Testumgebung (NEXT_PUBLIC_KI_DEAKTIVIERT).`);
+    return;
+  }
+
   after(async () => {
     try {
       const ergebnis = await pipelineSchritt(buchId);

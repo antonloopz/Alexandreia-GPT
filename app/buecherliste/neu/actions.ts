@@ -18,6 +18,7 @@ import { and, ilike } from "drizzle-orm";
 import { db } from "../../../src/db";
 import { buecher, kategorieEnum, konten, wunschlisteneintraege } from "../../../src/db/schema";
 import { kategorieErkennen } from "../../../src/lib/kategorieerkennung";
+import { kiDeaktiviert } from "../../../src/lib/testmodus";
 
 export async function buchHinzufuegen(formData: FormData) {
   const titel = String(formData.get("titel") ?? "").trim();
@@ -44,7 +45,11 @@ export async function buchHinzufuegen(formData: FormData) {
 
   if (!buch) {
     let kategorie: (typeof kategorieEnum.enumValues)[number] | null = kategorieEingabe || null;
-    if (!kategorie) {
+    // Kostenfreie Testumgebung: automatische Kategorie-Erkennung löst
+    // einen Claude-API-Aufruf aus, deshalb dort übersprungen — der Nutzer
+    // landet stattdessen im ohnehin vorhandenen "Kategorie fehlt"-Zweig
+    // unten und wählt manuell (siehe src/lib/testmodus.ts).
+    if (!kategorie && !kiDeaktiviert()) {
       kategorie = await kategorieErkennen(titel, autor);
     }
 

@@ -25,6 +25,7 @@ import { konten } from "../../../../src/db/schema";
 import { vorschlaege } from "../../../../src/lib/vorschlag";
 import { pipelineSchritt } from "../../../../src/lib/entwurf";
 import { erstelleLernkartenUndQuiz } from "../../../../src/lib/lernkarten";
+import { kiDeaktiviert } from "../../../../src/lib/testmodus";
 
 export const maxDuration = 300;
 
@@ -34,6 +35,16 @@ export async function GET(request: NextRequest) {
 
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Kostenfreie Testumgebung: dieser Lauf löst echte Claude-API-Kosten aus
+  // (Kernauftrag dieses Kommentarblocks oben — "Kostenkontrolle"). Läuft
+  // auf einem Vercel-Preview-Deployment ohnehin kein Cron automatisch,
+  // dieser Schalter ist die zusätzliche Absicherung für den Fall, dass die
+  // Route trotzdem manuell mit dem CRON_SECRET aufgerufen wird. Siehe
+  // src/lib/testmodus.ts.
+  if (kiDeaktiviert()) {
+    return Response.json({ status: "testumgebung_deaktiviert" });
   }
 
   const [konto] = await db.select().from(konten).limit(1);
