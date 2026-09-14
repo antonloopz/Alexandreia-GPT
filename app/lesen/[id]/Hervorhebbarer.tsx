@@ -85,7 +85,7 @@ export default function Hervorhebbarer({
 }) {
   const containerRef = useRef<HTMLSpanElement>(null);
   const [hervorhebungen, setHervorhebungen] = useState(bestehende);
-  const [auswahl, setAuswahl] = useState<{ text: string; top: number; left: number } | null>(null);
+  const [auswahl, setAuswahl] = useState<{ text: string; bottom: number; left: number } | null>(null);
   const [popover, setPopover] = useState<{ hervorhebung: Hervorhebung; top: number; left: number } | null>(null);
   const [notizEntwurf, setNotizEntwurf] = useState("");
   const [, startTransition] = useTransition();
@@ -108,7 +108,7 @@ export default function Hervorhebbarer({
         return;
       }
       const rect = range.getBoundingClientRect();
-      setAuswahl({ text: ausgewaehlt, top: rect.top, left: rect.left + rect.width / 2 });
+      setAuswahl({ text: ausgewaehlt, bottom: rect.bottom, left: rect.left + rect.width / 2 });
     }
     document.addEventListener("selectionchange", beiAuswahlWechsel);
     return () => document.removeEventListener("selectionchange", beiAuswahlWechsel);
@@ -184,12 +184,17 @@ export default function Hervorhebbarer({
         {suffix}
       </p>
 
+      {/* Unterhalb statt oberhalb der Auswahl positioniert (09/2026, Bug-Fix
+          "Markieren-Button kollidiert mit Apples Auswahl-Menü") — iOS/Safari
+          zeigt sein eigenes Callout-Menü (Kopieren/Nachschlagen/…) direkt
+          ÜBER der Textauswahl an; ein eigener Button an derselben Stelle
+          überlappte das native Menü bzw. wurde selbst davon verdeckt. */}
       {auswahl && (
         <button
           onClick={markieren}
           style={{
             position: "fixed",
-            top: Math.max(8, auswahl.top - 44),
+            top: Math.min(auswahl.bottom + 12, window.innerHeight - 52),
             left: auswahl.left,
             transform: "translateX(-50%)",
             zIndex: 50,
