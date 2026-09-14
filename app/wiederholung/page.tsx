@@ -1,14 +1,15 @@
 // app/wiederholung/page.tsx
 //
-// Erster sekundärer Screen: Liste aller fälligen Wiederholungen (über alle
-// Bücher hinweg), neutrale Papierfarbe (nicht an ein Buch/eine Kategorie
-// gebunden). Jede Zeile ist ein fälliges repetitionselement — Lernkarte und
-// Quizfrage einer Kernaussage teilen sich einen Zeitplan (siehe Konzept),
-// als Vorschau wird deshalb einheitlich die zugehörige Lernkarte gezeigt
-// (nicht abwechselnd Lernkarte/Quiz wie im ursprünglichen Mockup, das keine
-// echte Datenquelle dafür hatte). Zeilen und der Kreisbutton starten
-// dieselbe Sitzung (/wiederholung/sitzung), die alle fälligen Karten der
-// Reihe nach abfragt.
+// Erster sekundärer Screen: Liste aller fälligen Wiederholungen, neutrale
+// Papierfarbe (nicht an ein Buch/eine Kategorie gebunden).
+//
+// 09/2026, Nutzer-Feedback: pro Buch nur EINE Zeile statt einer Zeile pro
+// fälliger Lernkarte (bei mehreren fälligen Karten eines Buchs wirkte die
+// Liste überladen/redundant, da eh dieselbe Buchzeile mehrfach erschien).
+// Jede Zeile zeigt jetzt Buchtitel + Anzahl fälliger Karten dieses Buchs
+// und startet eine auf dieses Buch beschränkte Sitzung
+// (/wiederholung/sitzung?buchinhaltId=...). Der runde Button unten bleibt
+// die bücherübergreifende Sitzung über alle fälligen Karten hinweg.
 
 import Link from "next/link";
 import { db } from "../../src/db";
@@ -20,7 +21,7 @@ import {
   lernkarten,
   repetitionselemente,
 } from "../../src/db/schema";
-import { and, asc, eq, gt, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, lte } from "drizzle-orm";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 
@@ -54,8 +55,8 @@ export default async function WiederholungSeite() {
     .where(and(eq(repetitionselemente.kontoId, konto.id), lte(repetitionselemente.naechsteFaelligkeit, heute)))
     .orderBy(asc(repetitionselemente.naechsteFaelligkeit));
 
-  // Pro Kernaussage nur eine Zeile (falls mehrere Lernkarten existieren,
-  // zählt nur die erste als Vorschau).
+  // Pro Kernaussage nur eine Karte zählen (falls mehrere Lernkarten
+  // existieren, zählt nur die erste).
   const gesehen = new Set<string>();
   const zeilen = faellig.filter((z) => {
     if (gesehen.has(z.kernaussageId)) return false;
@@ -63,7 +64,22 @@ export default async function WiederholungSeite() {
     return true;
   });
 
-  const buecherAnzahl = new Set(zeilen.map((z) => z.buchinhaltId)).size;
+  // Pro Buch gruppieren — eine Zeile je Buch statt je Karte. Reihenfolge
+  // bleibt die der ersten fälligen Karte des Buchs (zeilen ist bereits
+  // nach naechsteFaelligkeit sortiert), damit das dringendste Buch oben
+  // steht.
+  type BuchGruppe = { buchinhaltId: string; titel: string; anzahl: number };
+  const buchGruppen: BuchGruppe[] = [];
+  const buchGruppenIndex = new Map<string, number>();
+  for (const zeile of zeilen) {
+    const index = buchGruppenIndex.get(zeile.buchinhaltId);
+    if (index === undefined) {
+      buchGruppenIndex.set(zeile.buchinhaltId, buchGruppen.length);
+      buchGruppen.push({ buchinhaltId: zeile.buchinhaltId, titel: zeile.titel, anzahl: 1 });
+    } else {
+      buchGruppen[index].anzahl++;
+    }
+  }
 
   let naechsteFaelligkeit: Date | null = null;
   if (zeilen.length === 0) {
@@ -113,10 +129,10 @@ export default async function WiederholungSeite() {
             color: "rgba(36,35,31,.62)",
           }}
         >
-          {zeilen.length} fällig{zeilen.length > 0 ? `, aus ${buecherAnzahl} Buch${buecherAnzahl === 1 ? "" : "büchern"}` : ""}
+          {zeilen.length} fällig{buchGruppen.length > 0 ? `, aus ${buchGruppen.length} Buch${buchGruppen.length === 1 ? "" : "büchern"}` : ""}
         </span>
 
-        {zeilen.length === 0 ? (
+        {buchGruppen.length === 0 ? (
           <div
             style={{
               flex: 1,
@@ -146,10 +162,10 @@ export default async function WiederholungSeite() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {zeilen.map((zeile) => (
+            {buchGruppen.map((gruppe) => (
               <Link
-                key={zeile.kernaussageId}
-                href="/wiederholung/sitzung"
+                key={gruppe.buchinhaltId}
+                href={`/wiederholung/sitzung?buchinhaltId=${gruppe.buchinhaltId}`}
                 style={{
                   boxSizing: "border-box",
                   padding: "14px 16px",
@@ -177,10 +193,10 @@ export default async function WiederholungSeite() {
                       color: "rgba(36,35,31,.55)",
                     }}
                   >
-                    {zeile.titel} · Lernkarte
+                    {gruppe.anzahl} Karte{gruppe.anzahl === 1 ? "" : "n"} fällig
                   </span>
                   <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16 }}>
-                    {zeile.lernkarteFrage ?? "—"}
+                    {gruppe.titel}
                   </span>
                 </div>
                 <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>›</span>
@@ -192,7 +208,7 @@ export default async function WiederholungSeite() {
 
       {zeilen.length > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
-          <Link href="/wiederholung/sitzung" aria-label="Sitzung starten">
+          <Link href="/wiederholung/sitzung" aria-label="Alle Bücher jetzt üben">
             <div
               style={{
                 width: 56,
