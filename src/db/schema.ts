@@ -54,6 +54,18 @@ export const bewertungEnum = pgEnum("bewertung", [
   "gewusst",
 ]);
 
+// Welches Textfeld einer buchinhalte-Zeile eine Hervorhebung betrifft (siehe
+// notizen unten, Feature "Notiz-/Highlight-Funktion", 09/2026). Nur bei
+// Hervorhebungen mit konkreter Textstelle gesetzt — eine freistehende Notiz
+// (z.B. zu einer Kernaussage, ohne markierten Text) lässt es leer.
+export const notizFeldEnum = pgEnum("notiz_feld", [
+  "zusammenfassung",
+  "entstehungsgeschichte",
+  "autorenhintergrund",
+  "kernzitat_original",
+  "kernzitat_uebersetzung",
+]);
+
 // ---------------------------------------------------------------------------
 // Geteilt — der Vorrat
 // ---------------------------------------------------------------------------
@@ -210,7 +222,18 @@ export const notizen = pgTable("notizen", {
     .references(() => konten.id),
   buchinhaltId: uuid().references(() => buchinhalte.id),
   kernaussageId: uuid().references(() => kernaussagen.id),
-  text: text().notNull(),
+  // Welches Feld markiert wurde (siehe notizFeldEnum) — nur bei
+  // Hervorhebungen gesetzt, nicht bei einer freistehenden Notiz.
+  feld: notizFeldEnum(),
+  // Die markierte Textstelle selbst, verbatim aus dem jeweiligen Feld —
+  // nur bei Hervorhebungen gesetzt (Feature "Notiz-/Highlight-Funktion",
+  // 09/2026: Text im Lesen-Screen markieren, optional mit Notiz).
+  textAuszug: text(),
+  // Die eigentliche Notiz. Optional bei einer reinen Hervorhebung ohne
+  // Kommentar (dann null) — Pflicht inhaltlich bei einer freistehenden
+  // Notiz ohne textAuszug, aber technisch trotzdem nullable, da beide
+  // Fälle dieselbe Tabelle teilen.
+  text: text(),
   obsidianExportiertAm: timestamp({ mode: "date" }),
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });

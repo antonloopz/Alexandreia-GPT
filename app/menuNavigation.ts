@@ -34,6 +34,7 @@ const GUELTIGE_ANKER_PFADE = [
   "/bookshelf",
   "/buecherliste",
   "/fortschritt",
+  "/notizen",
   "/einstellungen",
 ];
 

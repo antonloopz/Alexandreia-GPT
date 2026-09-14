@@ -1,0 +1,277 @@
+// app/lesen/[id]/Hervorhebbarer.tsx
+//
+// Client Component: rendert einen Textblock (Zusammenfassung/Entstehungs-
+// geschichte/Autor/Kernzitat) mit bestehenden Hervorhebungen farbig markiert
+// und erlaubt, neuen Text zu markieren (native Textauswahl + "Markieren"-
+// Button) sowie eine bestehende Hervorhebung anzutippen, um eine Notiz
+// hinzuzufügen/zu bearbeiten oder die Hervorhebung wieder zu entfernen.
+// Feature "Notiz-/Highlight-Funktion" 09/2026.
+//
+// Speichert optimistisch lokal (setHervorhebungen) und schickt die Server
+// Action im Hintergrund — kein router.refresh() nötig, da diese Komponente
+// selbst die einzige Quelle für die Anzeige der Hervorhebungen auf dieser
+// Seite ist.
+
+"use client";
+
+import { useEffect, useRef, useState, useTransition } from "react";
+import { hervorhebungErstellen, hervorhebungLoeschen, notizSpeichern, type NotizFeld } from "../../notizen/actions";
+
+export type Hervorhebung = { id: string; textAuszug: string; text: string | null };
+
+function hexZuRgba(hex: string, alpha: number) {
+  const bereinigt = hex.replace("#", "");
+  const voll = bereinigt.length === 3 ? bereinigt.split("").map((z) => z + z).join("") : bereinigt;
+  const r = parseInt(voll.slice(0, 2), 16);
+  const g = parseInt(voll.slice(2, 4), 16);
+  const b = parseInt(voll.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) return `rgba(36,35,31,${alpha})`;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Zerlegt text an den (nicht überlappenden) Stellen, an denen eine der
+// bestehenden Hervorhebungen wörtlich vorkommt — bei mehrfach vorkommendem
+// Text wird bewusst nur die erste Fundstelle markiert (für eine
+// Einzelnutzer-App ausreichend genau).
+function segmentiere(text: string, hervorhebungen: Hervorhebung[]) {
+  const treffer = hervorhebungen
+    .map((h) => ({ h, start: text.indexOf(h.textAuszug) }))
+    .filter((t) => t.start !== -1 && t.h.textAuszug.length > 0)
+    .sort((a, b) => a.start - b.start);
+
+  const segmente: { typ: "text" | "hervorhebung"; inhalt: string; hervorhebung?: Hervorhebung }[] = [];
+  let cursor = 0;
+  for (const { h, start } of treffer) {
+    if (start < cursor) continue;
+    if (start > cursor) segmente.push({ typ: "text", inhalt: text.slice(cursor, start) });
+    segmente.push({ typ: "hervorhebung", inhalt: h.textAuszug, hervorhebung: h });
+    cursor = start + h.textAuszug.length;
+  }
+  if (cursor < text.length) segmente.push({ typ: "text", inhalt: text.slice(cursor) });
+  return segmente;
+}
+
+export default function Hervorhebbarer({
+  text,
+  buchinhaltId,
+  feld,
+  bestehende,
+  akzent,
+  style,
+  praefix,
+  suffix,
+}: {
+  text: string;
+  buchinhaltId: string;
+  feld: NotizFeld;
+  bestehende: Hervorhebung[];
+  akzent: string;
+  style?: React.CSSProperties;
+  // Rein dekorative Zeichen (z.B. Anführungszeichen beim Kernzitat), die
+  // NICHT Teil des markierbaren/gespeicherten Texts sein sollen — werden
+  // ausserhalb der Auswahl-Erkennung als einfache Geschwister-Textknoten
+  // gerendert.
+  praefix?: string;
+  suffix?: string;
+}) {
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const [hervorhebungen, setHervorhebungen] = useState(bestehende);
+  const [auswahl, setAuswahl] = useState<{ text: string; top: number; left: number } | null>(null);
+  const [popover, setPopover] = useState<{ hervorhebung: Hervorhebung; top: number; left: number } | null>(null);
+  const [notizEntwurf, setNotizEntwurf] = useState("");
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    function beiAuswahlWechsel() {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+        setAuswahl(null);
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      if (!containerRef.current || !containerRef.current.contains(range.commonAncestorContainer)) {
+        setAuswahl(null);
+        return;
+      }
+      const ausgewaehlt = selection.toString().trim();
+      if (!ausgewaehlt) {
+        setAuswahl(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setAuswahl({ text: ausgewaehlt, top: rect.top, left: rect.left + rect.width / 2 });
+    }
+    document.addEventListener("selectionchange", beiAuswahlWechsel);
+    return () => document.removeEventListener("selectionchange", beiAuswahlWechsel);
+  }, []);
+
+  function markieren() {
+    if (!auswahl) return;
+    const textAuszug = auswahl.text;
+    setAuswahl(null);
+    window.getSelection()?.removeAllRanges();
+    startTransition(async () => {
+      const zeile = await hervorhebungErstellen(buchinhaltId, feld, textAuszug);
+      if (zeile && zeile.textAuszug) {
+        setHervorhebungen((h) => [...h, { id: zeile.id, textAuszug: zeile.textAuszug!, text: zeile.text }]);
+      }
+    });
+  }
+
+  function hervorhebungAntippen(h: Hervorhebung, e: React.MouseEvent) {
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setNotizEntwurf(h.text ?? "");
+    setPopover({ hervorhebung: h, top: rect.bottom + 8, left: rect.left });
+  }
+
+  function notizUebernehmen() {
+    if (!popover) return;
+    const { hervorhebung } = popover;
+    const wert = notizEntwurf.trim();
+    setHervorhebungen((hs) => hs.map((h) => (h.id === hervorhebung.id ? { ...h, text: wert || null } : h)));
+    setPopover(null);
+    startTransition(() => {
+      notizSpeichern(hervorhebung.id, wert);
+    });
+  }
+
+  function hervorhebungEntfernen() {
+    if (!popover) return;
+    const { hervorhebung } = popover;
+    setHervorhebungen((hs) => hs.filter((h) => h.id !== hervorhebung.id));
+    setPopover(null);
+    startTransition(() => {
+      hervorhebungLoeschen(hervorhebung.id);
+    });
+  }
+
+  const segmente = segmentiere(text, hervorhebungen);
+
+  return (
+    <>
+      <p style={{ margin: 0, ...style }}>
+        {praefix}
+        <span ref={containerRef}>
+        {segmente.map((segment, i) =>
+          segment.typ === "hervorhebung" && segment.hervorhebung ? (
+            <mark
+              key={i}
+              onClick={(e) => hervorhebungAntippen(segment.hervorhebung!, e)}
+              style={{
+                background: hexZuRgba(akzent, 0.55),
+                borderRadius: 3,
+                padding: "0 1px",
+                color: "inherit",
+                cursor: "pointer",
+              }}
+            >
+              {segment.inhalt}
+            </mark>
+          ) : (
+            <span key={i}>{segment.inhalt}</span>
+          )
+        )}
+        </span>
+        {suffix}
+      </p>
+
+      {auswahl && (
+        <button
+          onClick={markieren}
+          style={{
+            position: "fixed",
+            top: Math.max(8, auswahl.top - 44),
+            left: auswahl.left,
+            transform: "translateX(-50%)",
+            zIndex: 50,
+            background: "#24231F",
+            color: "#FBFAF7",
+            border: "none",
+            borderRadius: 20,
+            padding: "8px 16px",
+            fontFamily: "Helvetica, Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 14,
+            cursor: "pointer",
+          }}
+        >
+          Markieren
+        </button>
+      )}
+
+      {popover && (
+        <>
+          <div onClick={() => setPopover(null)} aria-hidden style={{ position: "fixed", inset: 0, zIndex: 49 }} />
+          <div
+            style={{
+              position: "fixed",
+              top: Math.min(popover.top, window.innerHeight - 180),
+              left: Math.min(Math.max(16, popover.left), window.innerWidth - 260),
+              width: 244,
+              boxSizing: "border-box",
+              background: "#F2F4EF",
+              border: "1.5px solid #24231F",
+              borderRadius: 14,
+              padding: 12,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              zIndex: 50,
+            }}
+          >
+            <textarea
+              value={notizEntwurf}
+              onChange={(e) => setNotizEntwurf(e.target.value)}
+              placeholder="Notiz (optional)"
+              rows={3}
+              style={{
+                boxSizing: "border-box",
+                width: "100%",
+                resize: "none",
+                border: "1.5px solid #24231F",
+                borderRadius: 10,
+                padding: "8px 10px",
+                fontFamily: "'Work Sans', Arial, sans-serif",
+                fontSize: 14.5,
+                color: "#24231F",
+                background: "none",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+              <button
+                onClick={hervorhebungEntfernen}
+                style={{
+                  border: "none",
+                  background: "none",
+                  color: "rgba(36,35,31,.6)",
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontSize: 13.5,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Entfernen
+              </button>
+              <button
+                onClick={notizUebernehmen}
+                style={{
+                  border: "none",
+                  background: "#24231F",
+                  color: "#FBFAF7",
+                  borderRadius: 999,
+                  padding: "6px 16px",
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 600,
+                  fontSize: 13.5,
+                  cursor: "pointer",
+                }}
+              >
+                Speichern
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}

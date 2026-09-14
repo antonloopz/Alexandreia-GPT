@@ -7,13 +7,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "../../../src/db";
-import { buchinhalte, buecher, konten } from "../../../src/db/schema";
-import { eq } from "drizzle-orm";
+import { buchinhalte, buecher, konten, notizen } from "../../../src/db/schema";
+import { and, eq } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { sicherstelleGezeigt } from "../../../src/lib/tagesbuch";
 import MenuButton from "../../MenuButton";
 import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
+import Hervorhebbarer, { type Hervorhebung } from "./Hervorhebbarer";
+import type { NotizFeld } from "../../notizen/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +126,20 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
   const vh = (zeile.vertrauenshinweise ?? {}) as Record<string, Vertrauenshinweis>;
   const zusammenfassungsAbschnitte = parseZusammenfassung(zeile.zusammenfassung);
 
+  // Bestehende Hervorhebungen/Notizen dieses Buchinhalts, nach Feld sortiert
+  // (Feature "Notiz-/Highlight-Funktion" 09/2026) — an Hervorhebbarer
+  // weitergegeben, das damit die passenden Textstellen farbig markiert.
+  const hervorhebungenZeilen = konto
+    ? await db
+        .select({ id: notizen.id, feld: notizen.feld, textAuszug: notizen.textAuszug, text: notizen.text })
+        .from(notizen)
+        .where(and(eq(notizen.buchinhaltId, zeile.buchinhaltId), eq(notizen.kontoId, konto.id)))
+    : [];
+  const nachFeld = (feld: NotizFeld): Hervorhebung[] =>
+    hervorhebungenZeilen
+      .filter((h) => h.feld === feld && h.textAuszug)
+      .map((h) => ({ id: h.id, textAuszug: h.textAuszug as string, text: h.text }));
+
   return (
     <main
       style={{
@@ -176,31 +192,66 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
                     {abschnitt.titel}
                   </span>
                 )}
-                <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{abschnitt.body}</p>
+                <Hervorhebbarer
+                  text={abschnitt.body}
+                  buchinhaltId={zeile.buchinhaltId}
+                  feld="zusammenfassung"
+                  bestehende={nachFeld("zusammenfassung")}
+                  akzent={akzent}
+                  style={{ fontSize: 17, lineHeight: 1.55 }}
+                />
               </div>
             ))}
           </div>
         </Abschnitt>
 
         <Abschnitt label="Entstehungsgeschichte" hinweis={vh.entstehungsgeschichte}>
-          <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{zeile.entstehungsgeschichte}</p>
+          <Hervorhebbarer
+            text={zeile.entstehungsgeschichte}
+            buchinhaltId={zeile.buchinhaltId}
+            feld="entstehungsgeschichte"
+            bestehende={nachFeld("entstehungsgeschichte")}
+            akzent={akzent}
+            style={{ fontSize: 17, lineHeight: 1.55 }}
+          />
         </Abschnitt>
 
         {zeile.autorenhintergrund && (
           <Abschnitt label="Autor" hinweis={vh.autorenhintergrund}>
-            <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55 }}>{zeile.autorenhintergrund}</p>
+            <Hervorhebbarer
+              text={zeile.autorenhintergrund}
+              buchinhaltId={zeile.buchinhaltId}
+              feld="autorenhintergrund"
+              bestehende={nachFeld("autorenhintergrund")}
+              akzent={akzent}
+              style={{ fontSize: 17, lineHeight: 1.55 }}
+            />
           </Abschnitt>
         )}
 
         {zeile.kernzitatOriginal && (
           <Abschnitt label="Kernzitat" hinweis={vh.kernzitat}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <p style={{ margin: 0, fontSize: 17, lineHeight: 1.55, fontStyle: "italic" }}>
-                „{zeile.kernzitatOriginal}“
-              </p>
-              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.7)" }}>
-                {zeile.kernzitatUebersetzung}
-              </p>
+              <Hervorhebbarer
+                text={zeile.kernzitatOriginal}
+                buchinhaltId={zeile.buchinhaltId}
+                feld="kernzitat_original"
+                bestehende={nachFeld("kernzitat_original")}
+                akzent={akzent}
+                style={{ fontSize: 17, lineHeight: 1.55, fontStyle: "italic" }}
+                praefix="„"
+                suffix="“"
+              />
+              {zeile.kernzitatUebersetzung && (
+                <Hervorhebbarer
+                  text={zeile.kernzitatUebersetzung}
+                  buchinhaltId={zeile.buchinhaltId}
+                  feld="kernzitat_uebersetzung"
+                  bestehende={nachFeld("kernzitat_uebersetzung")}
+                  akzent={akzent}
+                  style={{ fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.7)" }}
+                />
+              )}
             </div>
           </Abschnitt>
         )}

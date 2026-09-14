@@ -84,6 +84,18 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
     ),
   },
   {
+    href: "/notizen",
+    label: "Notizen",
+    pfade: (
+      <>
+        <path d="M7 4.5h8.5L19 8v11.5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1Z" />
+        <path d="M15.5 4.5V8H19" />
+        <line x1="9" y1="12" x2="15" y2="12" />
+        <line x1="9" y1="15.5" x2="13" y2="15.5" />
+      </>
+    ),
+  },
+  {
     href: "/einstellungen",
     label: "Einstellungen",
     pfade: (
