@@ -21,6 +21,22 @@
 const ANKER_KEY = "alexandreia:menuAnker";
 const VIA_MENU_KEY = "alexandreia:navViaMenu";
 
+// Nur diese fünf Hauptscreens (plus Home) haben einen eigenen
+// SchliessenButton und dürfen daher ein gültiges Rücksprungziel sein.
+// Schutz gegen einen veralteten/falschen ANKER_KEY-Wert (z.B. noch von
+// vor einem Bugfix, oder von einer Unterseite ohne eigenen Ausweg wie
+// einstellungen/themenverteilung) — ein solcher Wert wird beim Lesen
+// verworfen statt SchliessenButton auf eine Sackgasse zu schicken
+// (Bug 09/2026, "Themenverteilung ohne Exit").
+const GUELTIGE_ANKER_PFADE = [
+  "/",
+  "/wiederholung",
+  "/bookshelf",
+  "/buecherliste",
+  "/fortschritt",
+  "/einstellungen",
+];
+
 // Von MenuButton unmittelbar vor der Navigation zu einem Menü-Eintrag
 // aufgerufen, mit dem Pfad der Seite, auf der das Menü gerade geöffnet war.
 export function menuNavigationStarten(aktuellerPfad: string) {
@@ -53,7 +69,12 @@ export function menuKetteAktualisieren() {
 // vorliegt (dann gilt das bisherige back()-Verhalten).
 export function menuAnkerLesen(): string | null {
   try {
-    return sessionStorage.getItem(ANKER_KEY);
+    const anker = sessionStorage.getItem(ANKER_KEY);
+    if (anker && !GUELTIGE_ANKER_PFADE.includes(anker)) {
+      sessionStorage.removeItem(ANKER_KEY);
+      return null;
+    }
+    return anker;
   } catch {
     return null;
   }
