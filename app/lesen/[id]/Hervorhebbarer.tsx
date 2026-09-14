@@ -20,14 +20,22 @@ import type { NotizFeld } from "../../../src/lib/notizen";
 
 export type Hervorhebung = { id: string; textAuszug: string; text: string | null };
 
-function hexZuRgba(hex: string, alpha: number) {
+// Dunklere, volldeckende Variante der Kategoriefarbe — für die
+// Hervorhebungs-Markierung auf dem Lesen-Screen, dessen <main> selbst mit
+// der (vollen, undurchsichtigen) Kategoriefarbe hinterlegt ist. Eine bloss
+// halbtransparente Kopie DERSELBEN Farbe (frühere Version) war auf diesem
+// Hintergrund praktisch unsichtbar — bewusst um denselben Farbton
+// verdunkelt statt auf eine hiervon unabhängige Akzentfarbe zu wechseln,
+// damit die Markierung weiterhin zur jeweiligen Buchkategorie passt.
+function hexZuDunkler(hex: string, anteil: number) {
   const bereinigt = hex.replace("#", "");
   const voll = bereinigt.length === 3 ? bereinigt.split("").map((z) => z + z).join("") : bereinigt;
   const r = parseInt(voll.slice(0, 2), 16);
   const g = parseInt(voll.slice(2, 4), 16);
   const b = parseInt(voll.slice(4, 6), 16);
-  if ([r, g, b].some(Number.isNaN)) return `rgba(36,35,31,${alpha})`;
-  return `rgba(${r},${g},${b},${alpha})`;
+  if ([r, g, b].some(Number.isNaN)) return "rgb(150,145,160)";
+  const dunkler = (kanal: number) => Math.round(kanal * (1 - anteil));
+  return `rgb(${dunkler(r)},${dunkler(g)},${dunkler(b)})`;
 }
 
 // Zerlegt text an den (nicht überlappenden) Stellen, an denen eine der
@@ -159,7 +167,7 @@ export default function Hervorhebbarer({
               key={i}
               onClick={(e) => hervorhebungAntippen(segment.hervorhebung!, e)}
               style={{
-                background: hexZuRgba(akzent, 0.55),
+                background: hexZuDunkler(akzent, 0.32),
                 borderRadius: 3,
                 padding: "0 1px",
                 color: "inherit",
