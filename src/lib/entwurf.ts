@@ -41,6 +41,17 @@ const ZUSAMMENFASSUNG_REGEL =
   'Richtwerte, keine harte Grenze — ein Werk mit besonders viel Substanz darf ' +
   'auch länger ausfallen.';
 
+// Bug 09/2026: bei aktiver Websuche hat das Modell teils seine interne
+// Zitations-Markierung (z.B. `<cite index="12-3">...</cite>`) wörtlich in
+// JSON-Textfelder mitgeschrieben, sichtbar bis in die App-Zusammenfassung.
+// Diese Regel weist das Modell explizit an, das zu lassen; gesamtText()
+// unten entfernt trotzdem zusätzlich per Regex jeden verbliebenen Rest
+// (Absicherung, falls sich das Modell nicht immer daran hält).
+const KEINE_ZITATIONS_TAGS_REGEL =
+  'Schreibe reine Prosa ohne technische Zitations-Markierungen aus der ' +
+  'Websuche (z.B. keine <cite>-Tags) — Quellenbelege fliessen inhaltlich in ' +
+  'den Text ein, nie als HTML-ähnliches Markup.';
+
 type Vertrauenshinweis = "verifiziert" | "eingeordnet";
 
 type EntwurfJSON = {
@@ -88,7 +99,11 @@ async function gesamtText(message: Anthropic.Message): Promise<string> {
         `Antwort bricht vor der finalen JSON-Ausgabe ab.`
     );
   }
-  return textBloecke.map((b) => b.text).join("");
+  const text = textBloecke.map((b) => b.text).join("");
+  // Siehe KEINE_ZITATIONS_TAGS_REGEL oben — hier die Absicherung, falls das
+  // Modell trotz Prompt-Anweisung doch ein <cite ...>...</cite> (oder einen
+  // verwaisten <cite .../>-Rest) in einem Textfeld hinterlässt.
+  return text.replace(/<cite[^>]*>[\s\S]*?<\/cite>/gi, "").replace(/<\/?cite\b[^>]*>/gi, "");
 }
 
 export async function entwurfErstellen(
@@ -105,6 +120,7 @@ Nutze die Web-Suche aktiv, um Fakten (Entstehungsjahr, Kontext, ggf. Zitat) abzu
 
 Regeln:
 - ${ZUSAMMENFASSUNG_REGEL}
+- ${KEINE_ZITATIONS_TAGS_REGEL}
 - Kernaussagen: so viele wie das Buch tatsächlich hergibt (keine Zielzahl), jede mit kurzem Thesentitel (text) und erklärendem Fliesstext (erklaerung).
 - Kernzitat: ${kernzitatErlaubt ? "dieses Werk ist ein literarischer Klassiker — liefere ein kulturell verankertes, wortgetreues Kernzitat in der Originalsprache UND in deutscher Übersetzung. Prüfe Wortlaut und Übersetzung gegen mindestens eine verlässliche Quelle und bleib bei EINER Schreibweise/Transliteration des Originaltitels, auch wenn mehrere kursieren." : "dieses Werk ist kein literarischer Klassiker — kernzitat_original und kernzitat_uebersetzung müssen null sein."}
 - Für jedes Feld (zusammenfassung, entstehungsgeschichte, autorenhintergrund, kernzitat) einen Vertrauenshinweis: "verifiziert" (durch Recherche bestätigt) oder "eingeordnet" (plausibel eingeschätzt, aber nicht wortgetreu geprüft). WICHTIG: gibt es kein Kernzitat (kernzitat_original/kernzitat_uebersetzung = null), dann MUSS vertrauenshinweise.kernzitat ebenfalls null sein — niemals "verifiziert" oder "eingeordnet" für ein nicht vorhandenes Zitat.
@@ -185,6 +201,7 @@ export async function zusammenfassungNeuErstellen(
 
 Regeln:
 - ${ZUSAMMENFASSUNG_REGEL}
+- ${KEINE_ZITATIONS_TAGS_REGEL}
 - Vertrauenshinweis: "verifiziert" (durch Recherche bestätigt) oder "eingeordnet" (plausibel eingeschätzt, aber nicht wortgetreu geprüft).
 - Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text davor oder danach:
 
