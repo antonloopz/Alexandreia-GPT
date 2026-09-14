@@ -12,9 +12,18 @@
 // Kette zurück, nicht zur Seite, von der aus das Menü zum ersten Mal
 // geöffnet wurde (Bug, 09/2026). menuAnkerLesen() liefert genau diese Seite,
 // von MenuButton bei jeder Navigation über einen Menü-Eintrag mitgeführt
-// (siehe menuNavigation.ts) — nur wenn keine aktive Menü-Kette vorliegt
-// (Seite direkt aufgerufen, Navigation ohne das Menü), gilt weiterhin das
-// alte back()/push("/")-Verhalten.
+// (siehe menuNavigation.ts).
+//
+// Ohne aktive Menü-Kette (Seite direkt aufgerufen, oder über eine feste
+// Unterseiten-Navigation ohne das Dropdown-Menü erreicht) fiel dies bisher
+// auf router.back() zurück — das führte zu einem Ping-Pong-Bug (09/2026,
+// "Themenverteilung ohne Exit"): einstellungen/themenverteilung wird per
+// festem <Link> von Einstellungen aus aufgerufen und leitet beim Speichern
+// serverseitig zurück auf /einstellungen (redirect(), KEIN Menü-Sprung,
+// also kein Anker). back() auf Einstellungen führte dann im echten
+// Browser-Verlauf genau zurück zu Themenverteilung, wieder und wieder.
+// Ohne Anker gilt deshalb jetzt immer push("/") statt back() — eindeutig
+// und unabhängig vom bisherigen Browser-Verlauf.
 //
 // Seiten, die IMMER von genau einem bestimmten Elternscreen aus erreichbar
 // sind (z.B. buecherliste/neu von buecherliste, wiederholung/sitzung von
@@ -31,15 +40,7 @@ export default function SchliessenButton() {
 
   function schliessen() {
     const anker = menuAnkerLesen();
-    if (anker) {
-      router.push(anker);
-      return;
-    }
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push("/");
-    }
+    router.push(anker ?? "/");
   }
 
   return (
