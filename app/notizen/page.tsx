@@ -11,7 +11,7 @@ import { buchinhalte, buecher, konten, notizen } from "../../src/db/schema";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
-import { FELD_LABEL, type NotizFeld } from "./actions";
+import { FELD_LABEL, type NotizFeld } from "../../src/lib/notizen";
 import EntfernenButton from "./EntfernenButton";
 
 export const dynamic = "force-dynamic";

@@ -15,7 +15,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { hervorhebungErstellen, hervorhebungLoeschen, notizSpeichern, type NotizFeld } from "../../notizen/actions";
+import { hervorhebungErstellen, hervorhebungLoeschen, notizSpeichern } from "../../notizen/actions";
+import type { NotizFeld } from "../../../src/lib/notizen";
 
 export type Hervorhebung = { id: string; textAuszug: string; text: string | null };
 

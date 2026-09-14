@@ -10,21 +10,9 @@
 import { db } from "../../src/db";
 import { konten, notizen } from "../../src/db/schema";
 import { eq } from "drizzle-orm";
+import type { NotizFeld } from "../../src/lib/notizen";
 
-export type NotizFeld =
-  | "zusammenfassung"
-  | "entstehungsgeschichte"
-  | "autorenhintergrund"
-  | "kernzitat_original"
-  | "kernzitat_uebersetzung";
-
-export const FELD_LABEL: Record<NotizFeld, string> = {
-  zusammenfassung: "Zusammenfassung",
-  entstehungsgeschichte: "Entstehungsgeschichte",
-  autorenhintergrund: "Autor",
-  kernzitat_original: "Kernzitat",
-  kernzitat_uebersetzung: "Kernzitat",
-};
+export type { NotizFeld };
 
 export async function hervorhebungErstellen(buchinhaltId: string, feld: NotizFeld, textAuszugRoh: string) {
   const [konto] = await db.select().from(konten).limit(1);

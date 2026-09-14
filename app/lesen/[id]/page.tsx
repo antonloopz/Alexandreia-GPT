@@ -15,7 +15,7 @@ import MenuButton from "../../MenuButton";
 import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 import Hervorhebbarer, { type Hervorhebung } from "./Hervorhebbarer";
-import type { NotizFeld } from "../../notizen/actions";
+import type { NotizFeld } from "../../../src/lib/notizen";
 
 export const dynamic = "force-dynamic";
 
