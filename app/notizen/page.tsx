@@ -12,6 +12,14 @@
 // aufklappbares <details> (Accordion) statt einer immer offenen Liste —
 // standardmässig ZUGEKLAPPT, damit die Übersicht bei vielen markierten
 // Stellen über mehrere Bücher nicht sofort unübersichtlich wird.
+//
+// Suchfunktion 09/2026 (Pendenz "Suchfunktion in Notizen") — ?suche=-Query-
+// Parameter (Eingabe über den Client Component NotizenSuche, debounced),
+// durchsucht Buchtitel, markierten Auszug UND eigene Notiz. Trifft die
+// Suche nur den Buchtitel, bleiben alle Einträge der Gruppe sichtbar;
+// trifft sie einzelne Einträge, werden nur diese gezeigt. Gruppen mit
+// Treffern öffnen sich beim Suchen automatisch (sonst müsste man jede
+// einzeln aufklappen, um den Treffer zu sehen).
 
 import Link from "next/link";
 import { db } from "../../src/db";
@@ -22,6 +30,7 @@ import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import { FELD_LABEL, type NotizFeld } from "../../src/lib/notizen";
 import EntfernenButton from "./EntfernenButton";
+import NotizenSuche from "./NotizenSuche";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +42,33 @@ function hexZuRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Hebt die ERSTE Fundstelle des Suchbegriffs in text hervor (genau wie
+// segmentiere() in app/lesen/[id]/Hervorhebbarer.tsx bei Mehrfachvorkommen
+// bewusst nur die erste Stelle markiert — für eine Einzelnutzer-App
+// ausreichend genau).
+function mitSuchtreffer(text: string, suche: string) {
+  if (!suche) return text;
+  const index = text.toLowerCase().indexOf(suche.toLowerCase());
+  if (index === -1) return text;
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark style={{ background: "rgba(36,35,31,.2)", borderRadius: 3, padding: "0 1px", color: "inherit" }}>
+        {text.slice(index, index + suche.length)}
+      </mark>
+      {text.slice(index + suche.length)}
+    </>
+  );
+}
+
 export default async function NotizenSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ kategorie?: string }>;
+  searchParams: Promise<{ kategorie?: string; suche?: string }>;
 }) {
-  const { kategorie: kategorieFilter } = await searchParams;
+  const { kategorie: kategorieFilter, suche: sucheRoh } = await searchParams;
+  const suche = (sucheRoh ?? "").trim();
+  const sucheLower = suche.toLowerCase();
   const [konto] = await db.select().from(konten).limit(1);
 
   if (!konto) {
@@ -91,7 +121,28 @@ export default async function NotizenSeite({
     eintraegeProKategorie.set(g.kategorie, (eintraegeProKategorie.get(g.kategorie) ?? 0) + g.eintraege.length);
   }
 
-  const gruppen = !kategorieFilter ? alleGruppen : alleGruppen.filter((g) => g.kategorie === kategorieFilter);
+  const gruppenKategorie = !kategorieFilter ? alleGruppen : alleGruppen.filter((g) => g.kategorie === kategorieFilter);
+
+  // Suche: trifft sie den Buchtitel, bleiben alle Einträge der Gruppe
+  // sichtbar (man sucht ja "das Buch") — sonst nur die Einträge, deren
+  // Auszug, eigene Notiz oder Feld-Label ("Zusammenfassung"/"Kernzitat"/…)
+  // den Begriff enthalten.
+  const gruppen = !suche
+    ? gruppenKategorie
+    : gruppenKategorie
+        .map((g) => {
+          const titelTrifft = g.titel.toLowerCase().includes(sucheLower);
+          const eintraege = titelTrifft
+            ? g.eintraege
+            : g.eintraege.filter(
+                (e) =>
+                  (e.textAuszug ?? "").toLowerCase().includes(sucheLower) ||
+                  (e.text ?? "").toLowerCase().includes(sucheLower) ||
+                  FELD_LABEL[e.feld as NotizFeld].toLowerCase().includes(sucheLower)
+              );
+          return { ...g, eintraege };
+        })
+        .filter((g) => g.eintraege.length > 0);
 
   const kategorieChipStyle = (aktiv: boolean, farbe?: string) => ({
     display: "inline-flex" as const,
@@ -105,6 +156,16 @@ export default async function NotizenSeite({
     background: farbe ? hexZuRgba(farbe, aktiv ? 0.9 : 0.16) : aktiv ? "#24231F" : "rgba(36,35,31,.08)",
     color: farbe ? "rgba(36,35,31,.85)" : aktiv ? "#FBFAF7" : "rgba(36,35,31,.75)",
   });
+
+  // Kategorie-Chip-Links behalten eine laufende Suche bei (Filter sollen
+  // sich kombinieren lassen, nicht sich gegenseitig zurücksetzen).
+  const chipHref = (kategorie?: string) => {
+    const params = new URLSearchParams();
+    if (kategorie) params.set("kategorie", kategorie);
+    if (suche) params.set("suche", suche);
+    const query = params.toString();
+    return query ? `/notizen?${query}` : "/notizen";
+  };
 
   return (
     <main
@@ -136,6 +197,8 @@ export default async function NotizenSeite({
       </div>
       <MenuButton />
 
+      {alleGruppen.length > 0 && <NotizenSuche initial={suche} />}
+
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
         {alleGruppen.length === 0 ? (
           <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
@@ -145,11 +208,11 @@ export default async function NotizenSeite({
           <>
             {kategorienVorhanden.length > 1 && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <Link href="/notizen">
+                <Link href={chipHref()}>
                   <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
                 </Link>
                 {kategorienVorhanden.map((k) => (
-                  <Link key={k} href={`/notizen?kategorie=${encodeURIComponent(k)}`}>
+                  <Link key={k} href={chipHref(k)}>
                     <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
                       <span>{KATEGORIE_LABEL[k] ?? k}</span>
                       <span style={{ opacity: 0.6, fontWeight: 700 }}>{eintraegeProKategorie.get(k) ?? 0}</span>
@@ -171,7 +234,9 @@ export default async function NotizenSeite({
                   textAlign: "center",
                 }}
               >
-                <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>Keine Notizen in dieser Kategorie.</span>
+                <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>
+                  {suche ? <>Keine Treffer für „{suche}“.</> : "Keine Notizen in dieser Kategorie."}
+                </span>
                 <Link href="/notizen">
                   <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
                 </Link>
@@ -179,7 +244,7 @@ export default async function NotizenSeite({
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {gruppen.map((gruppe) => (
-                  <details key={gruppe.buchinhaltId} className="notizen-buch">
+                  <details key={gruppe.buchinhaltId} className="notizen-buch" open={suche ? true : undefined}>
                     <summary
                       style={{
                         display: "flex",
@@ -196,7 +261,7 @@ export default async function NotizenSeite({
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[gruppe.kategorie] ?? "#ccc", flexShrink: 0 }} />
                       )}
                       <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17, flex: 1 }}>
-                        {gruppe.titel}
+                        {mitSuchtreffer(gruppe.titel, suche)}
                       </span>
                       <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)", flexShrink: 0 }}>{gruppe.eintraege.length}</span>
                     </summary>
@@ -229,10 +294,12 @@ export default async function NotizenSeite({
                           >
                             {FELD_LABEL[eintrag.feld as NotizFeld]}
                           </span>
-                          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.5 }}>„{eintrag.textAuszug}“</p>
+                          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.5 }}>
+                            „{mitSuchtreffer(eintrag.textAuszug ?? "", suche)}“
+                          </p>
                           {eintrag.text && (
                             <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: "rgba(36,35,31,.7)" }}>
-                              {eintrag.text}
+                              {mitSuchtreffer(eintrag.text, suche)}
                             </p>
                           )}
                           <EntfernenButton id={eintrag.id} />
