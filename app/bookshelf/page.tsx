@@ -21,6 +21,14 @@
 // quizRichtigAnzahl nur, wenn abgeschlossenAm noch null ist (isNull-Guard)
 // — ein erneuter Durchlauf überschreibt also weder Datum noch Ergebnis, und
 // Fortschritts Zähler ("Bücher gelesen", Trefferquote) bleiben unverändert.
+//
+// Kategorie-Filter (09/2026, Pendenz "Bibliothek: auch hier nach
+// Kategorien filtern") — gleiches Muster wie in der Wunschliste
+// (app/buecherliste/page.tsx): reiner ?kategorie=-Query-Parameter statt
+// Client-State, Chips nur für Kategorien, die unter "Bereit"/"Gelesen"
+// TATSÄCHLICH vorkommen. Das heutige (gepinnte) Buch bleibt bewusst IMMER
+// sichtbar, unabhängig vom Filter — es ist ja nicht Teil der gefilterten
+// Liste, sondern der aktuelle Lesefortschritt.
 
 import Link from "next/link";
 import { db } from "../../src/db";
@@ -32,6 +40,32 @@ import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 
 export const dynamic = "force-dynamic";
+
+// Kurzhelfer für die Kategorie-Chips, identisch zu app/buecherliste/page.tsx
+// (KATEGORIE_FARBE liefert volle Hex-Farben, für den abgeschwächten
+// "inaktiv"-Zustand der Chips wird davon eine transparente Variante
+// gebraucht).
+function hexZuRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function kategorieChipStyle(aktiv: boolean, farbe?: string) {
+  return {
+    display: "inline-flex" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    padding: "6px 12px",
+    borderRadius: 999,
+    fontFamily: "Helvetica, Arial, sans-serif",
+    fontWeight: 600,
+    fontSize: 14.5,
+    background: farbe ? hexZuRgba(farbe, aktiv ? 0.9 : 0.16) : aktiv ? "#24231F" : "rgba(36,35,31,.08)",
+    color: farbe ? "rgba(36,35,31,.85)" : aktiv ? "#FBFAF7" : "rgba(36,35,31,.75)",
+  };
+}
 
 function BuchIcon({ kategorie }: { kategorie: string }) {
   return (
@@ -55,7 +89,12 @@ function BuchIcon({ kategorie }: { kategorie: string }) {
   );
 }
 
-export default async function BookshelfSeite() {
+export default async function BookshelfSeite({
+  searchParams,
+}: {
+  searchParams: Promise<{ kategorie?: string }>;
+}) {
+  const { kategorie: kategorieFilter } = await searchParams;
   const [konto] = await db.select().from(konten).limit(1);
 
   if (!konto) {
@@ -121,7 +160,14 @@ export default async function BookshelfSeite() {
 
   const uebrige = alleImVorrat.filter((b) => b.buchinhaltId !== heutigesBuch?.buchinhaltId);
 
-  const gelesen = uebrige
+  // Nur Kategorien als Chip anzeigen, die unter den "übrigen" (nicht dem
+  // gepinnten heutigen Buch) Büchern tatsächlich vorkommen — sonst stünden
+  // bei einer kleinen Bibliothek meist leere Filter-Chips da.
+  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) => uebrige.some((b) => b.kategorie === k));
+
+  const uebrigeGefiltert = !kategorieFilter ? uebrige : uebrige.filter((b) => b.kategorie === kategorieFilter);
+
+  const gelesen = uebrigeGefiltert
     .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm != null)
     .sort(
       (a, b) =>
@@ -129,11 +175,12 @@ export default async function BookshelfSeite() {
         statusProBuchinhalt.get(a.buchinhaltId)!.abgeschlossenAm!.getTime()
     );
 
-  const bereit = uebrige
+  const bereit = uebrigeGefiltert
     .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm == null)
     .sort((a, b) => a.titel.localeCompare(b.titel));
 
   const gesamtAnzahl = alleImVorrat.length;
+  const gefilterteAnzahl = (heutigesBuch ? 1 : 0) + bereit.length + gelesen.length;
 
   return (
     <main
@@ -172,8 +219,27 @@ export default async function BookshelfSeite() {
           color: "rgba(36,35,31,.62)",
         }}
       >
-        {gesamtAnzahl === 1 ? "1 Buch fertig" : `${gesamtAnzahl} Bücher fertig`}
+        {kategorieFilter
+          ? `${gefilterteAnzahl} von ${gesamtAnzahl}`
+          : gesamtAnzahl === 1
+            ? "1 Buch fertig"
+            : `${gesamtAnzahl} Bücher fertig`}
       </span>
+
+      {kategorienVorhanden.length > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Link href="/bookshelf">
+            <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
+          </Link>
+          {kategorienVorhanden.map((k) => (
+            <Link key={k} href={`/bookshelf?kategorie=${encodeURIComponent(k)}`}>
+              <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
+                {KATEGORIE_LABEL[k] ?? k}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {gesamtAnzahl === 0 ? (
         <div
@@ -236,6 +302,15 @@ export default async function BookshelfSeite() {
                   </span>
                 )}
               </div>
+            </div>
+          )}
+
+          {kategorieFilter && bereit.length === 0 && gelesen.length === 0 && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center", padding: "20px 0" }}>
+              <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>Keine Bücher in dieser Kategorie.</span>
+              <Link href="/bookshelf">
+                <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
+              </Link>
             </div>
           )}
 

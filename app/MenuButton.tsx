@@ -24,6 +24,15 @@
 // diese Seite gerade über einen Klick auf einen Menü-Eintrag erreicht wurde
 // (Kette geht weiter, Anker bleibt) oder auf einem anderen Weg (neue Kette,
 // Anker wird diese Seite).
+//
+// ankerPfad (optional, 09/2026, Bug "Themenverteilung ohne Exit"): manche
+// Unterseiten (z.B. einstellungen/themenverteilung) haben selbst KEINEN
+// SchliessenButton und sind nur über einen festen Elternscreen erreichbar.
+// Wird von dort aus das Menü geöffnet, würde die Kette sonst genau diese
+// Unterseite als Rücksprungziel setzen — Schliessen auf der Zielseite
+// landet dann auf einer Seite ohne eigenen Ausweg (nur der Zurück-Pfeil).
+// ankerPfad überschreibt für diesen Fall den tatsächlichen Pfad durch den
+// bekannten, "richtigen" Elternscreen (hier: /einstellungen).
 
 "use client";
 
@@ -86,7 +95,7 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
   },
 ];
 
-export default function MenuButton() {
+export default function MenuButton({ ankerPfad }: { ankerPfad?: string } = {}) {
   const [offen, setOffen] = useState(false);
   const pathname = usePathname();
 
@@ -151,7 +160,7 @@ export default function MenuButton() {
                 href={eintrag.href}
                 onClick={() => {
                   setOffen(false);
-                  menuNavigationStarten(pathname);
+                  menuNavigationStarten(ankerPfad ?? pathname);
                 }}
                 style={{
                   display: "flex",
