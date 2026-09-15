@@ -42,10 +42,27 @@ const labelStil: React.CSSProperties = {
 export default async function NeuesBuchSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ fehler?: string; titel?: string; autor?: string; originalsprache?: string; notiz?: string; bald?: string }>;
+  searchParams: Promise<{
+    fehler?: string;
+    titel?: string;
+    autor?: string;
+    originalsprache?: string;
+    notiz?: string;
+    bald?: string;
+    doubletteTitel?: string;
+    doubletteAutor?: string;
+    doubletteExakt?: string;
+    doubletteStatus?: string;
+  }>;
 }) {
   const vorbelegung = await searchParams;
   const kategorieFehler = vorbelegung.fehler === "kategorie";
+  const doubletteFehler = vorbelegung.fehler === "doublette";
+  const doubletteStatusText = {
+    wunschliste: " — steht schon auf der Wunschliste.",
+    bereit: " — ist schon fertig produziert, bereit in der Bibliothek.",
+    gelesen: " — ist schon gelesen.",
+  }[vorbelegung.doubletteStatus ?? ""] ?? "";
 
   return (
     <main
@@ -89,7 +106,25 @@ export default async function NeuesBuchSeite({
         </div>
       )}
 
+      {doubletteFehler && (
+        <div
+          style={{
+            boxSizing: "border-box",
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: "rgba(36,35,31,.08)",
+            fontSize: 15,
+            lineHeight: 1.4,
+          }}
+        >
+          {vorbelegung.doubletteExakt === "1" ? "Ist bereits" : "Ist möglicherweise bereits"} in deinem Katalog: „
+          {vorbelegung.doubletteTitel}“{vorbelegung.doubletteAutor ? ` von ${vorbelegung.doubletteAutor}` : ""}
+          {doubletteStatusText} Trotzdem hinzufügen? Einfach nochmal auf Speichern tippen.
+        </div>
+      )}
+
       <form action={buchHinzufuegen} style={{ display: "flex", flexDirection: "column", gap: 18, flex: 1 }}>
+        <input type="hidden" name="ueberschreiben" value={doubletteFehler ? "on" : ""} />
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={labelStil} htmlFor="titel">Titel</label>
           <input
@@ -133,13 +168,14 @@ export default async function NeuesBuchSeite({
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={labelStil} htmlFor="originalsprache">Originalsprache</label>
+          <label style={labelStil} htmlFor="originalsprache">Originalsprache (optional)</label>
           <input
             style={feldStil}
             type="text"
             id="originalsprache"
             name="originalsprache"
-            defaultValue={vorbelegung.originalsprache ?? "Deutsch"}
+            defaultValue={vorbelegung.originalsprache ?? ""}
+            placeholder="Automatisch erkennen (Standard: Deutsch)"
           />
         </div>
 

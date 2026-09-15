@@ -27,6 +27,7 @@ import SchliessenButton from "../SchliessenButton";
 import PrioritaetToggle from "./PrioritaetToggle";
 import AufbereitenButton from "./AufbereitenButton";
 import LoeschenButton from "./LoeschenButton";
+import WunschlisteSuche from "./WunschlisteSuche";
 
 export const dynamic = "force-dynamic";
 
@@ -141,9 +142,9 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
 export default async function BuecherlisteSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ fehler?: string; kategorie?: string }>;
+  searchParams: Promise<{ fehler?: string; kategorie?: string; suche?: string }>;
 }) {
-  const { fehler, kategorie: kategorieFilter } = await searchParams;
+  const { fehler, kategorie: kategorieFilter, suche } = await searchParams;
   const [konto] = await db.select().from(konten).limit(1);
 
   if (!konto) {
@@ -205,11 +206,25 @@ export default async function BuecherlisteSeite({
   );
   const ohneKategorieVorhanden = zeilen.some((z) => z.kategorie === null);
 
-  const gefilterteZeilen = !kategorieFilter
+  const nachKategorieGefiltert = !kategorieFilter
     ? zeilen
     : kategorieFilter === "ohne"
       ? zeilen.filter((z) => z.kategorie === null)
       : zeilen.filter((z) => z.kategorie === kategorieFilter);
+
+  // Suchfunktion (09/2026, Pendenz "Doublettenerkennung + automatische
+  // Ergänzung von Buchdetails" — ergänzend dazu) — reiner Teilstring-
+  // Abgleich auf Titel/Autor, case-insensitiv, wirkt zusätzlich zum
+  // Kategorie-Filter (beide zusammen, nicht alternativ).
+  const sucheNormalisiert = (suche ?? "").trim().toLowerCase();
+  const gefilterteZeilen = !sucheNormalisiert
+    ? nachKategorieGefiltert
+    : nachKategorieGefiltert.filter((z) => {
+        const titel = (z.titel ?? z.rohTitel ?? "").toLowerCase();
+        const autor = (z.autor ?? z.rohAutor ?? "").toLowerCase();
+        return titel.includes(sucheNormalisiert) || autor.includes(sucheNormalisiert);
+      });
+  const filterAktiv = Boolean(kategorieFilter) || Boolean(sucheNormalisiert);
 
   // Klare Abgrenzung vorgemerkt/nicht vorgemerkt statt nur stiller Sortierung
   // + kleinem Flaggen-Icon (09/2026, Pendenz "Wunschliste: abgrenzen
@@ -339,8 +354,10 @@ export default async function BuecherlisteSeite({
           color: "rgba(36,35,31,.62)",
         }}
       >
-        {kategorieFilter ? `${gefilterteZeilen.length} von ${zeilen.length}` : zeilen.length} noch nicht vorbereitet
+        {filterAktiv ? `${gefilterteZeilen.length} von ${zeilen.length}` : zeilen.length} noch nicht vorbereitet
       </span>
+
+      {zeilen.length > 0 && <WunschlisteSuche initial={suche ?? ""} />}
 
       {kategorienVorhanden.length + (ohneKategorieVorhanden ? 1 : 0) > 1 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -476,7 +493,9 @@ export default async function BuecherlisteSeite({
             textAlign: "center",
           }}
         >
-          <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>Keine Einträge in dieser Kategorie.</span>
+          <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>
+            {sucheNormalisiert ? `Keine Treffer für „${suche}“.` : "Keine Einträge in dieser Kategorie."}
+          </span>
           <Link href="/buecherliste">
             <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
           </Link>

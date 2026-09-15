@@ -24,17 +24,26 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { buecher } from "../db/schema";
 
-type OpenLibraryDoc = {
+export type OpenLibraryDoc = {
+  title?: string;
+  author_name?: string[];
   number_of_pages_median?: number;
+  language?: string[];
 };
 
-async function seitenzahlSuchen(titel: string, autor: string): Promise<number | null> {
+// Gemeinsamer Open-Library-Suchaufruf (09/2026, Pendenz "Doubletten-
+// erkennung + automatische Ergänzung von Buchdetails") — vorher hier fest
+// auf die Seitenzahl-Felder verdrahtet, jetzt mit wählbaren `felder`, damit
+// src/lib/buchdetails.ts (Autor/Sprache nachschlagen) dieselbe Anfrage-
+// Logik samt Fehlerbehandlung nutzen kann, statt sie zu duplizieren.
+export async function openLibraryDokumente(
+  titel: string,
+  autor: string,
+  felder = "title,author_name,number_of_pages_median",
+  limit = 5
+): Promise<OpenLibraryDoc[]> {
   try {
-    const params = new URLSearchParams({
-      title: titel,
-      fields: "title,author_name,number_of_pages_median",
-      limit: "5",
-    });
+    const params = new URLSearchParams({ title: titel, fields: felder, limit: String(limit) });
     if (autor) params.set("author", autor);
 
     const url = `https://openlibrary.org/search.json?${params.toString()}`;
@@ -42,34 +51,39 @@ async function seitenzahlSuchen(titel: string, autor: string): Promise<number | 
 
     if (!res.ok) {
       console.error(
-        `[umfangNachschlagen] HTTP ${res.status} für "${titel}"${autor ? ` von ${autor}` : ""}:`,
+        `[openLibraryDokumente] HTTP ${res.status} für "${titel}"${autor ? ` von ${autor}` : ""}:`,
         await res.text()
       );
-      return null;
+      return [];
     }
 
     const data = (await res.json()) as { docs?: OpenLibraryDoc[] };
-    const treffer = data.docs?.find(
-      (doc) => typeof doc.number_of_pages_median === "number" && doc.number_of_pages_median > 0
-    );
-
-    if (!treffer?.number_of_pages_median) {
-      // Legitimer, erwarteter Fall (z.B. unregelmässig editierte
-      // Mehrbänder) — trotzdem geloggt, damit sich bei Bedarf nachvollziehen
-      // lässt, ob es an fehlenden Seitenzahl-Daten liegt (Dokumente
-      // gefunden, aber ohne number_of_pages_median) oder an keinerlei Treffer.
-      console.log(
-        `[umfangNachschlagen] Kein Seitenzahl-Treffer für "${titel}"${autor ? ` von ${autor}` : ""} ` +
-          `(${data.docs?.length ?? 0} Dokument(e) gefunden).`
-      );
-      return null;
-    }
-
-    return treffer.number_of_pages_median;
+    return data.docs ?? [];
   } catch (err) {
-    console.error(`[umfangNachschlagen] Fehler für "${titel}"${autor ? ` von ${autor}` : ""}:`, err);
+    console.error(`[openLibraryDokumente] Fehler für "${titel}"${autor ? ` von ${autor}` : ""}:`, err);
+    return [];
+  }
+}
+
+async function seitenzahlSuchen(titel: string, autor: string): Promise<number | null> {
+  const docs = await openLibraryDokumente(titel, autor, "title,author_name,number_of_pages_median");
+  const treffer = docs.find(
+    (doc) => typeof doc.number_of_pages_median === "number" && doc.number_of_pages_median > 0
+  );
+
+  if (!treffer?.number_of_pages_median) {
+    // Legitimer, erwarteter Fall (z.B. unregelmässig editierte
+    // Mehrbänder) — trotzdem geloggt, damit sich bei Bedarf nachvollziehen
+    // lässt, ob es an fehlenden Seitenzahl-Daten liegt (Dokumente
+    // gefunden, aber ohne number_of_pages_median) oder an keinerlei Treffer.
+    console.log(
+      `[umfangNachschlagen] Kein Seitenzahl-Treffer für "${titel}"${autor ? ` von ${autor}` : ""} ` +
+        `(${docs.length} Dokument(e) gefunden).`
+    );
     return null;
   }
+
+  return treffer.number_of_pages_median;
 }
 
 export async function umfangNachschlagen(titel: string, autor: string): Promise<string | null> {
