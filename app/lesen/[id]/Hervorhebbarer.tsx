@@ -73,6 +73,7 @@ export default function Hervorhebbarer({
   text,
   buchinhaltId,
   feld,
+  kernaussageId,
   bestehende,
   akzent,
   style,
@@ -82,6 +83,10 @@ export default function Hervorhebbarer({
   text: string;
   buchinhaltId: string;
   feld: NotizFeld;
+  // Nur für feld === "kernaussage_text"/"kernaussage_erklaerung" gesetzt
+  // (09/2026, Pendenz "Hervorhebungen auch auf Kernaussagen erlauben") —
+  // ordnet die Hervorhebung der konkreten Kernaussage zu.
+  kernaussageId?: string;
   bestehende: Hervorhebung[];
   akzent: string;
   style?: React.CSSProperties;
@@ -129,7 +134,7 @@ export default function Hervorhebbarer({
     setAuswahl(null);
     window.getSelection()?.removeAllRanges();
     startTransition(async () => {
-      const zeile = await hervorhebungErstellen(buchinhaltId, feld, textAuszug);
+      const zeile = await hervorhebungErstellen(buchinhaltId, feld, textAuszug, kernaussageId);
       if (zeile && zeile.textAuszug) {
         setHervorhebungen((h) => [
           ...h,

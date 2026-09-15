@@ -64,6 +64,12 @@ export const notizFeldEnum = pgEnum("notiz_feld", [
   "autorenhintergrund",
   "kernzitat_original",
   "kernzitat_uebersetzung",
+  // Hervorhebungen auf dem Kernaussagen-Screen (09/2026, Pendenz
+  // "Hervorhebungen auch auf Kernaussagen erlauben") — zwei Varianten wie
+  // bei kernzitat_original/-uebersetzung, da eine Kernaussage aus zwei
+  // separat markierbaren Texten besteht (kurze Aussage + Erklärung).
+  "kernaussage_text",
+  "kernaussage_erklaerung",
 ]);
 
 // ---------------------------------------------------------------------------

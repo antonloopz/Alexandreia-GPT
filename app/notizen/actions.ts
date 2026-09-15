@@ -15,7 +15,17 @@ import { faelligkeitFuer } from "../../src/lib/wiederholung";
 
 export type { NotizFeld };
 
-export async function hervorhebungErstellen(buchinhaltId: string, feld: NotizFeld, textAuszugRoh: string) {
+export async function hervorhebungErstellen(
+  buchinhaltId: string,
+  feld: NotizFeld,
+  textAuszugRoh: string,
+  // Nur gesetzt für Hervorhebungen auf dem Kernaussagen-Screen (09/2026,
+  // Pendenz "Hervorhebungen auch auf Kernaussagen erlauben") — verknüpft
+  // die Hervorhebung mit der konkreten Kernaussage, da mehrere Kernaussagen
+  // desselben Buchinhalts sonst über dasselbe feld nicht unterscheidbar
+  // wären.
+  kernaussageId?: string
+) {
   const [konto] = await db.select().from(konten).limit(1);
   if (!konto) return null;
 
@@ -24,7 +34,7 @@ export async function hervorhebungErstellen(buchinhaltId: string, feld: NotizFel
 
   const [zeile] = await db
     .insert(notizen)
-    .values({ kontoId: konto.id, buchinhaltId, feld, textAuszug })
+    .values({ kontoId: konto.id, buchinhaltId, kernaussageId, feld, textAuszug })
     .returning();
   return zeile;
 }

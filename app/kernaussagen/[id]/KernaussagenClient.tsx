@@ -12,8 +12,23 @@ import Link from "next/link";
 import MenuButton from "../../MenuButton";
 import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
+import Hervorhebbarer, { type Hervorhebung } from "../../lesen/[id]/Hervorhebbarer";
+import type { NotizFeld } from "../../../src/lib/notizen";
 
-type Kernaussage = { text: string; erklaerung: string };
+type Kernaussage = { id: string; text: string; erklaerung: string };
+
+// Rohzeile aus der DB (app/kernaussagen/[id]/page.tsx) — inWiederholung ist
+// dort bereits aus repetitionselemente vorberechnet, kernaussageId/feld
+// bleiben roh, damit hier pro Kernaussage+Feld gefiltert werden kann
+// (mehrere Kernaussagen teilen sich sonst dasselbe feld).
+type HervorhebungRoh = {
+  id: string;
+  kernaussageId: string | null;
+  feld: string | null;
+  textAuszug: string | null;
+  text: string | null;
+  inWiederholung: boolean;
+};
 
 export default function KernaussagenClient({
   buchinhaltId,
@@ -21,16 +36,31 @@ export default function KernaussagenClient({
   akzent,
   kategorieLabel,
   kernaussagen,
+  hervorhebungen,
 }: {
   buchinhaltId: string;
   titel: string;
   akzent: string;
   kategorieLabel: string;
   kernaussagen: Kernaussage[];
+  hervorhebungen: HervorhebungRoh[];
 }) {
   const [index, setIndex] = useState(0);
   const aktuelle = kernaussagen[index];
   const istLetzte = index === kernaussagen.length - 1;
+
+  // Hervorhebungen dieser EINEN Kernaussage, getrennt nach Text/Erklärung
+  // (09/2026, Pendenz "Hervorhebungen auch auf Kernaussagen erlauben") —
+  // gleiches Muster wie nachFeld() in app/lesen/[id]/page.tsx.
+  const nachFeld = (feld: NotizFeld): Hervorhebung[] =>
+    hervorhebungen
+      .filter((h) => h.kernaussageId === aktuelle.id && h.feld === feld && h.textAuszug)
+      .map((h) => ({
+        id: h.id,
+        textAuszug: h.textAuszug as string,
+        text: h.text,
+        inWiederholung: h.inWiederholung,
+      }));
 
   return (
     <main
@@ -107,10 +137,26 @@ export default function KernaussagenClient({
         >
           Kernaussage {index + 1}
         </span>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 29, lineHeight: 1.2 }}>
-          {aktuelle.text}
-        </span>
-        <p style={{ margin: 0, fontSize: 18, lineHeight: 1.6 }}>{aktuelle.erklaerung}</p>
+        <Hervorhebbarer
+          key={`${aktuelle.id}-text`}
+          text={aktuelle.text}
+          buchinhaltId={buchinhaltId}
+          feld="kernaussage_text"
+          kernaussageId={aktuelle.id}
+          bestehende={nachFeld("kernaussage_text")}
+          akzent={akzent}
+          style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 29, lineHeight: 1.2 }}
+        />
+        <Hervorhebbarer
+          key={`${aktuelle.id}-erklaerung`}
+          text={aktuelle.erklaerung}
+          buchinhaltId={buchinhaltId}
+          feld="kernaussage_erklaerung"
+          kernaussageId={aktuelle.id}
+          bestehende={nachFeld("kernaussage_erklaerung")}
+          akzent={akzent}
+          style={{ fontSize: 18, lineHeight: 1.6 }}
+        />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>

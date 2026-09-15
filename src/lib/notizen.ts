@@ -10,7 +10,13 @@ export type NotizFeld =
   | "entstehungsgeschichte"
   | "autorenhintergrund"
   | "kernzitat_original"
-  | "kernzitat_uebersetzung";
+  | "kernzitat_uebersetzung"
+  // Kernaussagen-Screen (09/2026, Pendenz "Hervorhebungen auch auf
+  // Kernaussagen erlauben") — zwei Varianten wie bei kernzitat_original/
+  // -uebersetzung: die kurze Aussage selbst und ihre Erklärung sind
+  // getrennt markierbar.
+  | "kernaussage_text"
+  | "kernaussage_erklaerung";
 
 export const FELD_LABEL: Record<NotizFeld, string> = {
   zusammenfassung: "Zusammenfassung",
@@ -18,4 +24,6 @@ export const FELD_LABEL: Record<NotizFeld, string> = {
   autorenhintergrund: "Autor",
   kernzitat_original: "Kernzitat",
   kernzitat_uebersetzung: "Kernzitat",
+  kernaussage_text: "Kernaussage",
+  kernaussage_erklaerung: "Kernaussage",
 };

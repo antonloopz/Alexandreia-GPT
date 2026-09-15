@@ -5,8 +5,8 @@
 
 import { notFound } from "next/navigation";
 import { db } from "../../../src/db";
-import { buchinhalte, buecher, kernaussagen } from "../../../src/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { buchinhalte, buecher, kernaussagen, konten, notizen, repetitionselemente } from "../../../src/db/schema";
+import { and, eq, asc, isNotNull } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import KernaussagenClient from "./KernaussagenClient";
 
@@ -24,12 +24,50 @@ export default async function KernaussagenSeite({ params }: { params: Promise<{ 
   if (!buch) notFound();
 
   const liste = await db
-    .select({ text: kernaussagen.text, erklaerung: kernaussagen.erklaerung })
+    .select({ id: kernaussagen.id, text: kernaussagen.text, erklaerung: kernaussagen.erklaerung })
     .from(kernaussagen)
     .where(eq(kernaussagen.buchinhaltId, id))
     .orderBy(asc(kernaussagen.reihenfolge));
 
   if (liste.length === 0) notFound();
+
+  // Bestehende Hervorhebungen auf DIESEM Screen (09/2026, Pendenz
+  // "Hervorhebungen auch auf Kernaussagen erlauben") — analog zum
+  // Lesen-Screen (app/lesen/[id]/page.tsx), hier aber zusätzlich mit
+  // kernaussageId, da mehrere Kernaussagen sich sonst über dasselbe feld
+  // nicht unterscheiden liessen.
+  const [konto] = await db.select().from(konten).limit(1);
+  const hervorhebungenZeilen = konto
+    ? await db
+        .select({
+          id: notizen.id,
+          kernaussageId: notizen.kernaussageId,
+          feld: notizen.feld,
+          textAuszug: notizen.textAuszug,
+          text: notizen.text,
+        })
+        .from(notizen)
+        .where(and(eq(notizen.buchinhaltId, id), eq(notizen.kontoId, konto.id)))
+    : [];
+
+  // Welche dieser Hervorhebungen bereits zur Wiederholung hinzugefügt sind
+  // (gleiches Muster wie app/lesen/[id]/page.tsx).
+  const wiederholteZeilen = konto
+    ? await db
+        .select({ notizId: repetitionselemente.notizId })
+        .from(repetitionselemente)
+        .where(and(eq(repetitionselemente.kontoId, konto.id), isNotNull(repetitionselemente.notizId)))
+    : [];
+  const wiederholtSet = new Set(wiederholteZeilen.map((w) => w.notizId));
+
+  const hervorhebungen = hervorhebungenZeilen.map((h) => ({
+    id: h.id,
+    kernaussageId: h.kernaussageId,
+    feld: h.feld,
+    textAuszug: h.textAuszug,
+    text: h.text,
+    inWiederholung: wiederholtSet.has(h.id),
+  }));
 
   return (
     <KernaussagenClient
@@ -38,6 +76,7 @@ export default async function KernaussagenSeite({ params }: { params: Promise<{ 
       akzent={KATEGORIE_FARBE[buch.kategorie] ?? "var(--paper)"}
       kategorieLabel={KATEGORIE_LABEL[buch.kategorie] ?? buch.kategorie}
       kernaussagen={liste}
+      hervorhebungen={hervorhebungen}
     />
   );
 }
