@@ -52,6 +52,10 @@ export type BereitesBuch = {
   titel: string;
   autor: string;
   kategorie: string;
+  // Produktionsdatum (buchinhalte.erstelltAm) — für die "hinzugefügt"-
+  // Anzeige in Bookshelfs "Bereit"-Abschnitt und Homes "Weiterlesen"-Liste
+  // (09/2026, Pendenz "Hinzugefügt-Datum").
+  erstelltAm: Date;
 };
 
 // Wie BereitesBuch, zusätzlich mit Umfangsangabe — für Homes
@@ -255,6 +259,7 @@ export async function bereiteBuecher(kontoId: string, limit = 3): Promise<Bereit
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
+      erstelltAm: buchinhalte.erstelltAm,
     })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
@@ -303,6 +308,7 @@ export async function naechsteBuecherVorschau(
       kategorie: buecher.kategorie,
       umfang: buecher.umfang,
       zusammenfassung: buchinhalte.zusammenfassung,
+      erstelltAm: buchinhalte.erstelltAm,
     })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
@@ -338,6 +344,7 @@ export async function naechsteBuecherVorschau(
       kategorie: gewaehlt.kategorie,
       umfang: gewaehlt.umfang,
       wortanzahl: wortanzahl(gewaehlt.zusammenfassung),
+      erstelltAm: gewaehlt.erstelltAm,
     });
     letzteKategorieDatum.set(gewaehlt.kategorie, simuliertesJetzt);
     pool = pool.filter((k) => k.buchinhaltId !== gewaehlt.buchinhaltId);

@@ -36,7 +36,7 @@ import { buchinhalte, buecher, gezeigteBuecher, konten } from "../../src/db/sche
 import { and, eq } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
 import { KategorieIcon } from "../../src/lib/kategorieIcons";
-import { umfangZeileAusText } from "../../src/lib/darstellung";
+import { relativesDatum, umfangZeileAusText } from "../../src/lib/darstellung";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 
@@ -127,6 +127,7 @@ export default async function BookshelfSeite({
       kategorie: buecher.kategorie,
       umfang: buecher.umfang,
       zusammenfassung: buchinhalte.zusammenfassung,
+      erstelltAm: buchinhalte.erstelltAm,
     })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
@@ -342,7 +343,9 @@ export default async function BookshelfSeite({
                   <BuchIcon kategorie={buch.kategorie} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
                     <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buch.titel}</span>
-                    <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{buch.autor}</span>
+                    <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>
+                      {buch.autor} · hinzugefügt {relativesDatum(buch.erstelltAm)}
+                    </span>
                     {umfangZeileAusText(buch.umfang, buch.zusammenfassung) && (
                       <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
                         {umfangZeileAusText(buch.umfang, buch.zusammenfassung)}

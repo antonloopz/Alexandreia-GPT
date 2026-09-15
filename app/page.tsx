@@ -16,7 +16,7 @@ import {
   bereiteBuecher,
   heuteAbgeschlosseneBuecher,
 } from "../src/lib/tagesbuch";
-import { umfangZeileAusWortanzahl } from "../src/lib/darstellung";
+import { relativesDatum, umfangZeileAusWortanzahl } from "../src/lib/darstellung";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../src/lib/kategorien";
 import MenuButton from "./MenuButton";
 import StatusBarColor from "./StatusBarColor";
@@ -169,7 +169,9 @@ export default async function Home() {
                       <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 16 }}>
                         {wb.titel}
                       </span>
-                      <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{wb.autor}</span>
+                      <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>
+                        {wb.autor} · hinzugefügt {relativesDatum(wb.erstelltAm)}
+                      </span>
                     </div>
                     <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>›</span>
                   </div>
@@ -266,7 +268,9 @@ export default async function Home() {
                       <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
                         {wb.titel}
                       </span>
-                      <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{wb.autor}</span>
+                      <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>
+                        {wb.autor} · hinzugefügt {relativesDatum(wb.erstelltAm)}
+                      </span>
                     </div>
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#24231F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBFAF7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
