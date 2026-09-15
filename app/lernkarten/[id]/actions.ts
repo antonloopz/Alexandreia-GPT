@@ -49,3 +49,48 @@ export async function bewertungSpeichern(kernaussageId: string, bewertung: Bewer
     });
   }
 }
+
+// Analog zu bewertungSpeichern, aber für eine vom Nutzer selbst zur
+// Wiederholung hinzugefügte Hervorhebung/Notiz (repetitionselemente.notizId
+// statt .kernaussageId) — Pendenz "Notizen/Hervorhebungen optional in die
+// Wiederholung aufnehmen", 09/2026. Die Wiederholung-Sitzung (SitzungClient)
+// ruft je nach Kartentyp die eine oder die andere Funktion auf; die
+// eigentliche Intervall-Logik (naechsteStufe/faelligkeitFuer) ist identisch.
+export async function hervorhebungBewertungSpeichern(notizId: string, bewertung: Bewertung) {
+  const [konto] = await db.select().from(konten).limit(1);
+  if (!konto) return;
+
+  const [bestehend] = await db
+    .select()
+    .from(repetitionselemente)
+    .where(
+      and(
+        eq(repetitionselemente.kontoId, konto.id),
+        eq(repetitionselemente.notizId, notizId)
+      )
+    );
+
+  const aktuelleStufe = bestehend?.intervallstufe ?? 0;
+  const neueStufe = naechsteStufe(bewertung, aktuelleStufe);
+  const faelligkeit = faelligkeitFuer(neueStufe);
+
+  if (bestehend) {
+    await db
+      .update(repetitionselemente)
+      .set({
+        intervallstufe: neueStufe,
+        naechsteFaelligkeit: faelligkeit,
+        letzteBewertung: bewertung,
+        aktualisiertAm: new Date(),
+      })
+      .where(eq(repetitionselemente.id, bestehend.id));
+  } else {
+    await db.insert(repetitionselemente).values({
+      kontoId: konto.id,
+      notizId,
+      naechsteFaelligkeit: faelligkeit,
+      intervallstufe: neueStufe,
+      letzteBewertung: bewertung,
+    });
+  }
+}

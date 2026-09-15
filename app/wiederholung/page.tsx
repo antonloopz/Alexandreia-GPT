@@ -19,6 +19,7 @@ import {
   kernaussagen,
   konten,
   lernkarten,
+  notizen,
   repetitionselemente,
 } from "../../src/db/schema";
 import { and, asc, eq, gt, lte } from "drizzle-orm";
@@ -39,7 +40,7 @@ export default async function WiederholungSeite() {
     );
   }
 
-  const faellig = await db
+  const faelligLernkarten = await db
     .select({
       kernaussageId: repetitionselemente.kernaussageId,
       naechsteFaelligkeit: repetitionselemente.naechsteFaelligkeit,
@@ -58,11 +59,41 @@ export default async function WiederholungSeite() {
   // Pro Kernaussage nur eine Karte zählen (falls mehrere Lernkarten
   // existieren, zählt nur die erste).
   const gesehen = new Set<string>();
-  const zeilen = faellig.filter((z) => {
-    if (gesehen.has(z.kernaussageId)) return false;
-    gesehen.add(z.kernaussageId);
+  const lernkartenZeilen = faelligLernkarten.filter((z) => {
+    // kernaussageId ist hier wegen des innerJoin auf kernaussagen immer
+    // gesetzt — nur die Spalte selbst ist wegen des neuen notizId-Zweigs
+    // (siehe Schema) jetzt allgemein nullable.
+    const kernaussageId = z.kernaussageId as string;
+    if (gesehen.has(kernaussageId)) return false;
+    gesehen.add(kernaussageId);
     return true;
   });
+
+  // Fällige, vom Nutzer selbst zur Wiederholung hinzugefügte Hervorhebungen
+  // (repetitionselemente.notizId statt .kernaussageId) — Pendenz "Notizen/
+  // Hervorhebungen optional in die Wiederholung aufnehmen", 09/2026. Kein
+  // Dedup-Schritt nötig: pro notizId existiert höchstens eine
+  // repetitionselemente-Zeile (siehe wiederholungHinzufuegen), also kein
+  // Fan-out wie bei mehreren Lernkarten pro Kernaussage.
+  const hervorhebungenZeilen = await db
+    .select({
+      notizId: repetitionselemente.notizId,
+      naechsteFaelligkeit: repetitionselemente.naechsteFaelligkeit,
+      buchinhaltId: buchinhalte.id,
+      titel: buecher.titel,
+    })
+    .from(repetitionselemente)
+    .innerJoin(notizen, eq(repetitionselemente.notizId, notizen.id))
+    .innerJoin(buchinhalte, eq(notizen.buchinhaltId, buchinhalte.id))
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(and(eq(repetitionselemente.kontoId, konto.id), lte(repetitionselemente.naechsteFaelligkeit, heute)))
+    .orderBy(asc(repetitionselemente.naechsteFaelligkeit));
+
+  // Beide Quellen vereint, chronologisch nach Fälligkeit — "zeilen" zählt
+  // jetzt fällige Lernkarten UND fällige Hervorhebungen zusammen.
+  const zeilen = [...lernkartenZeilen, ...hervorhebungenZeilen].sort(
+    (a, b) => a.naechsteFaelligkeit.getTime() - b.naechsteFaelligkeit.getTime()
+  );
 
   // Pro Buch gruppieren — eine Zeile je Buch statt je Karte. Reihenfolge
   // bleibt die der ersten fälligen Karte des Buchs (zeilen ist bereits

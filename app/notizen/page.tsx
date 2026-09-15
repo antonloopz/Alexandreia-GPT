@@ -23,13 +23,14 @@
 
 import Link from "next/link";
 import { db } from "../../src/db";
-import { buchinhalte, buecher, konten, notizen } from "../../src/db/schema";
+import { buchinhalte, buecher, konten, notizen, repetitionselemente } from "../../src/db/schema";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import { FELD_LABEL, type NotizFeld } from "../../src/lib/notizen";
 import EntfernenButton from "./EntfernenButton";
+import WiederholungButton from "./WiederholungButton";
 import NotizenSuche from "./NotizenSuche";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,15 @@ export default async function NotizenSeite({
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(and(eq(notizen.kontoId, konto.id), isNotNull(notizen.textAuszug)))
     .orderBy(desc(notizen.erstelltAm));
+
+  // Welche dieser Hervorhebungen bereits zur Wiederholung hinzugefügt sind
+  // (Pendenz "Notizen/Hervorhebungen optional in die Wiederholung
+  // aufnehmen", 09/2026) — als Set für den WiederholungButton pro Eintrag.
+  const wiederholteZeilen = await db
+    .select({ notizId: repetitionselemente.notizId })
+    .from(repetitionselemente)
+    .where(and(eq(repetitionselemente.kontoId, konto.id), isNotNull(repetitionselemente.notizId)));
+  const wiederholtSet = new Set(wiederholteZeilen.map((w) => w.notizId));
 
   type Zeile = (typeof zeilen)[number];
   type Gruppe = { buchinhaltId: string; titel: string; kategorie: string | null; eintraege: Zeile[] };
@@ -302,7 +312,10 @@ export default async function NotizenSeite({
                               {mitSuchtreffer(eintrag.text, suche)}
                             </p>
                           )}
-                          <EntfernenButton id={eintrag.id} />
+                          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                            <WiederholungButton notizId={eintrag.id} aktiv={wiederholtSet.has(eintrag.id)} />
+                            <EntfernenButton id={eintrag.id} />
+                          </div>
                         </div>
                       ))}
                     </div>

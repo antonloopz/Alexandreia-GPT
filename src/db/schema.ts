@@ -205,9 +205,17 @@ export const repetitionselemente = pgTable("repetitionselemente", {
   kontoId: uuid()
     .notNull()
     .references(() => konten.id),
-  kernaussageId: uuid()
-    .notNull()
-    .references(() => kernaussagen.id),
+  // Genau eines von kernaussageId/notizId ist gesetzt: automatisch erzeugte
+  // Lernkarten-Wiederholung (kernaussageId) ODER eine vom Nutzer selbst zur
+  // Wiederholung hinzugefügte Hervorhebung/Notiz (notizId) — Pendenz
+  // "Notizen/Hervorhebungen optional in die Wiederholung aufnehmen", 09/2026.
+  // Beide nullable statt eines diskriminierenden Enums, da dasselbe Muster
+  // bereits an anderer Stelle im Schema verwendet wird (z.B. notizen selbst).
+  // onDelete cascade bei notizId, damit das Löschen einer Hervorhebung
+  // (hervorhebungLoeschen) nicht an einer verbleibenden Wiederholungs-Zeile
+  // scheitert.
+  kernaussageId: uuid().references(() => kernaussagen.id),
+  notizId: uuid().references(() => notizen.id, { onDelete: "cascade" }),
   naechsteFaelligkeit: date({ mode: "date" }).notNull(),
   // Index in die Intervallstufen 1/3/7/16/35 Tage
   intervallstufe: integer().notNull().default(0),
@@ -302,5 +310,9 @@ export const repetitionselementeRelations = relations(repetitionselemente, ({ on
   kernaussage: one(kernaussagen, {
     fields: [repetitionselemente.kernaussageId],
     references: [kernaussagen.id],
+  }),
+  notiz: one(notizen, {
+    fields: [repetitionselemente.notizId],
+    references: [notizen.id],
   }),
 }));

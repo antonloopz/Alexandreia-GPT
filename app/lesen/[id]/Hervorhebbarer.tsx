@@ -15,10 +15,19 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { hervorhebungErstellen, hervorhebungLoeschen, notizSpeichern } from "../../notizen/actions";
+import {
+  hervorhebungErstellen,
+  hervorhebungLoeschen,
+  notizSpeichern,
+  wiederholungHinzufuegen,
+  wiederholungEntfernen,
+} from "../../notizen/actions";
 import type { NotizFeld } from "../../../src/lib/notizen";
 
-export type Hervorhebung = { id: string; textAuszug: string; text: string | null };
+// inWiederholung: ob diese Hervorhebung bereits zur Wiederholung (Spaced
+// Repetition) hinzugefügt wurde — Pendenz "Notizen/Hervorhebungen optional
+// in die Wiederholung aufnehmen", 09/2026.
+export type Hervorhebung = { id: string; textAuszug: string; text: string | null; inWiederholung: boolean };
 
 // Dunklere, volldeckende Variante der Kategoriefarbe — für die
 // Hervorhebungs-Markierung auf dem Lesen-Screen, dessen <main> selbst mit
@@ -122,7 +131,10 @@ export default function Hervorhebbarer({
     startTransition(async () => {
       const zeile = await hervorhebungErstellen(buchinhaltId, feld, textAuszug);
       if (zeile && zeile.textAuszug) {
-        setHervorhebungen((h) => [...h, { id: zeile.id, textAuszug: zeile.textAuszug!, text: zeile.text }]);
+        setHervorhebungen((h) => [
+          ...h,
+          { id: zeile.id, textAuszug: zeile.textAuszug!, text: zeile.text, inWiederholung: false },
+        ]);
       }
     });
   }
@@ -151,6 +163,26 @@ export default function Hervorhebbarer({
     setPopover(null);
     startTransition(() => {
       hervorhebungLoeschen(hervorhebung.id);
+    });
+  }
+
+  // Toggle "Zur Wiederholung hinzufügen" / "In Wiederholung" im Popover —
+  // Pendenz "Notizen/Hervorhebungen optional in die Wiederholung
+  // aufnehmen", 09/2026. Analog zum WiederholungButton auf der Notizen-
+  // Übersicht (app/notizen/WiederholungButton.tsx), hier aber inline statt
+  // als eigene Komponente, da der Popover-State ohnehin lokal ist.
+  function wiederholungUmschalten() {
+    if (!popover) return;
+    const { hervorhebung } = popover;
+    const neu = !hervorhebung.inWiederholung;
+    setHervorhebungen((hs) => hs.map((h) => (h.id === hervorhebung.id ? { ...h, inWiederholung: neu } : h)));
+    setPopover((p) => (p ? { ...p, hervorhebung: { ...p.hervorhebung, inWiederholung: neu } } : p));
+    startTransition(() => {
+      if (neu) {
+        wiederholungHinzufuegen(hervorhebung.id);
+      } else {
+        wiederholungEntfernen(hervorhebung.id);
+      }
     });
   }
 
@@ -251,6 +283,31 @@ export default function Hervorhebbarer({
                 background: "none",
               }}
             />
+            <button
+              onClick={wiederholungUmschalten}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                alignSelf: "flex-start",
+                border: "none",
+                background: "none",
+                padding: 0,
+                color: popover.hervorhebung.inWiederholung ? "#24231F" : "rgba(36,35,31,.6)",
+                fontFamily: "Helvetica, Arial, sans-serif",
+                fontWeight: popover.hervorhebung.inWiederholung ? 600 : 400,
+                fontSize: 13.5,
+                cursor: "pointer",
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M4 12a8 8 0 0 1 14-5.3" />
+                <path d="M20 12a8 8 0 0 1-14 5.3" />
+                <path d="M18 3v4h-4" />
+                <path d="M6 21v-4h4" />
+              </svg>
+              {popover.hervorhebung.inWiederholung ? "In Wiederholung" : "Zur Wiederholung"}
+            </button>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
               <button
                 onClick={hervorhebungEntfernen}

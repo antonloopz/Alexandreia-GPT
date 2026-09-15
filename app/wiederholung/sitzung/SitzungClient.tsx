@@ -7,17 +7,44 @@
 // Server Action wie die Lernkarten-Bewertung (bewertungSpeichern) — die
 // repetitionselemente-Logik ist identisch, nur die Quelle der fälligen
 // Karten unterscheidet sich.
+//
+// 09/2026, Pendenz "Notizen/Hervorhebungen optional in die Wiederholung
+// aufnehmen": eine Sitzung kann jetzt zwei Kartentypen mischen — die
+// klassische Lernkarte (Frage/Antwort, automatisch aus einer Kernaussage
+// erzeugt) UND eine vom Nutzer selbst hinzugefügte Hervorhebung (Zitat +
+// optionale eigene Notiz). Beide nutzen dieselben 3 Bewertungs-Chips, aber
+// unterschiedliche Server Actions zum Speichern (die Fälligkeits-Logik
+// selbst ist identisch, nur der Fremdschlüssel unterscheidet sich).
 
 "use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { bewertungSpeichern } from "../../lernkarten/[id]/actions";
+import { bewertungSpeichern, hervorhebungBewertungSpeichern } from "../../lernkarten/[id]/actions";
 import MenuButton from "../../MenuButton";
 
-type Karte = { kernaussageId: string; titel: string; frage: string; antwort: string };
+export type Karte =
+  | { typ: "lernkarte"; kernaussageId: string; titel: string; frage: string; antwort: string }
+  | { typ: "hervorhebung"; notizId: string; titel: string; textAuszug: string; text: string | null };
 type Bewertung = "nicht_gewusst" | "unsicher" | "gewusst";
+
+function FeldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        fontFamily: "Helvetica, Arial, sans-serif",
+        fontWeight: 700,
+        fontSize: 14,
+        letterSpacing: ".06em",
+        textTransform: "uppercase",
+        color: "rgba(36,35,31,.6)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
 
 export default function SitzungClient({ karten }: { karten: Karte[] }) {
   const [index, setIndex] = useState(0);
@@ -28,7 +55,11 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
 
   function bewerten(bewertung: Bewertung) {
     startTransition(() => {
-      bewertungSpeichern(aktuelle.kernaussageId, bewertung);
+      if (aktuelle.typ === "lernkarte") {
+        bewertungSpeichern(aktuelle.kernaussageId, bewertung);
+      } else {
+        hervorhebungBewertungSpeichern(aktuelle.notizId, bewertung);
+      }
     });
     if (istLetzte) {
       router.push("/");
@@ -108,39 +139,39 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
             gap: 18,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span
-              style={{
-                fontFamily: "Helvetica, Arial, sans-serif",
-                fontWeight: 700,
-                fontSize: 14,
-                letterSpacing: ".06em",
-                textTransform: "uppercase",
-                color: "rgba(36,35,31,.6)",
-              }}
-            >
-              Frage
-            </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 21, lineHeight: 1.35 }}>
-              {aktuelle.frage}
-            </span>
-          </div>
-          <div style={{ height: 1.5, background: "rgba(36,35,31,.15)" }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span
-              style={{
-                fontFamily: "Helvetica, Arial, sans-serif",
-                fontWeight: 700,
-                fontSize: 14,
-                letterSpacing: ".06em",
-                textTransform: "uppercase",
-                color: "rgba(36,35,31,.6)",
-              }}
-            >
-              Antwort
-            </span>
-            <span style={{ fontSize: 17, lineHeight: 1.5 }}>{aktuelle.antwort}</span>
-          </div>
+          {aktuelle.typ === "lernkarte" ? (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <FeldLabel>Frage</FeldLabel>
+                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 21, lineHeight: 1.35 }}>
+                  {aktuelle.frage}
+                </span>
+              </div>
+              <div style={{ height: 1.5, background: "rgba(36,35,31,.15)" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <FeldLabel>Antwort</FeldLabel>
+                <span style={{ fontSize: 17, lineHeight: 1.5 }}>{aktuelle.antwort}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <FeldLabel>Hervorhebung</FeldLabel>
+                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 20, lineHeight: 1.4, fontStyle: "italic" }}>
+                  „{aktuelle.textAuszug}“
+                </span>
+              </div>
+              {aktuelle.text && (
+                <>
+                  <div style={{ height: 1.5, background: "rgba(36,35,31,.15)" }} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <FeldLabel>Notiz</FeldLabel>
+                    <span style={{ fontSize: 17, lineHeight: 1.5 }}>{aktuelle.text}</span>
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
 

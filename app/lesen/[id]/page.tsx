@@ -7,8 +7,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "../../../src/db";
-import { buchinhalte, buecher, konten, notizen } from "../../../src/db/schema";
-import { and, eq } from "drizzle-orm";
+import { buchinhalte, buecher, konten, notizen, repetitionselemente } from "../../../src/db/schema";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { sicherstelleGezeigt } from "../../../src/lib/tagesbuch";
 import MenuButton from "../../MenuButton";
@@ -135,10 +135,28 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
         .from(notizen)
         .where(and(eq(notizen.buchinhaltId, zeile.buchinhaltId), eq(notizen.kontoId, konto.id)))
     : [];
+
+  // Welche dieser Hervorhebungen bereits zur Wiederholung hinzugefügt sind
+  // (Pendenz "Notizen/Hervorhebungen optional in die Wiederholung
+  // aufnehmen", 09/2026) — an Hervorhebbarer weitergegeben, damit dessen
+  // Popover den Umschalter im richtigen Zustand zeigt.
+  const wiederholteZeilen = konto
+    ? await db
+        .select({ notizId: repetitionselemente.notizId })
+        .from(repetitionselemente)
+        .where(and(eq(repetitionselemente.kontoId, konto.id), isNotNull(repetitionselemente.notizId)))
+    : [];
+  const wiederholtSet = new Set(wiederholteZeilen.map((w) => w.notizId));
+
   const nachFeld = (feld: NotizFeld): Hervorhebung[] =>
     hervorhebungenZeilen
       .filter((h) => h.feld === feld && h.textAuszug)
-      .map((h) => ({ id: h.id, textAuszug: h.textAuszug as string, text: h.text }));
+      .map((h) => ({
+        id: h.id,
+        textAuszug: h.textAuszug as string,
+        text: h.text,
+        inWiederholung: wiederholtSet.has(h.id),
+      }));
 
   return (
     <main
