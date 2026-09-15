@@ -25,7 +25,7 @@ import Link from "next/link";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, konten, notizen, repetitionselemente } from "../../src/db/schema";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
-import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
+import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import { FELD_LABEL, type NotizFeld } from "../../src/lib/notizen";
@@ -34,14 +34,6 @@ import WiederholungButton from "./WiederholungButton";
 import NotizenSuche from "./NotizenSuche";
 
 export const dynamic = "force-dynamic";
-
-// Kurzhelfer für die Kategorie-Chips — identisch zu app/buecherliste/page.tsx.
-function hexZuRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 // Hebt die ERSTE Fundstelle des Suchbegriffs in text hervor (genau wie
 // segmentiere() in app/lesen/[id]/Hervorhebbarer.tsx bei Mehrfachvorkommen
@@ -153,19 +145,6 @@ export default async function NotizenSeite({
           return { ...g, eintraege };
         })
         .filter((g) => g.eintraege.length > 0);
-
-  const kategorieChipStyle = (aktiv: boolean, farbe?: string) => ({
-    display: "inline-flex" as const,
-    alignItems: "center" as const,
-    gap: 6,
-    padding: "6px 12px",
-    borderRadius: 999,
-    fontFamily: "Helvetica, Arial, sans-serif",
-    fontWeight: 600,
-    fontSize: 14.5,
-    background: farbe ? hexZuRgba(farbe, aktiv ? 0.9 : 0.16) : aktiv ? "#24231F" : "rgba(36,35,31,.08)",
-    color: farbe ? "rgba(36,35,31,.85)" : aktiv ? "#FBFAF7" : "rgba(36,35,31,.75)",
-  });
 
   // Kategorie-Chip-Links behalten eine laufende Suche bei (Filter sollen
   // sich kombinieren lassen, nicht sich gegenseitig zurücksetzen).

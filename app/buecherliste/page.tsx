@@ -18,7 +18,7 @@ import { after } from "next/server";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, konten, wunschlisteneintraege } from "../../src/db/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
-import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
+import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
 import { kategorieUebersicht, vorschlaege } from "../../src/lib/vorschlag";
 import { bestandUngelesenProKategorie } from "../../src/lib/tagesbuch";
 import { sicherstelleUmfang } from "../../src/lib/umfang";
@@ -30,16 +30,6 @@ import LoeschenButton from "./LoeschenButton";
 import WunschlisteSuche from "./WunschlisteSuche";
 
 export const dynamic = "force-dynamic";
-
-// Kurzhelfer für die Kategorie-Chips: KATEGORIE_FARBE liefert volle
-// Hex-Farben, für den abgeschwächten "inaktiv"-Zustand der Chips wird davon
-// eine transparente Variante gebraucht.
-function hexZuRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 type WunschlisteZeile = {
   id: string;
@@ -258,24 +248,13 @@ export default async function BuecherlisteSeite({
     );
   });
 
-  // Kategorie-Chips jetzt farbig (09/2026, Pendenz "Wunschliste:
+  // Kategorie-Chips farbig (09/2026, Pendenz "Wunschliste:
   // Kategoriebuttons farbig + Bestand anzeigen") statt einheitlich
   // dunkel/hell — aktiv: volle Kategoriefarbe als Hintergrund, inaktiv: nur
   // ein schwacher Farbton davon, damit die Kategorie auch unausgewählt auf
   // einen Blick erkennbar bleibt. "Alle"/"Nicht zugeordnet" (kein `farbe`)
-  // behalten die alte neutrale Optik.
-  const kategorieChipStyle = (aktiv: boolean, farbe?: string) => ({
-    display: "inline-flex" as const,
-    alignItems: "center" as const,
-    gap: 6,
-    padding: "6px 12px",
-    borderRadius: 999,
-    fontFamily: "Helvetica, Arial, sans-serif",
-    fontWeight: 600,
-    fontSize: 14.5,
-    background: farbe ? hexZuRgba(farbe, aktiv ? 0.9 : 0.16) : aktiv ? "#24231F" : "rgba(36,35,31,.08)",
-    color: farbe ? "rgba(36,35,31,.85)" : aktiv ? "#FBFAF7" : "rgba(36,35,31,.75)",
-  });
+  // behalten die alte neutrale Optik. (kategorieChipStyle/hexZuRgba jetzt
+  // aus src/lib/kategorien.ts importiert statt hier definiert.)
 
   return (
     <main

@@ -34,7 +34,7 @@ import Link from "next/link";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, gezeigteBuecher, konten } from "../../src/db/schema";
 import { and, eq } from "drizzle-orm";
-import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../src/lib/kategorien";
+import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
 import { KategorieIcon } from "../../src/lib/kategorieIcons";
 import { relativesDatum, umfangZeileAusText } from "../../src/lib/darstellung";
 import MenuButton from "../MenuButton";
@@ -42,32 +42,6 @@ import SchliessenButton from "../SchliessenButton";
 import BibliothekSuche from "./BibliothekSuche";
 
 export const dynamic = "force-dynamic";
-
-// Kurzhelfer für die Kategorie-Chips, identisch zu app/buecherliste/page.tsx
-// (KATEGORIE_FARBE liefert volle Hex-Farben, für den abgeschwächten
-// "inaktiv"-Zustand der Chips wird davon eine transparente Variante
-// gebraucht).
-function hexZuRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function kategorieChipStyle(aktiv: boolean, farbe?: string) {
-  return {
-    display: "inline-flex" as const,
-    alignItems: "center" as const,
-    gap: 6,
-    padding: "6px 12px",
-    borderRadius: 999,
-    fontFamily: "Helvetica, Arial, sans-serif",
-    fontWeight: 600,
-    fontSize: 14.5,
-    background: farbe ? hexZuRgba(farbe, aktiv ? 0.9 : 0.16) : aktiv ? "#24231F" : "rgba(36,35,31,.08)",
-    color: farbe ? "rgba(36,35,31,.85)" : aktiv ? "#FBFAF7" : "rgba(36,35,31,.75)",
-  };
-}
 
 function BuchIcon({ kategorie }: { kategorie: string }) {
   return (
