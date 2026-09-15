@@ -334,6 +334,27 @@ export default async function Home() {
                   {umfangZeileAusWortanzahl(buch.umfang, buch.wortanzahl)}
                 </span>
               )}
+              {/* Kurze Begründung "Warum dieses Buch heute" (09/2026,
+                  Pendenz "Home: kurze Begründung ... anzeigen") — erklärt
+                  die Kategorie-Rotation aus tagesbuch.ts in einem Satz,
+                  damit die Auswahl nicht willkürlich wirkt. */}
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: "rgba(36,35,31,.6)",
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 8v5" />
+                  <circle cx="12" cy="16" r="0.5" fill="currentColor" />
+                </svg>
+                {buch.begruendung}
+              </span>
               <span style={{ fontSize: 18, lineHeight: 1.5 }}>{buch.teaser}</span>
             </div>
 

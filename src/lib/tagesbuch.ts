@@ -19,12 +19,14 @@ import {
   buchinhalte,
   buecher,
   gezeigteBuecher,
+  kategorieEnum,
   kernaussagen,
   repetitionselemente,
   wunschlisteneintraege,
 } from "../db/schema";
 import { and, desc, eq, gte, lt, lte, notInArray, sql } from "drizzle-orm";
-import { wortanzahl } from "./darstellung";
+import { relativesDatum, wortanzahl } from "./darstellung";
+import { KATEGORIE_LABEL } from "./kategorien";
 
 export type TagesBuch = {
   buchinhaltId: string;
@@ -45,6 +47,11 @@ export type TagesBuch = {
   // app/abschluss/[id]/page.tsx) — Home zeigt dann nicht mehr den vollen
   // Detail-Block, sondern einen kompakten "geschafft"-Zustand.
   abgeschlossen: boolean;
+  // Kurze Begründung "Warum dieses Buch heute" (09/2026, Pendenz "Home:
+  // kurze Begründung 'Warum dieses Buch heute' anzeigen") — spiegelt exakt
+  // den Auswahlmechanismus unten wider (Kategorie-Rotation: am längsten
+  // nicht dran zuerst), keine separate/erfundene Erklärung.
+  begruendung: string;
 };
 
 export type BereitesBuch = {
@@ -81,6 +88,47 @@ function teaserAus(zusammenfassung: string): string {
   return ersterSatz?.trim() || ohneUeberschriften.slice(0, 140);
 }
 
+// Letztes Zeigedatum dieser Kategorie für dieses Konto, VOR `vorDatum` —
+// Basis für die Begründung "Warum dieses Buch heute" (Kategorie-Rotation).
+// `vorDatum` ist bewusst Mitternacht des aktuellen Tages, nicht der exakte
+// Auswahlzeitpunkt, damit eine heute schon angelegte gezeigteBuecher-Zeile
+// (egal zu welcher Uhrzeit) nie sich selbst als "letztes Mal" zählt.
+async function letztesDatumFuerKategorie(
+  kontoId: string,
+  kategorie: (typeof kategorieEnum.enumValues)[number],
+  vorDatum: Date
+): Promise<Date | null> {
+  const [row] = await db
+    .select({ datum: gezeigteBuecher.datumGezeigt })
+    .from(gezeigteBuecher)
+    .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(
+      and(
+        eq(gezeigteBuecher.kontoId, kontoId),
+        eq(buecher.kategorie, kategorie),
+        lt(gezeigteBuecher.datumGezeigt, vorDatum)
+      )
+    )
+    .orderBy(desc(gezeigteBuecher.datumGezeigt))
+    .limit(1);
+  return row?.datum ?? null;
+}
+
+// Baut aus dem Rotationsergebnis den Anzeigetext — bewusst derselbe Grund,
+// der das Buch tatsächlich ausgewählt hat (am längsten nicht dran gewesene
+// Kategorie zuerst), keine nachträglich erfundene Erklärung.
+function begruendungText(kategorieLabel: string, letztesDatum: Date | null): string {
+  if (!letztesDatum) {
+    return `${kategorieLabel} ist heute zum ersten Mal dran.`;
+  }
+  const relativ = relativesDatum(letztesDatum);
+  const zeitangabe = relativ === "heute" || relativ === "gestern" || relativ.startsWith("vor ")
+    ? relativ
+    : `am ${relativ}`;
+  return `${kategorieLabel} war zuletzt ${zeitangabe} dran.`;
+}
+
 export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch | null> {
   const heute = heuteDatum();
 
@@ -106,6 +154,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       .select({ n: sql<number>`count(*)::int` })
       .from(kernaussagen)
       .where(eq(kernaussagen.buchinhaltId, bereitsHeute.buchinhaltId));
+    const letztesDatum = await letztesDatumFuerKategorie(kontoId, bereitsHeute.kategorie, heute);
     return {
       buchinhaltId: bereitsHeute.buchinhaltId,
       buchId: bereitsHeute.buchId,
@@ -117,6 +166,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       wortanzahl: wortanzahl(bereitsHeute.zusammenfassung),
       kernaussagenAnzahl: anzahl[0]?.n ?? 0,
       abgeschlossen: bereitsHeute.abgeschlossenAm !== null,
+      begruendung: begruendungText(KATEGORIE_LABEL[bereitsHeute.kategorie] ?? bereitsHeute.kategorie, letztesDatum),
     };
   }
 
@@ -168,6 +218,11 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
 
   const gewaehlt = sortiert[0];
 
+  // Vor dem Insert ermitteln (letztesDatumFuerKategorie schliesst "heute"
+  // ohnehin per Datumsvergleich aus, Reihenfolge wäre also auch danach
+  // unschädlich — hier trotzdem zuerst, für die klarere Lesbarkeit).
+  const letztesDatum = await letztesDatumFuerKategorie(kontoId, gewaehlt.kategorie, heute);
+
   await sicherstelleGezeigt(kontoId, gewaehlt.buchinhaltId, gewaehlt.buchId);
 
   const anzahl = await db
@@ -186,6 +241,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
     wortanzahl: wortanzahl(gewaehlt.zusammenfassung),
     kernaussagenAnzahl: anzahl[0]?.n ?? 0,
     abgeschlossen: false,
+    begruendung: begruendungText(KATEGORIE_LABEL[gewaehlt.kategorie] ?? gewaehlt.kategorie, letztesDatum),
   };
 }
 
