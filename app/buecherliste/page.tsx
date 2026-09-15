@@ -26,6 +26,7 @@ import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import PrioritaetToggle from "./PrioritaetToggle";
 import AufbereitenButton from "./AufbereitenButton";
+import LoeschenButton from "./LoeschenButton";
 
 export const dynamic = "force-dynamic";
 
@@ -105,12 +106,33 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
           <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
         )}
         {zeile.umfang && <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>{zeile.umfang}</span>}
-        {zeile.buchId && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-            <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
-            <AufbereitenButton buchId={zeile.buchId} />
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+          {zeile.buchId && (
+            <>
+              <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
+              <AufbereitenButton buchId={zeile.buchId} />
+              <Link href={`/buecherliste/${zeile.id}/bearbeiten`}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    fontFamily: "Helvetica, Arial, sans-serif",
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(36,35,31,.25)",
+                    background: "transparent",
+                    color: "#24231F",
+                    cursor: "pointer",
+                  }}
+                >
+                  Bearbeiten
+                </span>
+              </Link>
+            </>
+          )}
+          <LoeschenButton eintragId={zeile.id} titel={zeile.titel ?? zeile.rohTitel ?? ""} />
+        </div>
       </div>
     </div>
   );

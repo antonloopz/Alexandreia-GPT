@@ -49,6 +49,16 @@ export async function prioritaetUmschalten(eintragId: string, aktiv: boolean) {
   revalidatePath("/buecherliste");
 }
 
+// Entfernt einen Wunschlisten-Eintrag endgültig (09/2026, Pendenz
+// "Wunschliste: Einträge bearbeiten/löschen"). Löscht bewusst NUR die
+// wunschlisteneintraege-Zeile, nicht das verknüpfte buecher-Datum — das
+// Buch selbst bleibt bestehen (z.B. falls es doch schon in Produktion ist
+// oder ein anderer Wunschlisten-Eintrag noch darauf verweist).
+export async function eintragLoeschen(eintragId: string) {
+  await db.delete(wunschlisteneintraege).where(eq(wunschlisteneintraege.id, eintragId));
+  revalidatePath("/buecherliste");
+}
+
 export async function buchJetztAufbereiten(buchId: string) {
   // Kostenfreie Testumgebung: löst echte Claude-API-Aufrufe aus, deshalb
   // hier zusätzlich serverseitig abgesichert (der Button ist dort zwar
