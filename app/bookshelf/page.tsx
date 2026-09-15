@@ -39,6 +39,7 @@ import { KategorieIcon } from "../../src/lib/kategorieIcons";
 import { relativesDatum, umfangZeileAusText } from "../../src/lib/darstellung";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
+import BibliothekSuche from "./BibliothekSuche";
 
 export const dynamic = "force-dynamic";
 
@@ -90,9 +91,9 @@ function BuchIcon({ kategorie }: { kategorie: string }) {
 export default async function BookshelfSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ kategorie?: string }>;
+  searchParams: Promise<{ kategorie?: string; suche?: string }>;
 }) {
-  const { kategorie: kategorieFilter } = await searchParams;
+  const { kategorie: kategorieFilter, suche } = await searchParams;
   const [konto] = await db.select().from(konten).limit(1);
 
   if (!konto) {
@@ -164,7 +165,19 @@ export default async function BookshelfSeite({
   // bei einer kleinen Bibliothek meist leere Filter-Chips da.
   const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) => uebrige.some((b) => b.kategorie === k));
 
-  const uebrigeGefiltert = !kategorieFilter ? uebrige : uebrige.filter((b) => b.kategorie === kategorieFilter);
+  const uebrigeNachKategorie = !kategorieFilter ? uebrige : uebrige.filter((b) => b.kategorie === kategorieFilter);
+
+  // Suchfunktion (09/2026, Pendenz "Bibliothek: Suchfunktion") — reiner
+  // Teilstring-Abgleich auf Titel/Autor, case-insensitiv, wirkt zusätzlich
+  // zum Kategorie-Filter (beide zusammen, nicht alternativ). Das gepinnte
+  // heutige Buch bleibt wie beim Kategorie-Filter davon unberührt.
+  const sucheNormalisiert = (suche ?? "").trim().toLowerCase();
+  const uebrigeGefiltert = !sucheNormalisiert
+    ? uebrigeNachKategorie
+    : uebrigeNachKategorie.filter(
+        (b) => b.titel.toLowerCase().includes(sucheNormalisiert) || b.autor.toLowerCase().includes(sucheNormalisiert)
+      );
+  const filterAktiv = Boolean(kategorieFilter) || Boolean(sucheNormalisiert);
 
   const gelesen = uebrigeGefiltert
     .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm != null)
@@ -218,12 +231,14 @@ export default async function BookshelfSeite({
           color: "rgba(36,35,31,.62)",
         }}
       >
-        {kategorieFilter
+        {filterAktiv
           ? `${gefilterteAnzahl} von ${gesamtAnzahl}`
           : gesamtAnzahl === 1
             ? "1 Buch fertig"
             : `${gesamtAnzahl} Bücher fertig`}
       </span>
+
+      {gesamtAnzahl > 0 && <BibliothekSuche initial={suche ?? ""} />}
 
       {kategorienVorhanden.length > 1 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -304,9 +319,11 @@ export default async function BookshelfSeite({
             </div>
           )}
 
-          {kategorieFilter && bereit.length === 0 && gelesen.length === 0 && (
+          {filterAktiv && bereit.length === 0 && gelesen.length === 0 && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center", padding: "20px 0" }}>
-              <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>Keine Bücher in dieser Kategorie.</span>
+              <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>
+                {sucheNormalisiert ? `Keine Treffer für „${suche}“.` : "Keine Bücher in dieser Kategorie."}
+              </span>
               <Link href="/bookshelf">
                 <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
               </Link>
