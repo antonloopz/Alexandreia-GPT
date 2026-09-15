@@ -102,7 +102,20 @@ export default async function Home() {
 
   const buch = await naechstesBuchFuerHeute(konto.id);
 
+  // Bug-Fix 09/2026: naechstesBuchFuerHeute() schliesst jedes Buch aus, das
+  // diesem Konto schon EINMAL gezeigt wurde — unabhängig davon, ob es fertig
+  // gelesen ist (siehe tagesbuch.ts, bewusst so für die "ein neues Buch pro
+  // Tag"-Rotation). Öffnet man mehrere "Bereit"-Bücher direkt aus der
+  // Bibliothek, ohne sie sofort fertig zu lesen, bleibt irgendwann KEIN
+  // frischer Kandidat mehr übrig — obwohl weiterhin lesbare, nicht
+  // abgeschlossene Bücher existieren. Home zeigte in diesem Fall bisher
+  // fälschlich die "komplett leer"-Meldung (als gäbe es überhaupt keinen
+  // Buchinhalt mit Status "im_vorrat") UND hatte dabei kein Menü — eine
+  // Sackgasse ohne jede Navigation. Jetzt: erst prüfen, ob es angefangene/
+  // ungelesene "Bereit"-Bücher zum Weiterlesen gibt, und nur wenn wirklich
+  // GAR NICHTS vorrätig ist, die ursprüngliche Meldung zeigen.
   if (!buch) {
+    const bereitZumWeiterlesen = await bereiteBuecher(konto.id, 20);
     return (
       <main
         style={{
@@ -113,17 +126,69 @@ export default async function Home() {
           background: "var(--paper)",
           display: "flex",
           flexDirection: "column",
-          gap: 12,
+          gap: 20,
         }}
       >
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>
-          Noch kein Buch bereit
-        </span>
-        <span style={{ fontSize: 16, color: "rgba(36,35,31,.7)" }}>
-          Es ist noch kein Buchinhalt mit Status &quot;im_vorrat&quot;. Erst die Pipeline
-          (Vorschlag → Entwurf → Prüfung → Lernkarten/Quiz) für mindestens ein Buch
-          durchlaufen lassen.
-        </span>
+        <MenuButton />
+
+        {bereitZumWeiterlesen.length > 0 ? (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>
+                Noch kein neues Buch heute
+              </span>
+              <span style={{ fontSize: 16, color: "rgba(36,35,31,.7)" }}>
+                Alle aktuell vorrätigen Bücher wurden schon mal geöffnet — hier
+                kannst du eines davon weiterlesen, bis automatisch Nachschub da ist.
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {bereitZumWeiterlesen.map((wb) => (
+                <Link key={wb.buchinhaltId} href={`/lesen/${wb.buchinhaltId}`}>
+                  <div
+                    style={{
+                      boxSizing: "border-box",
+                      padding: "14px 16px",
+                      borderRadius: 14,
+                      background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 2,
+                        background: KATEGORIE_FARBE[wb.kategorie] ?? "#ccc",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                      <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 16 }}>
+                        {wb.titel}
+                      </span>
+                      <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{wb.autor}</span>
+                    </div>
+                    <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>›</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>
+              Noch kein Buch bereit
+            </span>
+            <span style={{ fontSize: 16, color: "rgba(36,35,31,.7)" }}>
+              Es ist noch kein Buchinhalt mit Status &quot;im_vorrat&quot;. Erst die Pipeline
+              (Vorschlag → Entwurf → Prüfung → Lernkarten/Quiz) für mindestens ein Buch
+              durchlaufen lassen.
+            </span>
+          </>
+        )}
       </main>
     );
   }
