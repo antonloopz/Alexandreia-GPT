@@ -3,11 +3,19 @@
 // Server Action: eine Lernkarten-Bewertung speichern. Legt bzw. aktualisiert
 // die repetitionselemente-Zeile für (Konto, Kernaussage) — das ist die
 // Grundlage für den späteren Wiederholung-Screen (faellige Wiederholungen).
+//
+// Protokolliert zusätzlich JEDE Bewertung als eigenes Ereignis in
+// bewertungsereignisse (09/2026, Pendenz "Event-Log für Bewertungen/Quiz-
+// Antworten (Fortschritt-Fix)") — rein additiv, ändert nichts an der
+// bestehenden SRS-Logik oben. Fortschritt.tsx nutzt das Event-Log für die
+// Wochen-Balken statt repetitionselemente.aktualisiertAm, das nur den
+// LETZTEN Bewertungszeitpunkt trägt und mehrfach in derselben Woche
+// bewertete Karten deshalb untererfasste.
 
 "use server";
 
 import { db } from "../../../src/db";
-import { konten, repetitionselemente } from "../../../src/db/schema";
+import { bewertungsereignisse, konten, repetitionselemente } from "../../../src/db/schema";
 import { and, eq } from "drizzle-orm";
 import { naechsteStufe, faelligkeitFuer, type Bewertung } from "../../../src/lib/wiederholung";
 
@@ -48,6 +56,8 @@ export async function bewertungSpeichern(kernaussageId: string, bewertung: Bewer
       letzteBewertung: bewertung,
     });
   }
+
+  await db.insert(bewertungsereignisse).values({ kontoId: konto.id, kernaussageId, bewertung });
 }
 
 // Analog zu bewertungSpeichern, aber für eine vom Nutzer selbst zur
@@ -93,4 +103,6 @@ export async function hervorhebungBewertungSpeichern(notizId: string, bewertung:
       letzteBewertung: bewertung,
     });
   }
+
+  await db.insert(bewertungsereignisse).values({ kontoId: konto.id, notizId, bewertung });
 }

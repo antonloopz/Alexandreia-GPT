@@ -21,6 +21,7 @@ import Link from "next/link";
 import MenuButton from "../../MenuButton";
 import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
+import { quizantwortenProtokollieren } from "./actions";
 
 type Frage = { id: string; frage: string; optionen: string[]; richtigeOptionIndex: number };
 type FalscheAntwort = { frage: string; gewaehlt: string; richtig: string };
@@ -42,6 +43,10 @@ export default function QuizClient({
   const [ausgewaehlt, setAusgewaehlt] = useState<number | null>(null);
   const [richtigAnzahl, setRichtigAnzahl] = useState(0);
   const [falscheAntworten, setFalscheAntworten] = useState<FalscheAntwort[]>([]);
+  // Jede einzelne Antwort (nicht nur die falschen) — Grundlage für das
+  // Event-Log in quizantworten (siehe actions.ts, Pendenz "Event-Log für
+  // Bewertungen/Quiz-Antworten (Fortschritt-Fix)").
+  const [antworten, setAntworten] = useState<{ quizfrageId: string; richtig: boolean }[]>([]);
   const [phase, setPhase] = useState<"frage" | "auswertung">("frage");
   const router = useRouter();
 
@@ -52,7 +57,9 @@ export default function QuizClient({
   function auswaehlen(i: number) {
     if (beantwortet) return;
     setAusgewaehlt(i);
-    if (i === aktuelle.richtigeOptionIndex) {
+    const istRichtig = i === aktuelle.richtigeOptionIndex;
+    setAntworten((liste) => [...liste, { quizfrageId: aktuelle.id, richtig: istRichtig }]);
+    if (istRichtig) {
       setRichtigAnzahl((n) => n + 1);
     } else {
       setFalscheAntworten((liste) => [
@@ -67,6 +74,9 @@ export default function QuizClient({
   }
 
   function zumAbschluss() {
+    // Bewusst nicht abgewartet — der Abschluss-Screen soll nicht auf das
+    // Protokollieren warten, das läuft im Hintergrund weiter.
+    void quizantwortenProtokollieren(buchinhaltId, antworten);
     router.push(`/abschluss/${buchinhaltId}?richtig=${richtigAnzahl}`);
   }
 

@@ -305,6 +305,55 @@ export const kontenRelations = relations(konten, ({ many, one }) => ({
   }),
 }));
 
+// Event-Log für Quiz-Antworten (09/2026, Pendenz "Event-Log für
+// Bewertungen/Quiz-Antworten (Fortschritt-Fix)") — löst den bisherigen
+// Ansatz ab, bei dem gezeigteBuecher.quizRichtigAnzahl/quizGesamtAnzahl nur
+// EIN Aggregat pro Buch speicherte (einmalig beim ersten Abschluss-Besuch
+// gesetzt, siehe app/abschluss/[id]/page.tsx). Fortschritt.tsx bezog daraus
+// die Quiz-Trefferquote — diese Tabelle protokolliert stattdessen JEDE
+// einzelne Antwort als eigenes, unveränderliches Ereignis (eine Zeile pro
+// beantworteter Frage, siehe app/quiz/[id]/actions.ts), inklusive
+// wiederholter Durchläufe. gezeigteBuecher.quizRichtigAnzahl/
+// quizGesamtAnzahl bleiben unverändert bestehen (Abschluss zeigt darüber
+// weiterhin das Ergebnis DIESES einen Buchs) — nur Fortschritt liest jetzt
+// von hier.
+export const quizantworten = pgTable("quizantworten", {
+  id: uuid().primaryKey().defaultRandom(),
+  kontoId: uuid()
+    .notNull()
+    .references(() => konten.id),
+  buchinhaltId: uuid()
+    .notNull()
+    .references(() => buchinhalte.id),
+  quizfrageId: uuid()
+    .notNull()
+    .references(() => quizfragen.id),
+  richtig: boolean().notNull(),
+  erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
+});
+
+// Event-Log für Wiederholungs-Bewertungen (gleiche Pendenz wie oben) — löst
+// den bisherigen Ansatz ab, bei dem Fortschritt.tsx für die Wochen-Balken
+// nur repetitionselemente.aktualisiertAm zählte: dort wird pro Karte immer
+// nur der LETZTE Bewertungszeitpunkt gespeichert (kein Verlauf), wodurch
+// eine mehrfach in derselben Woche bewertete Karte untererfasst wurde. Diese
+// Tabelle protokolliert stattdessen JEDE Bewertung als eigenes Ereignis,
+// unabhängig vom aktuellen SRS-Zustand — die eigentliche Intervall-Logik
+// (repetitionselemente.intervallstufe/naechsteFaelligkeit) bleibt
+// unverändert, dies hier ist rein additiv für die Statistik.
+export const bewertungsereignisse = pgTable("bewertungsereignisse", {
+  id: uuid().primaryKey().defaultRandom(),
+  kontoId: uuid()
+    .notNull()
+    .references(() => konten.id),
+  // Wie bei repetitionselemente: genau eines von kernaussageId/notizId ist
+  // gesetzt, je nach Kartentyp.
+  kernaussageId: uuid().references(() => kernaussagen.id),
+  notizId: uuid().references(() => notizen.id, { onDelete: "cascade" }),
+  bewertung: bewertungEnum().notNull(),
+  erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
+});
+
 export const repetitionselementeRelations = relations(repetitionselemente, ({ one }) => ({
   konto: one(konten, { fields: [repetitionselemente.kontoId], references: [konten.id] }),
   kernaussage: one(kernaussagen, {

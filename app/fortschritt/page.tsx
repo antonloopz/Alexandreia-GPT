@@ -10,17 +10,30 @@
 // "Bereit"-Bücher), weshalb diese Bedingung alle heute abgeschlossenen
 // Bücher fälschlich NICHT mitzählte — und umgekehrt ein an einem früheren
 // Tag nur GEZEIGTES, aber nie fertig gelesenes Buch fälschlich MITZÄHLTE.
-// Quiz-Trefferquote summiert gezeigteBuecher.quizRichtigAnzahl/
-// quizGesamtAnzahl über alle Bücher dieses Kontos (siehe
-// app/abschluss/[id]/page.tsx, wo beide einmalig pro Buch gesetzt werden) —
-// "–" nur, solange noch kein einziges Quiz abgeschlossen wurde.
-// Wochen-Balken zählt repetitionselemente.aktualisiertAm pro Wochentag
-// dieser Woche — da nur der letzte Bewertungszeitpunkt gespeichert wird
-// (keine Historie), unterzählt das, wenn eine Karte mehrfach in derselben
-// Woche bewertet wird.
+//
+// Quiz-Trefferquote UND Wochen-Balken kommen jetzt aus den beiden Event-
+// Log-Tabellen quizantworten/bewertungsereignisse statt aus den früheren
+// Aggregat-/Zeitstempel-Feldern (09/2026, Pendenz "Event-Log für
+// Bewertungen/Quiz-Antworten (Fortschritt-Fix)"): die Trefferquote zählte
+// bisher nur gezeigteBuecher.quizRichtigAnzahl/quizGesamtAnzahl — ein
+// Aggregat, das je Buch nur EINMAL (beim ersten Abschluss-Besuch) gesetzt
+// wurde und wiederholte Quiz-Durchläufe nicht erfasste; die Wochen-Balken
+// zählten repetitionselemente.aktualisiertAm, das pro Karte nur den
+// LETZTEN Bewertungszeitpunkt trägt und eine mehrfach in derselben Woche
+// bewertete Karte deshalb untererfasste. Beide Event-Log-Tabellen
+// protokollieren stattdessen JEDE einzelne Antwort/Bewertung als eigene,
+// unveränderliche Zeile (siehe app/quiz/[id]/actions.ts und
+// app/lernkarten/[id]/actions.ts).
 
 import { db } from "../../src/db";
-import { buchinhalte, buecher, gezeigteBuecher, konten, repetitionselemente } from "../../src/db/schema";
+import {
+  bewertungsereignisse,
+  buchinhalte,
+  buecher,
+  gezeigteBuecher,
+  konten,
+  quizantworten,
+} from "../../src/db/schema";
 import { and, eq, gte, isNotNull, lt } from "drizzle-orm";
 import { laengsterStreak } from "../../src/lib/streak";
 import MenuButton from "../MenuButton";
@@ -66,13 +79,13 @@ export default async function FortschrittSeite() {
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(and(eq(gezeigteBuecher.kontoId, konto.id), isNotNull(gezeigteBuecher.abgeschlossenAm)));
 
-  const quizErgebnisse = await db
-    .select({ richtig: gezeigteBuecher.quizRichtigAnzahl, gesamt: gezeigteBuecher.quizGesamtAnzahl })
-    .from(gezeigteBuecher)
-    .where(eq(gezeigteBuecher.kontoId, konto.id));
+  const quizAntwortenZeilen = await db
+    .select({ richtig: quizantworten.richtig })
+    .from(quizantworten)
+    .where(eq(quizantworten.kontoId, konto.id));
 
-  const quizGesamtSumme = quizErgebnisse.reduce((summe, e) => summe + (e.gesamt ?? 0), 0);
-  const quizRichtigSumme = quizErgebnisse.reduce((summe, e) => summe + (e.richtig ?? 0), 0);
+  const quizGesamtSumme = quizAntwortenZeilen.length;
+  const quizRichtigSumme = quizAntwortenZeilen.filter((z) => z.richtig).length;
   const quizTrefferquote =
     quizGesamtSumme > 0 ? `${Math.round((quizRichtigSumme / quizGesamtSumme) * 100)}%` : "–";
 
@@ -81,13 +94,13 @@ export default async function FortschrittSeite() {
   naechsterMontag.setDate(montag.getDate() + 7);
 
   const bewertungenDieseWoche = await db
-    .select({ zeitpunkt: repetitionselemente.aktualisiertAm })
-    .from(repetitionselemente)
+    .select({ zeitpunkt: bewertungsereignisse.erstelltAm })
+    .from(bewertungsereignisse)
     .where(
       and(
-        eq(repetitionselemente.kontoId, konto.id),
-        gte(repetitionselemente.aktualisiertAm, montag),
-        lt(repetitionselemente.aktualisiertAm, naechsterMontag)
+        eq(bewertungsereignisse.kontoId, konto.id),
+        gte(bewertungsereignisse.erstelltAm, montag),
+        lt(bewertungsereignisse.erstelltAm, naechsterMontag)
       )
     );
 
