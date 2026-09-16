@@ -197,6 +197,13 @@ export default async function BookshelfSeite({
         overflow: "hidden",
       }}
     >
+      <style>{`
+        .bookshelf-abschnitt summary { list-style: none; }
+        .bookshelf-abschnitt summary::-webkit-details-marker { display: none; }
+        .bookshelf-abschnitt summary svg { transition: transform .15s ease; }
+        .bookshelf-abschnitt[open] > summary svg { transform: rotate(90deg); }
+      `}</style>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SchliessenButton />
@@ -320,19 +327,28 @@ export default async function BookshelfSeite({
           )}
 
           {bereit.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <span
+            <details className="bookshelf-abschnitt" open>
+              <summary
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  cursor: "pointer",
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
                   fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.5)",
+                  padding: "4px 0",
                 }}
               >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 5.5 15.5 12 9 18.5" />
+                </svg>
                 Bereit ({bereit.length})
-              </span>
+              </summary>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
               {bereit.map((buch) => (
                 <div
                   key={buch.buchinhaltId}
@@ -367,23 +383,33 @@ export default async function BookshelfSeite({
                   </Link>
                 </div>
               ))}
-            </div>
+              </div>
+            </details>
           )}
 
           {gelesen.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <span
+            <details className="bookshelf-abschnitt" open>
+              <summary
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  cursor: "pointer",
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
                   fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.5)",
+                  padding: "4px 0",
                 }}
               >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 5.5 15.5 12 9 18.5" />
+                </svg>
                 Gelesen ({gelesen.length})
-              </span>
+              </summary>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
               {gelesen.map((buch) => (
                 <div
                   key={buch.buchinhaltId}
@@ -421,7 +447,8 @@ export default async function BookshelfSeite({
                   </Link>
                 </div>
               ))}
-            </div>
+              </div>
+            </details>
           )}
         </div>
       )}

@@ -328,13 +328,11 @@ export async function kategorieUebersicht(kontoId: string): Promise<KategorieSta
 // Wunschliste (09/2026, Pendenz "Wunschliste: Zahlangabe Bestand/
 // Aufbereitet" — ersetzt die vorherige bestandUngelesenProKategorie(), die
 // den Bestand ALLER produzierten Bücher zeigte, unabhängig von der
-// Wunschliste). Beantwortet "wie viele meiner Wunschlisten-Einträge (eigene
-// + KI-Vorschläge) gibt es in dieser Kategorie noch, und wie viele davon
-// sind schon aufbereitet". Zählt JEDEN Eintrag mit Kategorie-Zuordnung,
-// unabhängig von herkunft — die Wunschliste zeigt ja inzwischen auch
-// KI-Vorschläge als eigene Karten. Einträge ohne buchId (reiner rohTitel,
-// noch kein Datenbank-Abgleich) bleiben unberücksichtigt, weil ihnen noch
-// keine Kategorie zugeordnet ist.
+// Wunschliste). Zählt JEDEN Eintrag mit Kategorie-Zuordnung, unabhängig von
+// herkunft — die Wunschliste zeigt ja inzwischen auch KI-Vorschläge als
+// eigene Karten. Einträge ohne buchId (reiner rohTitel, noch kein
+// Datenbank-Abgleich) bleiben unberücksichtigt, weil ihnen noch keine
+// Kategorie zugeordnet ist.
 //
 // Bewusst OHNE bereits fertig gelesene Bücher (09/2026, Nachschärfung
 // "die beiden Zahlen sollen sich nur auf die Wunschliste beziehen") — ein
@@ -342,12 +340,21 @@ export async function kategorieUebersicht(kontoId: string): Promise<KategorieSta
 // Wunschliste, sondern zur Bibliothek (siehe bookshelf/page.tsx, "Gelesen"
 // -Abschnitt); es zählt dort weiterhin über den absoluten Bibliotheks-
 // Bestand mit, aber nicht mehr hier.
+//
+// Drei getrennte Zahlen statt der vorherigen Bestand/Aufbereitet-Summe
+// (09/2026, Nachschärfung "hier müsste entsprechend 1/3/0 stehen -> 1 Buch
+// vorgemerkt / 3 Bücher nicht vorgemerkt / 0 Bücher bereit zum Lesen") —
+// "Bestand" allein verschleierte, wie viele der noch nicht aufbereiteten
+// Bücher schon für den nächsten Lauf vorgemerkt sind, exakt die Aufteilung,
+// die die beiden Akkordeons weiter unten (Vorgemerkt/Noch nicht vorgemerkt)
+// ohnehin schon zeigen.
 export async function wunschlisteBestandProKategorie(
   kontoId: string
-): Promise<Map<Kategorie, { bestand: number; aufbereitet: number }>> {
+): Promise<Map<Kategorie, { vorgemerkt: number; nichtVorgemerkt: number; aufbereitet: number }>> {
   const zeilen = await db
     .select({
       kategorie: buecher.kategorie,
+      bald: wunschlisteneintraege.bald,
       status: buchinhalte.status,
       abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
     })
@@ -360,8 +367,8 @@ export async function wunschlisteBestandProKategorie(
     )
     .where(eq(wunschlisteneintraege.kontoId, kontoId));
 
-  const ergebnis = new Map<Kategorie, { bestand: number; aufbereitet: number }>(
-    ALLE_KATEGORIEN.map((k) => [k, { bestand: 0, aufbereitet: 0 }])
+  const ergebnis = new Map<Kategorie, { vorgemerkt: number; nichtVorgemerkt: number; aufbereitet: number }>(
+    ALLE_KATEGORIEN.map((k) => [k, { vorgemerkt: 0, nichtVorgemerkt: 0, aufbereitet: 0 }])
   );
   for (const zeile of zeilen) {
     const eintrag = ergebnis.get(zeile.kategorie as Kategorie);
@@ -369,8 +376,13 @@ export async function wunschlisteBestandProKategorie(
     const bereit = zeile.status === "im_vorrat";
     const fertigGelesen = bereit && zeile.abgeschlossenAm != null;
     if (fertigGelesen) continue; // gehört jetzt zur Bibliothek, nicht mehr zur Wunschliste
-    eintrag.bestand += 1;
-    if (bereit) eintrag.aufbereitet += 1;
+    if (bereit) {
+      eintrag.aufbereitet += 1;
+    } else if (zeile.bald) {
+      eintrag.vorgemerkt += 1;
+    } else {
+      eintrag.nichtVorgemerkt += 1;
+    }
   }
   return ergebnis;
 }

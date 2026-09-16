@@ -203,12 +203,11 @@ export default async function BuecherlisteSeite({
   // Cron-Job nutzt, um zu entscheiden, was als Nächstes produziert wird.
   const naechsteKandidaten = await vorschlaege(konto.id, 3);
   const kategorien = await kategorieUebersicht(konto.id);
-  // Bestand/Aufbereitet pro Kategorie — für die farbigen Filter-Chips
-  // unten (09/2026, Pendenz "Wunschliste: Zahlangabe Bestand/Aufbereitet").
-  // "Bestand" = alle Wunschlisten-Einträge dieser Kategorie (aufbereitet
-  // und nicht aufbereitet), "Aufbereitet" = die Teilmenge davon, die schon
-  // bereit zum Lesen ist. Bewusst eine EIGENE, ungefilterte Abfrage (siehe
-  // wunschlisteBestandProKategorie()) statt aus `zeilen` abgeleitet, weil
+  // Vorgemerkt/Nicht vorgemerkt/Aufbereitet pro Kategorie — für die
+  // farbigen Filter-Chips unten (09/2026, Pendenz "Wunschliste:
+  // Zahlangabe Bestand/Aufbereitet", nachgeschärft zu drei Zahlen statt
+  // einer Summe — siehe wunschlisteBestandProKategorie()). Bewusst eine
+  // EIGENE, ungefilterte Abfrage statt aus `zeilen` abgeleitet, weil
   // `zeilen` schon aufbereitete Einträge strukturell ausschliesst (die
   // sind ja in der Bibliothek).
   const wunschlisteBestand = await wunschlisteBestandProKategorie(konto.id);
@@ -225,9 +224,11 @@ export default async function BuecherlisteSeite({
   // kein Datenbank-Abgleich). Nur Kategorien anzeigen, die auf der Liste
   // TATSÄCHLICH vorkommen — sonst stünden bei einer kleinen Wunschliste
   // meist leere Filter-Chips da.
-  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter(
-    (k) => zeilen.some((z) => z.kategorie === k) || (wunschlisteBestand.get(k as Kategorie)?.bestand ?? 0) > 0
-  );
+  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) => {
+    if (zeilen.some((z) => z.kategorie === k)) return true;
+    const eintrag = wunschlisteBestand.get(k as Kategorie);
+    return Boolean(eintrag && eintrag.vorgemerkt + eintrag.nichtVorgemerkt + eintrag.aufbereitet > 0);
+  });
   const ohneKategorieVorhanden = zeilen.some((z) => z.kategorie === null);
 
   const nachKategorieGefiltert = !kategorieFilter
@@ -389,7 +390,7 @@ export default async function BuecherlisteSeite({
               <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
                 <span>{KATEGORIE_LABEL[k] ?? k}</span>
                 <span style={{ opacity: 0.6, fontWeight: 700 }}>
-                  {wunschlisteBestand.get(k as Kategorie)?.bestand ?? 0}/{wunschlisteBestand.get(k as Kategorie)?.aufbereitet ?? 0}
+                  {wunschlisteBestand.get(k as Kategorie)?.vorgemerkt ?? 0}/{wunschlisteBestand.get(k as Kategorie)?.nichtVorgemerkt ?? 0}/{wunschlisteBestand.get(k as Kategorie)?.aufbereitet ?? 0}
                 </span>
               </span>
             </Link>
