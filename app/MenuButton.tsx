@@ -73,17 +73,6 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
     ),
   },
   {
-    href: "/fortschritt",
-    label: "Fortschritt",
-    pfade: (
-      <>
-        <line x1="5.5" y1="18.5" x2="5.5" y2="12.5" />
-        <line x1="12" y1="18.5" x2="12" y2="8.5" />
-        <line x1="18.5" y1="18.5" x2="18.5" y2="5.5" />
-      </>
-    ),
-  },
-  {
     href: "/notizen",
     label: "Notizen",
     pfade: (

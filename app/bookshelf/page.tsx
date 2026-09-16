@@ -139,6 +139,20 @@ export default async function BookshelfSeite({
   // bei einer kleinen Bibliothek meist leere Filter-Chips da.
   const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) => uebrige.some((b) => b.kategorie === k));
 
+  // Absoluter Bestand pro Kategorie (gelesen + ungelesen zusammen), für
+  // die Bibliothek-Filter-Chips (09/2026, Pendenz "Bibliothek: Zahlangabe
+  // pro Kategorie", Nachschärfung zur Wunschliste — siehe
+  // wunschlisteBestandProKategorie() in vorschlag.ts, das dortige
+  // Bestand/Aufbereitet bezieht sich seitdem NUR noch auf die Wunschliste
+  // selbst). Bewusst simpel: eine einzige Zahl, direkt aus alleImVorrat
+  // oben abgeleitet (inkl. dem heutigen gepinnten Buch) — die Bibliothek
+  // hat ihre Gelesen/Bereit-Aufteilung schon weiter unten, dafür braucht
+  // der Chip keine zweite Zahl.
+  const bestandProKategorie = new Map<string, number>();
+  for (const buch of alleImVorrat) {
+    bestandProKategorie.set(buch.kategorie, (bestandProKategorie.get(buch.kategorie) ?? 0) + 1);
+  }
+
   const uebrigeNachKategorie = !kategorieFilter ? uebrige : uebrige.filter((b) => b.kategorie === kategorieFilter);
 
   // Suchfunktion (09/2026, Pendenz "Bibliothek: Suchfunktion") — reiner
@@ -222,7 +236,8 @@ export default async function BookshelfSeite({
           {kategorienVorhanden.map((k) => (
             <Link key={k} href={`/bookshelf?kategorie=${encodeURIComponent(k)}`}>
               <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
-                {KATEGORIE_LABEL[k] ?? k}
+                <span>{KATEGORIE_LABEL[k] ?? k}</span>
+                <span style={{ opacity: 0.6, fontWeight: 700 }}>{bestandProKategorie.get(k) ?? 0}</span>
               </span>
             </Link>
           ))}

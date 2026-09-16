@@ -27,7 +27,7 @@
 //    Status), sind keine Kandidaten mehr.
 
 import { db } from "../db";
-import { buecher, buchinhalte, kontoeinstellungen, wunschlisteneintraege } from "../db/schema";
+import { buecher, buchinhalte, gezeigteBuecher, kontoeinstellungen, wunschlisteneintraege } from "../db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { kandidatRecherchieren } from "./recherche";
 import { sicherstelleUmfang } from "./umfang";
@@ -328,13 +328,20 @@ export async function kategorieUebersicht(kontoId: string): Promise<KategorieSta
 // Wunschliste (09/2026, Pendenz "Wunschliste: Zahlangabe Bestand/
 // Aufbereitet" — ersetzt die vorherige bestandUngelesenProKategorie(), die
 // den Bestand ALLER produzierten Bücher zeigte, unabhängig von der
-// Wunschliste; das hier beantwortet stattdessen "wie viele meiner
-// Wunschlisten-Einträge (eigene + KI-Vorschläge) gibt es in dieser
-// Kategorie insgesamt, und wie viele davon sind schon aufbereitet"). Zählt
-// bewusst JEDEN Eintrag mit Kategorie-Zuordnung, unabhängig von herkunft —
-// die Wunschliste zeigt ja inzwischen auch KI-Vorschläge als eigene Karten.
-// Einträge ohne buchId (reiner rohTitel, noch kein Datenbank-Abgleich)
-// bleiben unberücksichtigt, weil ihnen noch keine Kategorie zugeordnet ist.
+// Wunschliste). Beantwortet "wie viele meiner Wunschlisten-Einträge (eigene
+// + KI-Vorschläge) gibt es in dieser Kategorie noch, und wie viele davon
+// sind schon aufbereitet". Zählt JEDEN Eintrag mit Kategorie-Zuordnung,
+// unabhängig von herkunft — die Wunschliste zeigt ja inzwischen auch
+// KI-Vorschläge als eigene Karten. Einträge ohne buchId (reiner rohTitel,
+// noch kein Datenbank-Abgleich) bleiben unberücksichtigt, weil ihnen noch
+// keine Kategorie zugeordnet ist.
+//
+// Bewusst OHNE bereits fertig gelesene Bücher (09/2026, Nachschärfung
+// "die beiden Zahlen sollen sich nur auf die Wunschliste beziehen") — ein
+// Buch, das schon durchgelesen ist, gehört gedanklich nicht mehr zur
+// Wunschliste, sondern zur Bibliothek (siehe bookshelf/page.tsx, "Gelesen"
+// -Abschnitt); es zählt dort weiterhin über den absoluten Bibliotheks-
+// Bestand mit, aber nicht mehr hier.
 export async function wunschlisteBestandProKategorie(
   kontoId: string
 ): Promise<Map<Kategorie, { bestand: number; aufbereitet: number }>> {
@@ -342,10 +349,15 @@ export async function wunschlisteBestandProKategorie(
     .select({
       kategorie: buecher.kategorie,
       status: buchinhalte.status,
+      abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
     })
     .from(wunschlisteneintraege)
     .innerJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
-    .leftJoin(buchinhalte, and(eq(buchinhalte.buchId, buecher.id), eq(buchinhalte.status, "im_vorrat")))
+    .leftJoin(buchinhalte, eq(buchinhalte.buchId, buecher.id))
+    .leftJoin(
+      gezeigteBuecher,
+      and(eq(gezeigteBuecher.buchinhaltId, buchinhalte.id), eq(gezeigteBuecher.kontoId, kontoId))
+    )
     .where(eq(wunschlisteneintraege.kontoId, kontoId));
 
   const ergebnis = new Map<Kategorie, { bestand: number; aufbereitet: number }>(
@@ -354,8 +366,11 @@ export async function wunschlisteBestandProKategorie(
   for (const zeile of zeilen) {
     const eintrag = ergebnis.get(zeile.kategorie as Kategorie);
     if (!eintrag) continue;
+    const bereit = zeile.status === "im_vorrat";
+    const fertigGelesen = bereit && zeile.abgeschlossenAm != null;
+    if (fertigGelesen) continue; // gehört jetzt zur Bibliothek, nicht mehr zur Wunschliste
     eintrag.bestand += 1;
-    if (zeile.status === "im_vorrat") eintrag.aufbereitet += 1;
+    if (bereit) eintrag.aufbereitet += 1;
   }
   return ergebnis;
 }
