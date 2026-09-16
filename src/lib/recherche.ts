@@ -11,7 +11,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { desc, eq } from "drizzle-orm";
 import { db } from "../db";
-import { buecher, buchinhalte, gezeigteBuecher } from "../db/schema";
+import { buecher, buchinhalte, gezeigteBuecher, wunschlisteneintraege } from "../db/schema";
 import { jsonAusText } from "./json";
 import { umfangNachschlagen } from "./umfang";
 import type { Kategorie } from "./vorschlag";
@@ -165,12 +165,29 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
     })
     .returning();
 
+  const begruendung = ohneZitationsTags(vorschlag.begruendung || "");
+
+  // Sofort als Wunschlisten-Eintrag sichtbar machen (09/2026, Pendenz
+  // "Wunschliste: Markierung ob Vorschlag von Claude oder Eintrag vom
+  // Nutzer") — vorher lief das komplett an der Wunschliste vorbei, direkt
+  // in buecher/gezeigteBuecher. Die Begründung landet gleich als Notiz mit,
+  // damit sie beim Öffnen des Eintrags nachvollziehbar bleibt. Wichtig:
+  // vorschlaege() darf diesen Eintrag NICHT mit einem echten
+  // "eigene_liste"-Wunsch verwechseln — siehe der herkunft-Filter in
+  // wunschlistenQuote().
+  await db.insert(wunschlisteneintraege).values({
+    kontoId,
+    buchId: neuesBuch.id,
+    herkunft: quelle,
+    notiz: begruendung || null,
+  });
+
   return {
     id: neuesBuch.id,
     titel: neuesBuch.titel,
     autor: neuesBuch.autor,
     quelle,
-    grund: ohneZitationsTags(vorschlag.begruendung || "") || `Per Recherche vorgeschlagen (${quelle}).`,
+    grund: begruendung || `Per Recherche vorgeschlagen (${quelle}).`,
     umfang: neuesBuch.umfang,
     umfangGeprueftAm: neuesBuch.umfangGeprueftAm,
   };

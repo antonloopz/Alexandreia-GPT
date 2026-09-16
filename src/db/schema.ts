@@ -180,6 +180,15 @@ export const wunschlisteneintraege = pgTable("wunschlisteneintraege", {
   buchId: uuid().references(() => buecher.id),
   notiz: text(),
   bald: boolean().notNull().default(false),
+  // Wer den Eintrag angelegt hat (09/2026, Pendenz "Wunschliste: Markierung
+  // ob Vorschlag von Claude oder Eintrag vom Nutzer") — "eigene_liste" für
+  // jeden über das "+"-Formular selbst hinzugefügten Eintrag (Default,
+  // deckt auch alle bisherigen Zeilen ab); klassiker/geheimtipp/synergie,
+  // wenn recherche.ts das Buch selbst vorgeschlagen und angelegt hat.
+  // Solche KI-Vorschläge werden vom Cron-Job NICHT automatisch produziert
+  // (siehe app/api/cron/produzieren/route.ts) — sie warten hier, bis der
+  // Nutzer selbst "Aufbereiten" klickt oder sie "bald"-priorisiert.
+  herkunft: quelleEnum().notNull().default("eigene_liste"),
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });
 

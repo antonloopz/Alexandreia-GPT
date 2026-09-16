@@ -408,38 +408,6 @@ export async function naechsteBuecherVorschau(
   return ergebnis;
 }
 
-// Bestand "bereit, aber noch nicht gelesen" GRUPPIERT pro Kategorie —
-// dieselbe Auswahl wie bereiteBuecher() oben (im_vorrat UND abgeschlossenAm
-// noch null, schliesst also auch begonnene, aber nicht fertig gelesene
-// Bücher mit ein — deckungsgleich mit Bookshelfs "Bereit"-Abschnitt), hier
-// aber als Kategorie->Anzahl-Map statt flacher Liste. Für die Wunschliste,
-// Kategorie-Filter-Chips (09/2026, Pendenz "Wunschliste: Kategoriebuttons
-// farbig + Bestand ungelesener Bücher zeigen") — bewusst eine eigene
-// Zählung statt bestandProKategorie() aus vorschlag.ts: die zählt ALLE
-// "im_vorrat"-Bücher, unabhängig davon, ob das Konto sie schon gelesen hat,
-// und beantwortet damit eine andere Frage (Produktions-Nachschub statt "was
-// kann ich mir als Nächstes vornehmen").
-export async function bestandUngelesenProKategorie(kontoId: string): Promise<Map<string, number>> {
-  const gezeigt = await db
-    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, abgeschlossenAm: gezeigteBuecher.abgeschlossenAm })
-    .from(gezeigteBuecher)
-    .where(eq(gezeigteBuecher.kontoId, kontoId));
-  const abgeschlossenIds = new Set(gezeigt.filter((r) => r.abgeschlossenAm !== null).map((r) => r.buchinhaltId));
-
-  const kandidaten = await db
-    .select({ buchinhaltId: buchinhalte.id, kategorie: buecher.kategorie })
-    .from(buchinhalte)
-    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .where(eq(buchinhalte.status, "im_vorrat"));
-
-  const ergebnis = new Map<string, number>();
-  for (const k of kandidaten) {
-    if (abgeschlossenIds.has(k.buchinhaltId)) continue;
-    ergebnis.set(k.kategorie, (ergebnis.get(k.kategorie) ?? 0) + 1);
-  }
-  return ergebnis;
-}
-
 export type AbgeschlossenesBuch = {
   buchinhaltId: string;
   titel: string;

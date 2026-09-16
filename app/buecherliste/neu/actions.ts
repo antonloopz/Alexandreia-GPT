@@ -119,6 +119,7 @@ export async function buchHinzufuegen(formData: FormData) {
     buchId: buch.id,
     notiz: notiz || null,
     bald,
+    herkunft: "eigene_liste",
   });
 
   redirect("/buecherliste");

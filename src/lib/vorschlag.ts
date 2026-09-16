@@ -109,16 +109,26 @@ async function mindestbestandProKategorie(kontoId: string): Promise<Map<Kategori
 // Wunschlisten-Quote dieses Kontos: Anteil bereits produzierter Bücher, die
 // aus der eigenen Liste stammen, plus ob die Ziel-Quote (40%) noch nicht
 // erreicht ist — von vorschlaege() UND kategorieUebersicht() gebraucht.
+//
+// NUR herkunft="eigene_liste" zählt hier (09/2026, Pendenz "Wunschliste:
+// Markierung ob Vorschlag von Claude oder Eintrag vom Nutzer") — seit
+// recherche.ts auch KI-Vorschläge als Wunschlisten-Eintrag anlegt, würden
+// sonst deren buchId hier mitgezählt und fälschlich als "eigener Wunsch"
+// behandelt (verzerrt sowohl die Quote als auch die ausListe/andere-
+// Einteilung weiter unten in vorschlaege()).
 async function wunschlistenQuote(
   kontoId: string,
   belegt: { buchId: string }[]
 ): Promise<{ wunschlistenIds: Set<string>; ausListeAnteil: number; wunschlisteBevorzugt: boolean }> {
   const eintraege = await db
-    .select({ buchId: wunschlisteneintraege.buchId })
+    .select({ buchId: wunschlisteneintraege.buchId, herkunft: wunschlisteneintraege.herkunft })
     .from(wunschlisteneintraege)
     .where(eq(wunschlisteneintraege.kontoId, kontoId));
   const wunschlistenIds = new Set(
-    eintraege.map((r) => r.buchId).filter((id): id is string => id !== null)
+    eintraege
+      .filter((r) => r.herkunft === "eigene_liste")
+      .map((r) => r.buchId)
+      .filter((id): id is string => id !== null)
   );
 
   const ausListeAnteil =
@@ -311,5 +321,41 @@ export async function kategorieUebersicht(kontoId: string): Promise<KategorieSta
     });
   }
 
+  return ergebnis;
+}
+
+// Wunschlisten-Bestand pro Kategorie, für die Filter-Chips auf der
+// Wunschliste (09/2026, Pendenz "Wunschliste: Zahlangabe Bestand/
+// Aufbereitet" — ersetzt die vorherige bestandUngelesenProKategorie(), die
+// den Bestand ALLER produzierten Bücher zeigte, unabhängig von der
+// Wunschliste; das hier beantwortet stattdessen "wie viele meiner
+// Wunschlisten-Einträge (eigene + KI-Vorschläge) gibt es in dieser
+// Kategorie insgesamt, und wie viele davon sind schon aufbereitet"). Zählt
+// bewusst JEDEN Eintrag mit Kategorie-Zuordnung, unabhängig von herkunft —
+// die Wunschliste zeigt ja inzwischen auch KI-Vorschläge als eigene Karten.
+// Einträge ohne buchId (reiner rohTitel, noch kein Datenbank-Abgleich)
+// bleiben unberücksichtigt, weil ihnen noch keine Kategorie zugeordnet ist.
+export async function wunschlisteBestandProKategorie(
+  kontoId: string
+): Promise<Map<Kategorie, { bestand: number; aufbereitet: number }>> {
+  const zeilen = await db
+    .select({
+      kategorie: buecher.kategorie,
+      status: buchinhalte.status,
+    })
+    .from(wunschlisteneintraege)
+    .innerJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
+    .leftJoin(buchinhalte, and(eq(buchinhalte.buchId, buecher.id), eq(buchinhalte.status, "im_vorrat")))
+    .where(eq(wunschlisteneintraege.kontoId, kontoId));
+
+  const ergebnis = new Map<Kategorie, { bestand: number; aufbereitet: number }>(
+    ALLE_KATEGORIEN.map((k) => [k, { bestand: 0, aufbereitet: 0 }])
+  );
+  for (const zeile of zeilen) {
+    const eintrag = ergebnis.get(zeile.kategorie as Kategorie);
+    if (!eintrag) continue;
+    eintrag.bestand += 1;
+    if (zeile.status === "im_vorrat") eintrag.aufbereitet += 1;
+  }
   return ergebnis;
 }

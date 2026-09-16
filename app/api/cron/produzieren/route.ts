@@ -62,6 +62,25 @@ export async function GET(request: NextRequest) {
 
   const kandidat = kandidaten[0];
 
+  // KI-Vorschläge (Klassiker/Geheimtipp/Synergie) warten auf die
+  // Bestätigung des Nutzers (09/2026, Pendenz "Wunschliste: Markierung ob
+  // Vorschlag von Claude oder Eintrag vom Nutzer") — sie landen zwar schon
+  // als Karte auf der Wunschliste (siehe recherche.ts), werden aber vom
+  // Cron NICHT automatisch produziert. Erst ein Klick auf "Aufbereiten"
+  // (oder "bald"-Priorisierung) auf der Wunschliste selbst löst
+  // pipelineSchritt() für so einen Kandidaten aus. Nur "eigene_liste"
+  // (selbst hinzugefügt oder manuell "bald" vorgemerkt) läuft hier weiter
+  // automatisch durch.
+  if (kandidat.quelle !== "eigene_liste") {
+    return Response.json({
+      status: "wartet_auf_bestaetigung",
+      buch: `${kandidat.titel} (${kandidat.autor})`,
+      kategorie: kandidat.kategorie,
+      quelle: kandidat.quelle,
+      info: "KI-Vorschlag steht auf der Wunschliste bereit — wartet auf Bestätigung (\"Aufbereiten\" oder \"bald\").",
+    });
+  }
+
   const ergebnis = await pipelineSchritt(kandidat.buchId);
 
   if (ergebnis.status === "verworfen") {

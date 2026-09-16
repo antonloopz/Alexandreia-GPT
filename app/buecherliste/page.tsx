@@ -19,8 +19,7 @@ import { db } from "../../src/db";
 import { buchinhalte, buecher, konten, wunschlisteneintraege } from "../../src/db/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
-import { kategorieUebersicht, vorschlaege } from "../../src/lib/vorschlag";
-import { bestandUngelesenProKategorie } from "../../src/lib/tagesbuch";
+import { kategorieUebersicht, vorschlaege, wunschlisteBestandProKategorie, type Kategorie } from "../../src/lib/vorschlag";
 import { sicherstelleUmfang } from "../../src/lib/umfang";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
@@ -41,6 +40,17 @@ type WunschlisteZeile = {
   autor: string | null;
   kategorie: string | null;
   umfang: string | null;
+  herkunft: string;
+};
+
+// Beschriftung für Wunschlisten-Einträge, die NICHT vom Nutzer selbst
+// stammen (09/2026, Pendenz "Wunschliste: Markierung ob Vorschlag von
+// Claude oder Eintrag vom Nutzer") — "eigene_liste" bekommt bewusst KEIN
+// Badge (das ist der Normalfall, den man nicht extra hervorheben muss).
+const HERKUNFT_BADGE: Record<string, string> = {
+  klassiker: "Klassiker-Vorschlag",
+  geheimtipp: "Geheimtipp-Vorschlag",
+  synergie: "Synergie-Vorschlag",
 };
 
 // Eine Wunschlisten-Zeile — von beiden Abschnitten (vorgemerkt/übrige)
@@ -88,6 +98,24 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
             }}
           >
             Noch nicht zugeordnet
+          </span>
+        )}
+        {HERKUNFT_BADGE[zeile.herkunft] && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignSelf: "flex-start",
+              fontFamily: "Helvetica, Arial, sans-serif",
+              fontWeight: 600,
+              fontSize: 12,
+              padding: "3px 8px",
+              borderRadius: 999,
+              background: "rgba(36,35,31,.08)",
+              color: "rgba(36,35,31,.6)",
+              marginTop: 2,
+            }}
+          >
+            {HERKUNFT_BADGE[zeile.herkunft]}
           </span>
         )}
         <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
@@ -159,6 +187,7 @@ export default async function BuecherlisteSeite({
       kategorie: buecher.kategorie,
       umfang: buecher.umfang,
       umfangGeprueftAm: buecher.umfangGeprueftAm,
+      herkunft: wunschlisteneintraege.herkunft,
     })
     .from(wunschlisteneintraege)
     .leftJoin(buecher, eq(wunschlisteneintraege.buchId, buecher.id))
@@ -174,10 +203,15 @@ export default async function BuecherlisteSeite({
   // Cron-Job nutzt, um zu entscheiden, was als Nächstes produziert wird.
   const naechsteKandidaten = await vorschlaege(konto.id, 3);
   const kategorien = await kategorieUebersicht(konto.id);
-  // Bestand "bereit, aber ungelesen" pro Kategorie — für die farbigen
-  // Filter-Chips unten (09/2026, Pendenz "Wunschliste: Kategoriebuttons
-  // farbig + Bestand anzeigen").
-  const ungelesenProKategorie = await bestandUngelesenProKategorie(konto.id);
+  // Bestand/Aufbereitet pro Kategorie — für die farbigen Filter-Chips
+  // unten (09/2026, Pendenz "Wunschliste: Zahlangabe Bestand/Aufbereitet").
+  // "Bestand" = alle Wunschlisten-Einträge dieser Kategorie (aufbereitet
+  // und nicht aufbereitet), "Aufbereitet" = die Teilmenge davon, die schon
+  // bereit zum Lesen ist. Bewusst eine EIGENE, ungefilterte Abfrage (siehe
+  // wunschlisteBestandProKategorie()) statt aus `zeilen` abgeleitet, weil
+  // `zeilen` schon aufbereitete Einträge strukturell ausschliesst (die
+  // sind ja in der Bibliothek).
+  const wunschlisteBestand = await wunschlisteBestandProKategorie(konto.id);
 
   const zeilen = liste.sort((a, b) => {
     if (a.bald !== b.bald) return a.bald ? -1 : 1;
@@ -191,8 +225,8 @@ export default async function BuecherlisteSeite({
   // kein Datenbank-Abgleich). Nur Kategorien anzeigen, die auf der Liste
   // TATSÄCHLICH vorkommen — sonst stünden bei einer kleinen Wunschliste
   // meist leere Filter-Chips da.
-  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) =>
-    zeilen.some((z) => z.kategorie === k)
+  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter(
+    (k) => zeilen.some((z) => z.kategorie === k) || (wunschlisteBestand.get(k as Kategorie)?.bestand ?? 0) > 0
   );
   const ohneKategorieVorhanden = zeilen.some((z) => z.kategorie === null);
 
@@ -347,7 +381,9 @@ export default async function BuecherlisteSeite({
             <Link key={k} href={`/buecherliste?kategorie=${encodeURIComponent(k)}`}>
               <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
                 <span>{KATEGORIE_LABEL[k] ?? k}</span>
-                <span style={{ opacity: 0.6, fontWeight: 700 }}>{ungelesenProKategorie.get(k) ?? 0}</span>
+                <span style={{ opacity: 0.6, fontWeight: 700 }}>
+                  {wunschlisteBestand.get(k as Kategorie)?.bestand ?? 0}/{wunschlisteBestand.get(k as Kategorie)?.aufbereitet ?? 0}
+                </span>
               </span>
             </Link>
           ))}
