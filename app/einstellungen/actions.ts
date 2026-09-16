@@ -8,7 +8,6 @@
 
 import { db } from "../../src/db";
 import { konten, kontoeinstellungen } from "../../src/db/schema";
-import { eq } from "drizzle-orm";
 
 export async function obsidianExportUmschalten(aktiv: boolean) {
   const [konto] = await db.select().from(konten).limit(1);
@@ -28,4 +27,21 @@ export async function ankiExportUmschalten(aktiv: boolean) {
     .insert(kontoeinstellungen)
     .values({ kontoId: konto.id, ankiExportAktiv: aktiv })
     .onConflictDoUpdate({ target: kontoeinstellungen.kontoId, set: { ankiExportAktiv: aktiv } });
+}
+
+// Ordner-/Vaultname für den Obsidian-Export (09/2026, Pendenz "Obsidian-
+// Export für Notizen fertigstellen") — optional; leer = Dateien landen im
+// ZIP-Wurzelverzeichnis. Siehe src/lib/obsidian.ts.
+export async function obsidianVaultNameSpeichern(nameRoh: string) {
+  const [konto] = await db.select().from(konten).limit(1);
+  if (!konto) return;
+
+  const name = nameRoh.trim();
+  await db
+    .insert(kontoeinstellungen)
+    .values({ kontoId: konto.id, obsidianVaultName: name.length > 0 ? name : null })
+    .onConflictDoUpdate({
+      target: kontoeinstellungen.kontoId,
+      set: { obsidianVaultName: name.length > 0 ? name : null },
+    });
 }

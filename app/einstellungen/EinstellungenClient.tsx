@@ -1,13 +1,15 @@
 // app/einstellungen/EinstellungenClient.tsx
 //
-// Client Component nur für die beiden Export-Toggles (Rest der Seite ist
-// statisch, bleibt im Server Component). Optimistisches UI-Update, Server
-// Action läuft im Hintergrund.
+// Client Component für die beiden Export-Toggles plus (09/2026, Pendenz
+// "Obsidian-Export für Notizen fertigstellen") das optionale Ordner-/
+// Vaultname-Feld für den Obsidian-Export (Rest der Seite bleibt statisch
+// im Server Component). Optimistisches UI-Update, Server Action läuft im
+// Hintergrund.
 
 "use client";
 
-import { useState, useTransition } from "react";
-import { ankiExportUmschalten, obsidianExportUmschalten } from "./actions";
+import { useRef, useState, useTransition } from "react";
+import { ankiExportUmschalten, obsidianExportUmschalten, obsidianVaultNameSpeichern } from "./actions";
 
 const zeileStil: React.CSSProperties = {
   boxSizing: "border-box",
@@ -26,9 +28,11 @@ const zeileStil: React.CSSProperties = {
 export default function EinstellungenClient({
   obsidianAktiv,
   ankiAktiv,
+  obsidianVaultName,
 }: {
   obsidianAktiv: boolean;
   ankiAktiv: boolean;
+  obsidianVaultName: string;
 }) {
   const [obsidian, setObsidian] = useState(obsidianAktiv);
   const [anki, setAnki] = useState(ankiAktiv);
@@ -58,6 +62,7 @@ export default function EinstellungenClient({
         </span>
         <Toggle aktiv={obsidian} />
       </button>
+      {obsidian && <VaultNameFeld initial={obsidianVaultName} />}
       <button onClick={ankiUmschalten} style={zeileStil}>
         <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
           Anki-Export
@@ -65,6 +70,75 @@ export default function EinstellungenClient({
         <Toggle aktiv={anki} />
       </button>
     </>
+  );
+}
+
+// Freitext-Feld für den Ordnernamen, in den die exportierten .md-Dateien im
+// ZIP gelegt werden (z.B. der Name des Obsidian-Vaults oder eines
+// Unterordners darin) — leer lassen, dann liegen die Dateien im ZIP-
+// Wurzelverzeichnis. Speichert debounced (600ms) nach Tippende, analog dem
+// Muster in app/notizen/NotizenSuche.tsx.
+function VaultNameFeld({ initial }: { initial: string }) {
+  const [wert, setWert] = useState(initial);
+  const [gespeichert, setGespeichert] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function aktualisieren(neuerWert: string) {
+    setWert(neuerWert);
+    setGespeichert(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      obsidianVaultNameSpeichern(neuerWert).then(() => setGespeichert(true));
+    }, 600);
+  }
+
+  return (
+    <div
+      style={{
+        boxSizing: "border-box",
+        width: "100%",
+        padding: "12px 16px",
+        borderRadius: 14,
+        background: "linear-gradient(rgba(0,0,0,.05),rgba(0,0,0,.05)), var(--paper)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      <label
+        htmlFor="obsidian-vault-name"
+        style={{
+          fontFamily: "Helvetica, Arial, sans-serif",
+          fontWeight: 600,
+          fontSize: 12.5,
+          letterSpacing: ".03em",
+          color: "rgba(36,35,31,.6)",
+        }}
+      >
+        Ordnername im Export (optional)
+      </label>
+      <input
+        id="obsidian-vault-name"
+        type="text"
+        value={wert}
+        onChange={(e) => aktualisieren(e.target.value)}
+        placeholder="z.B. Bücher"
+        style={{
+          boxSizing: "border-box",
+          width: "100%",
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: "1px solid rgba(36,35,31,.18)",
+          background: "var(--paper)",
+          fontFamily: "Helvetica, Arial, sans-serif",
+          fontSize: 15,
+          color: "#24231F",
+        }}
+      />
+      <span style={{ fontSize: 12, color: "rgba(36,35,31,.45)" }}>
+        {gespeichert ? "Die .md-Dateien landen im ZIP in diesem Unterordner." : "Wird gespeichert…"}
+      </span>
+    </div>
   );
 }
 
