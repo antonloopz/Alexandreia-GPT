@@ -270,6 +270,59 @@ Regeln:
   return ergebnis;
 }
 
+// Regeneriert NUR die Kernaussagen eines bereits vorhandenen Buchinhalts,
+// mit dem (09/2026 kategoriespezifisch gewordenen) kernaussagenAnleitung()
+// von oben — für den Nachzieh-Lauf über bereits produzierte, aber noch NIE
+// gelesene Bücher (siehe src/scripts/kernaussagen-regenerieren.ts, Pendenz
+// "Kernaussagen-Funktion überdenken: passt nicht für alle Kategorien").
+// Bewusst nur für UNGELESENE Bücher gedacht: Lernkarten, Quizfragen,
+// Wiederholungs-Fortschritt und Notizen/Hervorhebungen hängen per
+// Fremdschlüssel an den bestehenden Kernaussagen — bei einem bereits
+// gelesenen Buch wäre das Ersetzen entweder blockiert (FK-Fehler) oder
+// würde echten Nutzer-Fortschritt zerstören. Das Skript, das diese Funktion
+// aufruft, prüft das vorab (kein gezeigteBuecher-Eintrag).
+export async function kernaussagenNeuErstellen(
+  titel: string,
+  autor: string,
+  kategorie: string
+): Promise<{ kernaussagen: { text: string; erklaerung: string }[] }> {
+  const systemPrompt = `Du erstellst für Alexandreia NUR die Kernaussagen eines Buchs neu — die bisherige Fassung passte nicht zur Kategorie dieses Werks. Zielsprache Deutsch, unabhängig von der Originalsprache des Werks. Nutze die Web-Suche, um Inhalt und Fakten abzusichern.
+
+Regeln:
+- ${kernaussagenAnleitung(kategorie)}
+- ${KEINE_ZITATIONS_TAGS_REGEL}
+- Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text davor oder danach:
+
+{
+  "kernaussagen": [{ "text": string, "erklaerung": string }]
+}`;
+
+  const message = await client.messages.create({
+    model: MODELL,
+    max_tokens: 8000,
+    system: systemPrompt,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 4 }],
+    messages: [
+      {
+        role: "user",
+        content: `Buch: "${titel}" von ${autor}. Kategorie: ${kategorie}.`,
+      },
+    ],
+  });
+
+  const text = await gesamtText(message);
+  const ergebnis = jsonAusText(text) as { kernaussagen: { text: string; erklaerung: string }[] };
+
+  if (!Array.isArray(ergebnis.kernaussagen) || ergebnis.kernaussagen.length === 0) {
+    throw new Error(`Neue Kernaussagen für "${titel}" leer oder ungültig.`);
+  }
+  if (ergebnis.kernaussagen.some((k) => !k.text?.trim() || !k.erklaerung?.trim())) {
+    throw new Error(`Neue Kernaussagen für "${titel}" enthalten leere text/erklaerung-Felder.`);
+  }
+
+  return ergebnis;
+}
+
 export async function entwurfPruefen(
   titel: string,
   autor: string,
