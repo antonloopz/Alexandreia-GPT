@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { db } from "../../../src/db";
 import { buchinhalte, buecher, kernaussagen, konten, notizen, repetitionselemente } from "../../../src/db/schema";
 import { and, eq, asc, isNotNull } from "drizzle-orm";
-import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
+import { KATEGORIE_FARBE, KATEGORIE_LABEL, KERNAUSSAGEN_LABEL } from "../../../src/lib/kategorien";
 import KernaussagenClient from "./KernaussagenClient";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +75,7 @@ export default async function KernaussagenSeite({ params }: { params: Promise<{ 
       titel={buch.titel}
       akzent={KATEGORIE_FARBE[buch.kategorie] ?? "var(--paper)"}
       kategorieLabel={KATEGORIE_LABEL[buch.kategorie] ?? buch.kategorie}
+      kernaussagenLabel={KERNAUSSAGEN_LABEL[buch.kategorie] ?? { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" }}
       kernaussagen={liste}
       hervorhebungen={hervorhebungen}
     />

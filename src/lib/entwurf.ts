@@ -106,6 +106,43 @@ async function gesamtText(message: Anthropic.Message): Promise<string> {
   return text.replace(/<cite[^>]*>[\s\S]*?<\/cite>/gi, "").replace(/<\/?cite\b[^>]*>/gi, "");
 }
 
+// Kernaussagen passen nicht bei jeder Kategorie gleich gut — ein Sach-/
+// Ratgeberbuch hat oft klare, eigenständige Thesen, eine Biografie oder ein
+// erzählendes Werk eher prägende Wendepunkte bzw. zentrale Motive statt
+// Thesen (09/2026, Pendenz "Kernaussagen-Funktion überdenken: passt nicht
+// für alle Kategorien"). Statt die Kategorie hart einer eigenen
+// Datenstruktur zuzuordnen, bekommt das Modell hier nur eine andere
+// Anleitung, WELCHE ART von Kernaussage zu dieser Kategorie passt — Schema
+// (text + erklaerung) und Anzahl-Logik ("wie viele das Werk hergibt")
+// bleiben für alle Kategorien identisch, nur der Inhalt passt sich an.
+function kernaussagenAnleitung(kategorie: string): string {
+  switch (kategorie) {
+    case "biografie_memoir":
+    case "geschichte":
+      return (
+        'Kernaussagen: die prägendsten Wendepunkte, Entscheidungen oder Erkenntnisse aus ' +
+        'diesem Leben/dieser Epoche — KEINE erzwungenen abstrakten Thesen, wenn das Werk ' +
+        'selbst keine liefert. "text": der Wendepunkt/die Entscheidung kurz benannt, ' +
+        '"erklaerung": warum er/sie prägend war bzw. was daraus folgte. So viele wie das ' +
+        'Werk tatsächlich hergibt (keine Zielzahl) — bei einer Biografie/Chronik ist eine ' +
+        'kleinere Anzahl als bei einem Sachbuch normal und in Ordnung.'
+      );
+    case "literatur_klassiker":
+      return (
+        'Kernaussagen: die zentralen Themen/Motive des Werks — nicht wörtliche Thesen, da ' +
+        'fiktional. "text": das Motiv/Thema kurz benannt, "erklaerung": wie es sich im ' +
+        'Werk zeigt und warum es bedeutsam ist. So viele wie das Werk tatsächlich hergibt ' +
+        '(keine Zielzahl).'
+      );
+    default:
+      return (
+        'Kernaussagen: so viele wie das Buch tatsächlich hergibt (keine Zielzahl), jede ' +
+        'mit kurzem Thesentitel ("text") und erklärendem Fliesstext ("erklaerung") — echte ' +
+        'inhaltliche Thesen/Erkenntnisse des Buchs, keine blossen Kapitelüberschriften.'
+      );
+  }
+}
+
 export async function entwurfErstellen(
   titel: string,
   autor: string,
@@ -121,7 +158,7 @@ Nutze die Web-Suche aktiv, um Fakten (Entstehungsjahr, Kontext, ggf. Zitat) abzu
 Regeln:
 - ${ZUSAMMENFASSUNG_REGEL}
 - ${KEINE_ZITATIONS_TAGS_REGEL}
-- Kernaussagen: so viele wie das Buch tatsächlich hergibt (keine Zielzahl), jede mit kurzem Thesentitel (text) und erklärendem Fliesstext (erklaerung).
+- ${kernaussagenAnleitung(kategorie)}
 - Kernzitat: ${kernzitatErlaubt ? "dieses Werk ist ein literarischer Klassiker — liefere ein kulturell verankertes, wortgetreues Kernzitat in der Originalsprache UND in deutscher Übersetzung. Prüfe Wortlaut und Übersetzung gegen mindestens eine verlässliche Quelle und bleib bei EINER Schreibweise/Transliteration des Originaltitels, auch wenn mehrere kursieren." : "dieses Werk ist kein literarischer Klassiker — kernzitat_original und kernzitat_uebersetzung müssen null sein."}
 - Für jedes Feld (zusammenfassung, entstehungsgeschichte, autorenhintergrund, kernzitat) einen Vertrauenshinweis: "verifiziert" (durch Recherche bestätigt) oder "eingeordnet" (plausibel eingeschätzt, aber nicht wortgetreu geprüft). WICHTIG: gibt es kein Kernzitat (kernzitat_original/kernzitat_uebersetzung = null), dann MUSS vertrauenshinweise.kernzitat ebenfalls null sein — niemals "verifiziert" oder "eingeordnet" für ein nicht vorhandenes Zitat.
 - Antworte NUR mit einem validen JSON-Objekt in genau diesem Format, ohne Markdown-Codeblock, ohne Text davor oder danach:

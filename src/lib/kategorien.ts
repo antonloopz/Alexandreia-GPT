@@ -29,6 +29,27 @@ export const KATEGORIE_LABEL: Record<string, string> = {
   persoenliche_entwicklung: "Pers. Entwicklung",
 };
 
+// Anzeige-Label für den Kernaussagen-Screen (Einzahl für den Schritt-für-
+// Schritt-Zähler, Mehrzahl für den Screen-Titel) — nicht jede Kategorie hat
+// "Kernaussagen" im klassischen Thesen-Sinn (09/2026, Pendenz "Kernaussagen-
+// Funktion überdenken: passt nicht für alle Kategorien"). Der zugrunde
+// liegende Inhalt wird dazu passend bereits kategoriespezifisch generiert
+// (siehe src/lib/entwurf.ts, kernaussagenAnleitung) — dieses Label sorgt
+// dafür, dass die Bezeichnung auf dem Screen dazu passt statt bei einer
+// Biografie weiterhin von "Kernaussagen" zu sprechen.
+export const KERNAUSSAGEN_LABEL: Record<string, { einzeln: string; mehrzahl: string }> = {
+  philosophie: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+  psychologie: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+  wirtschaft_business: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+  geschichte: { einzeln: "Wendepunkt", mehrzahl: "Wendepunkte" },
+  naturwissenschaft: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+  gesellschaft_politik: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+  biografie_memoir: { einzeln: "Wendepunkt", mehrzahl: "Wendepunkte" },
+  literatur_klassiker: { einzeln: "Thema", mehrzahl: "Zentrale Themen" },
+  spiritualitaet_sinnfragen: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+  persoenliche_entwicklung: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+};
+
 // Kurzhelfer für die Kategorie-Chips, geteilt von app/buecherliste/page.tsx,
 // app/bookshelf/page.tsx und app/notizen/page.tsx (vorher dreifach
 // dupliziert — Pendenz "Code-Dopplung bereinigen: hexZuRgba /

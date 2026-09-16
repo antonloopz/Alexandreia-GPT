@@ -35,6 +35,7 @@ export default function KernaussagenClient({
   titel,
   akzent,
   kategorieLabel,
+  kernaussagenLabel,
   kernaussagen,
   hervorhebungen,
 }: {
@@ -42,6 +43,11 @@ export default function KernaussagenClient({
   titel: string;
   akzent: string;
   kategorieLabel: string;
+  // 09/2026, Pendenz "Kernaussagen-Funktion überdenken: passt nicht für
+  // alle Kategorien" — server-seitig aus KERNAUSSAGEN_LABEL vorberechnet
+  // (kategorien.ts), damit dieser Screen nicht bei jeder Kategorie
+  // pauschal von "Kernaussagen" spricht.
+  kernaussagenLabel: { einzeln: string; mehrzahl: string };
   kernaussagen: Kernaussage[];
   hervorhebungen: HervorhebungRoh[];
 }) {
@@ -86,7 +92,7 @@ export default function KernaussagenClient({
               <path d="M14.5 5.5 8 12l6.5 6.5" />
             </svg>
           </Link>
-          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Kernaussagen</span>
+          <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>{kernaussagenLabel.mehrzahl}</span>
         </div>
       </div>
       <MenuButton />
@@ -135,7 +141,7 @@ export default function KernaussagenClient({
             color: "rgba(36,35,31,.7)",
           }}
         >
-          Kernaussage {index + 1}
+          {kernaussagenLabel.einzeln} {index + 1}
         </span>
         <Hervorhebbarer
           key={`${aktuelle.id}-text`}
