@@ -1,12 +1,14 @@
 // app/einstellungen/page.tsx
 //
-// Fünfter und letzter sekundärer Screen. "Obsidian-Export"/"Anki-Export"
+// Fünfter und letzter sekundärer Screen. "Obsidian-Export"
 // (kontoeinstellungen-Zeile, per Toggle aktualisiert) und "Themenverteilung
 // anpassen" (verlinkt auf app/einstellungen/themenverteilung, siehe dort)
-// sind echt verdrahtet. "Partnerkonto verknüpfen" ist konzeptionell
-// vorgesehen (Mehrnutzer-Verknüpfung), aber ohne jede Datenbankgrundlage
-// (kein Login/Einladungssystem) noch nicht gebaut — Zeile deshalb bewusst
-// entfernt statt als toter Button stehen zu lassen, bis das Feature wirklich
+// sind echt verdrahtet. Anki-Export (nie über den Schalter hinaus gebaut)
+// wieder entfernt, siehe Pendenz "Anki-Exportfunktion entfernen".
+// "Partnerkonto verknüpfen" ist konzeptionell vorgesehen (Mehrnutzer-
+// Verknüpfung), aber ohne jede Datenbankgrundlage (kein Login-/
+// Einladungssystem) noch nicht gebaut — Zeile deshalb bewusst entfernt
+// statt als toter Button stehen zu lassen, bis das Feature wirklich
 // umgesetzt wird.
 //
 // Obsidian-Export tatsächlich fertig verdrahtet (09/2026, Pendenz
@@ -112,7 +114,6 @@ export default async function EinstellungenSeite({
           <span style={gruppenLabelStil}>Export</span>
           <EinstellungenClient
             obsidianAktiv={obsidianAktiv}
-            ankiAktiv={einstellungen?.ankiExportAktiv ?? false}
             obsidianVaultName={einstellungen?.obsidianVaultName ?? ""}
           />
           {obsidianAktiv && (

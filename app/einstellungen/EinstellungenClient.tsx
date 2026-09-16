@@ -1,15 +1,16 @@
 // app/einstellungen/EinstellungenClient.tsx
 //
-// Client Component für die beiden Export-Toggles plus (09/2026, Pendenz
+// Client Component für den Obsidian-Export-Toggle plus (09/2026, Pendenz
 // "Obsidian-Export für Notizen fertigstellen") das optionale Ordner-/
-// Vaultname-Feld für den Obsidian-Export (Rest der Seite bleibt statisch
-// im Server Component). Optimistisches UI-Update, Server Action läuft im
-// Hintergrund.
+// Vaultname-Feld dafür (Rest der Seite bleibt statisch im Server
+// Component). Optimistisches UI-Update, Server Action läuft im
+// Hintergrund. Anki-Export (nie über den Schalter hinaus gebaut) wieder
+// entfernt, siehe Pendenz "Anki-Exportfunktion entfernen".
 
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { ankiExportUmschalten, obsidianExportUmschalten, obsidianVaultNameSpeichern } from "./actions";
+import { obsidianExportUmschalten, obsidianVaultNameSpeichern } from "./actions";
 
 const zeileStil: React.CSSProperties = {
   boxSizing: "border-box",
@@ -27,15 +28,12 @@ const zeileStil: React.CSSProperties = {
 
 export default function EinstellungenClient({
   obsidianAktiv,
-  ankiAktiv,
   obsidianVaultName,
 }: {
   obsidianAktiv: boolean;
-  ankiAktiv: boolean;
   obsidianVaultName: string;
 }) {
   const [obsidian, setObsidian] = useState(obsidianAktiv);
-  const [anki, setAnki] = useState(ankiAktiv);
   const [, startTransition] = useTransition();
 
   function obsidianUmschalten() {
@@ -43,14 +41,6 @@ export default function EinstellungenClient({
     setObsidian(neu);
     startTransition(() => {
       obsidianExportUmschalten(neu);
-    });
-  }
-
-  function ankiUmschalten() {
-    const neu = !anki;
-    setAnki(neu);
-    startTransition(() => {
-      ankiExportUmschalten(neu);
     });
   }
 
@@ -63,12 +53,6 @@ export default function EinstellungenClient({
         <Toggle aktiv={obsidian} />
       </button>
       {obsidian && <VaultNameFeld initial={obsidianVaultName} />}
-      <button onClick={ankiUmschalten} style={zeileStil}>
-        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
-          Anki-Export
-        </span>
-        <Toggle aktiv={anki} />
-      </button>
     </>
   );
 }

@@ -258,7 +258,6 @@ export const kontoeinstellungen = pgTable("kontoeinstellungen", {
     .references(() => konten.id),
   obsidianVaultName: text(),
   obsidianExportAktiv: boolean().notNull().default(true),
-  ankiExportAktiv: boolean().notNull().default(false),
   // Optionale eigene Zielwerte pro Kategorie, überschreibt den Standard-Mix
   kategorieZielwerte: jsonb().$type<Record<string, number>>(),
 });
