@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Lokaler Obsidian-Export-Helfer (09/2026, Pendenz "Obsidian-Export für
+# Notizen fertigstellen") — enthält einen hartcodierten, maschinenspezifischen
+# Vault-Pfad, wird pro Rechner einmalig lokal eingerichtet, nicht deployt.
+/tools/obsidian-export-helfer/

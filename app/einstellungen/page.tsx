@@ -118,21 +118,36 @@ export default async function EinstellungenSeite({
           {obsidianAktiv && (
             <>
               {anzahlBuecher > 0 ? (
-                <a href="/einstellungen/obsidian-export" style={zeileStil}>
-                  <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
-                      Jetzt exportieren
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {/* Custom-URL-Schema statt Server-Route (09/2026, Pendenz
+                      "Obsidian-Export für Notizen fertigstellen" — Nachtrag
+                      "Direktschreiben statt ZIP") — öffnet den lokalen
+                      Helfer (tools/obsidian-export-helfer/), der den ZIP-
+                      Endpunkt selbst abruft und direkt in den Vault
+                      entpackt. Einrichtung einmalig pro Mac nötig, siehe
+                      tools/obsidian-export-helfer/README.md. */}
+                  <a href="alexandreia-export://sync" style={zeileStil}>
+                    <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
+                        Direkt in Obsidian synchronisieren
+                      </span>
+                      <span style={{ fontSize: 13, color: "rgba(36,35,31,.55)" }}>
+                        {anzahlNotizen} neue Notiz{anzahlNotizen === 1 ? "" : "en"} in {anzahlBuecher} {anzahlBuecher === 1 ? "Buch" : "Büchern"}
+                      </span>
                     </span>
-                    <span style={{ fontSize: 13, color: "rgba(36,35,31,.55)" }}>
-                      {anzahlNotizen} neue Notiz{anzahlNotizen === 1 ? "" : "en"} in {anzahlBuecher} {anzahlBuecher === 1 ? "Buch" : "Büchern"}
-                    </span>
-                  </span>
-                  <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>↓</span>
-                </a>
+                    <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>⚡</span>
+                  </a>
+                  <a
+                    href="/einstellungen/obsidian-export"
+                    style={{ fontSize: 13.5, fontWeight: 600, color: "rgba(36,35,31,.55)", padding: "0 4px" }}
+                  >
+                    Stattdessen als ZIP herunterladen
+                  </a>
+                </div>
               ) : (
                 <div style={{ ...zeileStil, cursor: "default" }}>
                   <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "rgba(36,35,31,.4)" }}>
-                    Jetzt exportieren
+                    Direkt in Obsidian synchronisieren
                   </span>
                   <span style={{ fontSize: 13, color: "rgba(36,35,31,.45)" }}>Alles aktuell</span>
                 </div>
