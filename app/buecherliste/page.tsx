@@ -253,9 +253,16 @@ export default async function BuecherlisteSeite({
   // Klare Abgrenzung vorgemerkt/nicht vorgemerkt statt nur stiller Sortierung
   // + kleinem Flaggen-Icon (09/2026, Pendenz "Wunschliste: abgrenzen
   // zwischen vorgemerkt und noch nicht vorgemerkt") — zwei eigene
-  // Abschnitte, analog "Bereit"/"Gelesen" in der Bibliothek. gefilterteZeilen
-  // ist schon nach bald sortiert, die Aufteilung erhält also die
-  // alphabetische Reihenfolge innerhalb jeder Gruppe.
+  // Abschnitte, analog "Bereit"/"Gelesen" in der Bibliothek, BEIDE als
+  // eigenes <details>-Akkordeon (09/2026, Nachschärfung "Akkordeon auch
+  // für nicht vorgemerkte Bücher" — vorher war nur "Vorgemerkt"
+  // einklappbar). gefilterteZeilen ist schon nach bald sortiert, die
+  // Aufteilung erhält also die alphabetische Reihenfolge innerhalb jeder
+  // Gruppe. Beide Abschnitte leiten sich von gefilterteZeilen ab, sind
+  // also schon vom Kategorie-Filter oben betroffen — ein Klick auf einen
+  // Kategoriebutton zeigt weiterhin ALLE (noch nicht aufbereiteten) Bücher
+  // dieser Kategorie, aufgeteilt auf beide Akkordeons, nicht nur die
+  // "noch nicht vorgemerkten".
   const vorgemerkteZeilen = gefilterteZeilen.filter((z) => z.bald);
   const uebrigeZeilen = gefilterteZeilen.filter((z) => !z.bald);
 
@@ -548,23 +555,33 @@ export default async function BuecherlisteSeite({
           )}
 
           {uebrigeZeilen.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <span
+            <details className="buecherliste-abschnitt" open>
+              <summary
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  cursor: "pointer",
                   fontFamily: "Helvetica, Arial, sans-serif",
                   fontWeight: 600,
                   fontSize: 13,
                   letterSpacing: ".06em",
                   textTransform: "uppercase",
                   color: "rgba(36,35,31,.5)",
+                  padding: "4px 0",
                 }}
               >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 5.5 15.5 12 9 18.5" />
+                </svg>
                 Noch nicht vorgemerkt ({uebrigeZeilen.length})
-              </span>
-              {uebrigeZeilen.map((zeile) => (
-                <WunschlisteKarte key={zeile.id} zeile={zeile} />
-              ))}
-            </div>
+              </summary>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+                {uebrigeZeilen.map((zeile) => (
+                  <WunschlisteKarte key={zeile.id} zeile={zeile} />
+                ))}
+              </div>
+            </details>
           )}
         </div>
       )}
