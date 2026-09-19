@@ -82,8 +82,9 @@ export const buecher = pgTable("buecher", {
   autor: text().notNull(),
   originalsprache: text().notNull(),
   kategorie: kategorieEnum().notNull(),
-  // Google Books / Open Library ID oder URL, für Disambiguierung beim
-  // Wunschlisten-Abgleich.
+  // Open-Library-Werk-Referenz (z.B. "/works/OL12345W") — seit 09/2026
+  // automatisch von sicherstelleBuchinfos() befüllt (lib/buchinfos.ts),
+  // ursprünglich für Disambiguierung beim Wunschlisten-Abgleich vorgesehen.
   externeReferenz: text(),
   // Nur gesetzt für recherchierte (nicht wunschlisten-basierte) Bücher —
   // legt fest, welche gezeigteBuecher.quelle beim tatsächlichen Zeigen
@@ -101,6 +102,23 @@ export const buecher = pgTable("buecher", {
   // katalogisierten Büchern bei jedem Laden erneut alle nachschlagen). null
   // nur, solange noch NIE nachgeschlagen wurde.
   umfangGeprueftAm: timestamp({ mode: "date" }),
+  // Weitere Buchinfos (09/2026, Pendenz "Automatische Ergänzung von Infos
+  // in der Wunschliste") — analog umfang/umfangGeprueftAm über Open Library
+  // nachgeschlagen und gecacht, siehe lib/buchinfos.ts. Klappentext/
+  // Beschreibung kommt (falls vorhanden) über die Open-Library-Works-API,
+  // die übrigen Felder direkt aus dem Suchtreffer.
+  beschreibung: text(),
+  verlag: text(),
+  erscheinungsjahr: integer(),
+  // Coverbild-URL (Pendenz "prüfen ob Coverbilder möglich sind") — Open
+  // Library stellt Cover kostenlos & ohne API-Key über eine feste
+  // Bild-URL bereit (https://covers.openlibrary.org/b/id/<cover_i>-L.jpg),
+  // sobald ein Suchtreffer ein cover_i liefert.
+  coverUrl: text(),
+  // Negativ-Cache für obige Felder, unabhängig von umfangGeprueftAm (eigener
+  // Zeitpunkt, weil ein anderer API-Aufruf/andere Felder) — analog
+  // umfangGeprueftAm, verhindert wiederholtes Nachschlagen ohne Treffer.
+  buchinfosGeprueftAm: timestamp({ mode: "date" }),
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });
 

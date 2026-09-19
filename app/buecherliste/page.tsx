@@ -21,6 +21,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
 import { kategorieUebersicht, vorschlaege, wunschlisteBestandProKategorie, type Kategorie } from "../../src/lib/vorschlag";
 import { sicherstelleUmfang } from "../../src/lib/umfang";
+import { sicherstelleBuchinfos } from "../../src/lib/buchinfos";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import PrioritaetToggle from "./PrioritaetToggle";
@@ -40,6 +41,12 @@ type WunschlisteZeile = {
   autor: string | null;
   kategorie: string | null;
   umfang: string | null;
+  // Automatisch ergänzte Buchinfos (09/2026, Pendenz "Automatische
+  // Ergänzung von Infos in der Wunschliste") — siehe lib/buchinfos.ts.
+  verlag: string | null;
+  erscheinungsjahr: number | null;
+  coverUrl: string | null;
+  buchinfosGeprueftAm: Date | null;
   herkunft: string;
 };
 
@@ -69,6 +76,18 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
         gap: 12,
       }}
     >
+      {/* Coverbild (09/2026, Pendenz "prüfen ob Coverbilder möglich sind")
+          — nur wenn Open Library eins geliefert hat (lib/buchinfos.ts);
+          sonst nimmt die Karte einfach keinen Platz dafür ein, kein
+          Platzhalter-Icon, um die kompakte Liste nicht zu verlängern. */}
+      {zeile.coverUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={zeile.coverUrl}
+          alt=""
+          style={{ width: 44, height: 64, objectFit: "cover", borderRadius: 6, flexShrink: 0, background: "rgba(36,35,31,.08)" }}
+        />
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
         {zeile.kategorie ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -125,6 +144,11 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
           <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>{zeile.autor ?? zeile.rohAutor}</span>
         )}
         {zeile.umfang && <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>{zeile.umfang}</span>}
+        {(zeile.verlag || zeile.erscheinungsjahr) && (
+          <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
+            {[zeile.verlag, zeile.erscheinungsjahr].filter(Boolean).join(" · ")}
+          </span>
+        )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
           {zeile.buchId && (
             <>
@@ -187,6 +211,10 @@ export default async function BuecherlisteSeite({
       kategorie: buecher.kategorie,
       umfang: buecher.umfang,
       umfangGeprueftAm: buecher.umfangGeprueftAm,
+      verlag: buecher.verlag,
+      erscheinungsjahr: buecher.erscheinungsjahr,
+      coverUrl: buecher.coverUrl,
+      buchinfosGeprueftAm: buecher.buchinfosGeprueftAm,
       herkunft: wunschlisteneintraege.herkunft,
     })
     .from(wunschlisteneintraege)
@@ -284,8 +312,19 @@ export default async function BuecherlisteSeite({
   after(async () => {
     await Promise.all(
       zeilen.map(async (zeile) => {
-        if (!zeile.buchId || zeile.umfang || !zeile.titel || !zeile.autor) return;
-        await sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang, zeile.umfangGeprueftAm);
+        if (!zeile.buchId || !zeile.titel || !zeile.autor) return;
+        // Umfang UND die übrigen Buchinfos parallel anstossen, nicht mehr
+        // hinter demselben Skip-Check — beide haben ihren EIGENEN
+        // Negativ-Cache-Zeitstempel (umfangGeprueftAm/buchinfosGeprueftAm),
+        // sicherstelleUmfang()/sicherstelleBuchinfos() prüfen intern schon
+        // selbst, ob überhaupt nachgeschlagen werden muss. Ohne diese
+        // Entkopplung hätte kein Alt-Bestand (umfang längst gesetzt) je die
+        // neuen Buchinfos bekommen, weil der alte Skip-Check (`zeile.umfang`)
+        // schon vorher abgebrochen hätte.
+        await Promise.all([
+          sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang, zeile.umfangGeprueftAm),
+          sicherstelleBuchinfos(zeile.buchId, zeile.titel, zeile.autor, zeile.buchinfosGeprueftAm),
+        ]);
       })
     );
   });
