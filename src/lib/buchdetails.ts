@@ -47,7 +47,7 @@ const SPRACHE_LABEL: Record<string, string> = {
 export async function buchdetailsErgaenzen(
   titel: string
 ): Promise<{ autor: string | null; originalsprache: string | null }> {
-  const docs = await openLibraryDokumente(titel, "", "title,author_name,language", 5);
+  const docs = (await openLibraryDokumente(titel, "", "title,author_name,language", 5)) ?? [];
 
   const autor = docs.find((d) => d.author_name && d.author_name.length > 0)?.author_name?.[0] ?? null;
   const sprachCode = docs.find((d) => d.language && d.language.length > 0)?.language?.[0];

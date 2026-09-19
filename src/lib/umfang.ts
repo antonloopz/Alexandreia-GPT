@@ -36,12 +36,26 @@ export type OpenLibraryDoc = {
 // auf die Seitenzahl-Felder verdrahtet, jetzt mit wählbaren `felder`, damit
 // src/lib/buchdetails.ts (Autor/Sprache nachschlagen) dieselbe Anfrage-
 // Logik samt Fehlerbehandlung nutzen kann, statt sie zu duplizieren.
+//
+// Rückgabe: die gefundenen Dokumente, ODER null bei einem ECHTEN
+// Fehlschlag (Netzwerkfehler, Timeout, Nicht-200-Status) — UNTERSCHIEDEN
+// von einer erfolgreichen Anfrage ohne Treffer ([]), damit Aufrufer mit
+// eigenem Negativ-Cache (z.B. sicherstelleBuchinfos() in lib/buchinfos.ts)
+// einen echten Fehlschlag nicht fälschlich als "kein Treffer" dauerhaft
+// cachen (Bug 09/2026: nach dem ersten — evtl. gedrosselten — Seitenaufbau
+// bekam praktisch KEIN Buch mehr eine Chance, jemals Buchinfos zu
+// bekommen, weil der Negativ-Cache-Zeitstempel bei JEDEM Fehlschlag
+// genauso gesetzt wurde wie bei einem echten "kein Treffer"). Die
+// bestehenden Aufrufer hier (umfangNachschlagen, buchdetailsErgaenzen)
+// behandeln null weiterhin wie [] — für sie ändert sich nichts, sie
+// setzen ja keinen eigenen Negativ-Cache-Zeitstempel abhängig vom Ergebnis
+// dieser Funktion.
 export async function openLibraryDokumente(
   titel: string,
   autor: string,
   felder = "title,author_name,number_of_pages_median",
   limit = 5
-): Promise<OpenLibraryDoc[]> {
+): Promise<OpenLibraryDoc[] | null> {
   try {
     const params = new URLSearchParams({ title: titel, fields: felder, limit: String(limit) });
     if (autor) params.set("author", autor);
@@ -54,19 +68,19 @@ export async function openLibraryDokumente(
         `[openLibraryDokumente] HTTP ${res.status} für "${titel}"${autor ? ` von ${autor}` : ""}:`,
         await res.text()
       );
-      return [];
+      return null;
     }
 
     const data = (await res.json()) as { docs?: OpenLibraryDoc[] };
     return data.docs ?? [];
   } catch (err) {
     console.error(`[openLibraryDokumente] Fehler für "${titel}"${autor ? ` von ${autor}` : ""}:`, err);
-    return [];
+    return null;
   }
 }
 
 async function seitenzahlSuchen(titel: string, autor: string): Promise<number | null> {
-  const docs = await openLibraryDokumente(titel, autor, "title,author_name,number_of_pages_median");
+  const docs = (await openLibraryDokumente(titel, autor, "title,author_name,number_of_pages_median")) ?? [];
   const treffer = docs.find(
     (doc) => typeof doc.number_of_pages_median === "number" && doc.number_of_pages_median > 0
   );

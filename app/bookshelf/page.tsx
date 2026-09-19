@@ -9,8 +9,9 @@
 // nicht nur schon mal geöffnet, siehe statusProBuchinhalt unten, Bug-Fix
 // 09/2026), "Bereit" (noch nie geöffnet ODER geöffnet, aber Quiz nicht
 // abgeschlossen — beides direkt (weiter-)lesbar über "Jetzt lesen").
-// Bewusst kein Coverbild (dafür gibt's aktuell keine Datenquelle) —
-// Kategorie-farbiges Icon als Platzhalter, wie zuvor in Archiv.
+// Coverbild wird angezeigt, sobald vorhanden (lib/buchinfos.ts schlägt es
+// im Hintergrund nach) — Kategorie-farbiges Icon bleibt der Platzhalter,
+// solange (noch) kein Cover vorliegt.
 //
 // "Gelesen"-Bücher bleiben bewusst genauso aufrufbar wie "Bereit"-Bücher
 // (09/2026, Pendenz "Bibliothek: gelesene Bücher weiterhin aufrufbar, ohne
@@ -31,6 +32,7 @@
 // Liste, sondern der aktuelle Lesefortschritt.
 
 import Link from "next/link";
+import { after } from "next/server";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, gezeigteBuecher, konten } from "../../src/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -40,6 +42,7 @@ import { relativesDatum, umfangZeileAusText } from "../../src/lib/darstellung";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import BibliothekSuche from "./BibliothekSuche";
+import { sicherstelleBuchinfos } from "../../src/lib/buchinfos";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +63,20 @@ function BuchIcon({ kategorie }: { kategorie: string }) {
       <KategorieIcon kategorie={kategorie} size={16} strokeWidth={1.6} />
     </div>
   );
+}
+
+function BuchCover({ kategorie, coverUrl }: { kategorie: string; coverUrl: string | null }) {
+  if (coverUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={coverUrl}
+        alt=""
+        style={{ width: 32, height: 46, objectFit: "cover", borderRadius: 6, flexShrink: 0, background: "rgba(36,35,31,.08)" }}
+      />
+    );
+  }
+  return <BuchIcon kategorie={kategorie} />;
 }
 
 export default async function BookshelfSeite({
@@ -88,6 +105,7 @@ export default async function BookshelfSeite({
       kategorie: buecher.kategorie,
       umfang: buecher.umfang,
       zusammenfassung: buchinhalte.zusammenfassung,
+      coverUrl: buecher.coverUrl,
     })
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
@@ -103,6 +121,11 @@ export default async function BookshelfSeite({
       umfang: buecher.umfang,
       zusammenfassung: buchinhalte.zusammenfassung,
       erstelltAm: buchinhalte.erstelltAm,
+      buchId: buecher.id,
+      verlag: buecher.verlag,
+      erscheinungsjahr: buecher.erscheinungsjahr,
+      coverUrl: buecher.coverUrl,
+      buchinfosGeprueftAm: buecher.buchinfosGeprueftAm,
     })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
@@ -152,6 +175,21 @@ export default async function BookshelfSeite({
   for (const buch of alleImVorrat) {
     bestandProKategorie.set(buch.kategorie, (bestandProKategorie.get(buch.kategorie) ?? 0) + 1);
   }
+
+  // Buchinfos (Cover, Verlag, Erscheinungsjahr) für alle Bücher im Vorrat
+  // nachschlagen — analog Wunschliste (app/buecherliste/page.tsx), läuft
+  // NACH dem Response im Hintergrund (Next.js after()), damit der
+  // Seitenaufbau nicht auf Open-Library-Anfragen wartet. alleImVorrat
+  // deckt auch das gepinnte "heutige Buch" mit ab (das ist ja selbst ein
+  // im_vorrat-Eintrag), ein separater Lauf dafür ist nicht nötig.
+  after(async () => {
+    await Promise.all(
+      alleImVorrat.map(async (buch) => {
+        if (!buch.buchId) return;
+        await sicherstelleBuchinfos(buch.buchId, buch.titel, buch.autor, buch.buchinfosGeprueftAm);
+      })
+    );
+  });
 
   const uebrigeNachKategorie = !kategorieFilter ? uebrige : uebrige.filter((b) => b.kategorie === kategorieFilter);
 
@@ -289,6 +327,14 @@ export default async function BookshelfSeite({
                 gap: 12,
               }}
             >
+              {heutigesBuch.coverUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={heutigesBuch.coverUrl}
+                  alt=""
+                  style={{ width: 44, height: 64, objectFit: "cover", borderRadius: 6, flexShrink: 0 }}
+                />
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
                 <span
                   style={{
@@ -362,7 +408,7 @@ export default async function BookshelfSeite({
                     gap: 12,
                   }}
                 >
-                  <BuchIcon kategorie={buch.kategorie} />
+                  <BuchCover kategorie={buch.kategorie} coverUrl={buch.coverUrl} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
                     <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buch.titel}</span>
                     <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>
@@ -371,6 +417,11 @@ export default async function BookshelfSeite({
                     {umfangZeileAusText(buch.umfang, buch.zusammenfassung) && (
                       <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
                         {umfangZeileAusText(buch.umfang, buch.zusammenfassung)}
+                      </span>
+                    )}
+                    {(buch.verlag || buch.erscheinungsjahr) && (
+                      <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
+                        {[buch.verlag, buch.erscheinungsjahr].filter(Boolean).join(" · ")}
                       </span>
                     )}
                   </div>
@@ -423,7 +474,7 @@ export default async function BookshelfSeite({
                     gap: 12,
                   }}
                 >
-                  <BuchIcon kategorie={buch.kategorie} />
+                  <BuchCover kategorie={buch.kategorie} coverUrl={buch.coverUrl} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
                     <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>{buch.titel}</span>
                     <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>
@@ -435,6 +486,11 @@ export default async function BookshelfSeite({
                     {umfangZeileAusText(buch.umfang, buch.zusammenfassung) && (
                       <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
                         {umfangZeileAusText(buch.umfang, buch.zusammenfassung)}
+                      </span>
+                    )}
+                    {(buch.verlag || buch.erscheinungsjahr) && (
+                      <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
+                        {[buch.verlag, buch.erscheinungsjahr].filter(Boolean).join(" · ")}
                       </span>
                     )}
                   </div>
