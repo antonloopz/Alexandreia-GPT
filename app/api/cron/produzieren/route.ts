@@ -5,8 +5,10 @@
 // Vercel Cron Job die Pipeline Vorschlag → Entwurf → Prüfung → Lernkarten/
 // Quiz für GENAU EIN Buch durchlaufen lassen (Kostenkontrolle — jeder Lauf
 // kostet echte Claude-API-Aufrufe inkl. Websuche). vorschlaege() liefert
-// dabei automatisch die Kategorie mit dem grössten Nachholbedarf; ist keine
-// Kategorie unter dem Mindestbestand, passiert nichts.
+// dabei automatisch Kandidaten für alle Kategorien mit Nachholbedarf
+// (knappste zuerst); produziert wird der erste davon, der bereits bestätigt
+// ist (siehe Kommentar weiter unten) — ist keine Kategorie unter dem
+// Mindestbestand, passiert nichts.
 //
 // Absicherung nach Vercel-Doku: CRON_SECRET als Bearer-Token, das Vercel bei
 // eigenen Cron-Aufrufen automatisch mitschickt (siehe vercel.json).
@@ -22,7 +24,7 @@
 import { NextRequest } from "next/server";
 import { db } from "../../../../src/db";
 import { konten } from "../../../../src/db/schema";
-import { vorschlaege } from "../../../../src/lib/vorschlag";
+import { ALLE_KATEGORIEN, vorschlaege } from "../../../../src/lib/vorschlag";
 import { pipelineSchritt } from "../../../../src/lib/entwurf";
 import { erstelleLernkartenUndQuiz } from "../../../../src/lib/lernkarten";
 import { kiDeaktiviert } from "../../../../src/lib/testmodus";
@@ -52,7 +54,16 @@ export async function GET(request: NextRequest) {
     return Response.json({ status: "kein_konto" });
   }
 
-  const kandidaten = await vorschlaege(konto.id, 1);
+  // anzahl = ALLE_KATEGORIEN.length statt 1 (09/2026, Bugfix): vorher wurde
+  // nur der EINE Kandidat der knappsten Kategorie angefragt — war der
+  // zufällig ein unbestätigter KI-Vorschlag, brach der ganze Cron-Lauf ab,
+  // selbst wenn eine ANDERE knappe Kategorie längst einen bestätigten
+  // Wunschlisten-Kandidaten bereit hatte (manche Tage wurde dadurch gar
+  // nichts produziert, obwohl es möglich gewesen wäre). vorschlaege()
+  // liefert höchstens einen Kandidaten pro Kategorie (siehe dort), daher
+  // deckt die Kategorie-Gesamtzahl im ungünstigsten Fall (alle Kategorien
+  // knapp) jede einzelne ab.
+  const kandidaten = await vorschlaege(konto.id, ALLE_KATEGORIEN.length);
   if (kandidaten.length === 0) {
     return Response.json({
       status: "kein_bedarf",
@@ -60,7 +71,10 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const kandidat = kandidaten[0];
+  // Über alle angefragten Kandidaten (knappste Kategorie zuerst) den ersten
+  // bereits bestätigten nehmen — nicht mehr nur den allerersten prüfen,
+  // siehe Kommentar oben.
+  const kandidat = kandidaten.find((k) => k.quelle === "eigene_liste");
 
   // KI-Vorschläge (Klassiker/Geheimtipp/Synergie) warten auf die
   // Bestätigung des Nutzers (09/2026, Pendenz "Wunschliste: Markierung ob
@@ -70,14 +84,19 @@ export async function GET(request: NextRequest) {
   // (oder "bald"-Priorisierung) auf der Wunschliste selbst löst
   // pipelineSchritt() für so einen Kandidaten aus. Nur "eigene_liste"
   // (selbst hinzugefügt oder manuell "bald" vorgemerkt) läuft hier weiter
-  // automatisch durch.
-  if (kandidat.quelle !== "eigene_liste") {
+  // automatisch durch. Sind ALLE angefragten Kandidaten unbestätigt (keine
+  // knappe Kategorie hat einen eigene_liste-Kandidaten), werden sie hier
+  // komplett aufgelistet statt nur der eine der knappsten Kategorie — sonst
+  // bräuchte man für die Fehlersuche in den Vercel-Logs eine zweite Anfrage.
+  if (!kandidat) {
     return Response.json({
       status: "wartet_auf_bestaetigung",
-      buch: `${kandidat.titel} (${kandidat.autor})`,
-      kategorie: kandidat.kategorie,
-      quelle: kandidat.quelle,
-      info: "KI-Vorschlag steht auf der Wunschliste bereit — wartet auf Bestätigung (\"Aufbereiten\" oder \"bald\").",
+      kandidaten: kandidaten.map((k) => ({
+        buch: `${k.titel} (${k.autor})`,
+        kategorie: k.kategorie,
+        quelle: k.quelle,
+      })),
+      info: "Alle knappen Kategorien haben nur unbestätigte KI-Vorschläge auf der Wunschliste bereit — wartet auf Bestätigung (\"Aufbereiten\" oder \"bald\").",
     });
   }
 
@@ -98,6 +117,10 @@ export async function GET(request: NextRequest) {
     kandidat.autor
   );
 
+  // uebersprungeneVorschlaege: wie viele der angefragten Kandidaten NICHT
+  // produziert wurden (unbestätigte KI-Vorschläge anderer knapper
+  // Kategorien, die dieser Lauf übersprungen hat) — rein informativ für die
+  // Vercel-Logs, ändert am Produktionsergebnis nichts.
   return Response.json({
     status: "produziert",
     buch: `${kandidat.titel} (${kandidat.autor})`,
@@ -107,5 +130,6 @@ export async function GET(request: NextRequest) {
     lernkartenAnzahl: lernkartenErgebnis.lernkartenAnzahl,
     quizfragenAnzahl: lernkartenErgebnis.quizfragenAnzahl,
     uebersprungen: lernkartenErgebnis.uebersprungen,
+    ...(kandidaten.length > 1 ? { uebersprungeneVorschlaege: kandidaten.length - 1 } : {}),
   });
 }
