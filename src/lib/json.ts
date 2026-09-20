@@ -1,7 +1,7 @@
 // src/lib/json.ts
 //
 // Gemeinsame, robuste JSON-Extraktion für alle Pipeline-Schritte, die
-// Claude bitten, "nur JSON" zu antworten (Entwurf, Prüfung, Lernkarten).
+// Claude bitten, "nur JSON" zu antworten (Entwurf, Prüfung, Quiz).
 // In der Praxis hält sich das Modell fast immer daran, aber gelegentlich
 // weicht die Antwort in einer von drei Arten ab, die alle nichts mit dem
 // inhaltlichen Ergebnis zu tun haben:

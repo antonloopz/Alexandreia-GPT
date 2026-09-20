@@ -18,7 +18,6 @@ import {
   buecher,
   kernaussagen,
   konten,
-  lernkarten,
   notizen,
   repetitionselemente,
 } from "../../src/db/schema";
@@ -40,34 +39,22 @@ export default async function WiederholungSeite() {
     );
   }
 
-  const faelligLernkarten = await db
+  // Eine repetitionselemente-Zeile verweist eindeutig auf genau eine
+  // Kernaussage (kein Fan-out mehr wie zu Lernkarten-Zeiten, kein Dedup
+  // nötig).
+  const kernaussagenZeilen = await db
     .select({
       kernaussageId: repetitionselemente.kernaussageId,
       naechsteFaelligkeit: repetitionselemente.naechsteFaelligkeit,
       buchinhaltId: buchinhalte.id,
       titel: buecher.titel,
-      lernkarteFrage: lernkarten.frage,
     })
     .from(repetitionselemente)
     .innerJoin(kernaussagen, eq(repetitionselemente.kernaussageId, kernaussagen.id))
     .innerJoin(buchinhalte, eq(kernaussagen.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .leftJoin(lernkarten, eq(lernkarten.kernaussageId, kernaussagen.id))
     .where(and(eq(repetitionselemente.kontoId, konto.id), lte(repetitionselemente.naechsteFaelligkeit, heute)))
     .orderBy(asc(repetitionselemente.naechsteFaelligkeit));
-
-  // Pro Kernaussage nur eine Karte zählen (falls mehrere Lernkarten
-  // existieren, zählt nur die erste).
-  const gesehen = new Set<string>();
-  const lernkartenZeilen = faelligLernkarten.filter((z) => {
-    // kernaussageId ist hier wegen des innerJoin auf kernaussagen immer
-    // gesetzt — nur die Spalte selbst ist wegen des neuen notizId-Zweigs
-    // (siehe Schema) jetzt allgemein nullable.
-    const kernaussageId = z.kernaussageId as string;
-    if (gesehen.has(kernaussageId)) return false;
-    gesehen.add(kernaussageId);
-    return true;
-  });
 
   // Fällige, vom Nutzer selbst zur Wiederholung hinzugefügte Hervorhebungen
   // (repetitionselemente.notizId statt .kernaussageId) — Pendenz "Notizen/
@@ -90,8 +77,8 @@ export default async function WiederholungSeite() {
     .orderBy(asc(repetitionselemente.naechsteFaelligkeit));
 
   // Beide Quellen vereint, chronologisch nach Fälligkeit — "zeilen" zählt
-  // jetzt fällige Lernkarten UND fällige Hervorhebungen zusammen.
-  const zeilen = [...lernkartenZeilen, ...hervorhebungenZeilen].sort(
+  // jetzt fällige Kernaussagen UND fällige Hervorhebungen zusammen.
+  const zeilen = [...kernaussagenZeilen, ...hervorhebungenZeilen].sort(
     (a, b) => a.naechsteFaelligkeit.getTime() - b.naechsteFaelligkeit.getTime()
   );
 
@@ -187,7 +174,7 @@ export default async function WiederholungSeite() {
                       day: "numeric",
                       month: "long",
                     }).format(naechsteFaelligkeit)} fällig.`
-                  : "Keine Wiederholung fällig. Sobald Lernkarten erstellt sind, erscheinen hier ihre Termine."}
+                  : "Keine Wiederholung fällig. Sobald eine Quizfrage beantwortet oder eine Hervorhebung zur Wiederholung hinzugefügt wurde, erscheinen hier ihre Termine."}
               </span>
             </div>
           </div>

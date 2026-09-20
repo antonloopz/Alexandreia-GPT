@@ -18,15 +18,15 @@
 // Ablauf pro Buch: neue Kernaussagen ERST erzeugen (API-Aufruf) — erst wenn
 // das klappt, werden die alten Quizfragen + Lernkarten + Kernaussagen
 // gelöscht (in dieser Reihenfolge, wegen der Fremdschlüssel) und die neuen
-// Kernaussagen eingefügt. Danach erstelleLernkartenUndQuiz() erneut
-// aufrufen — leitet aus den NEUEN Kernaussagen frische Lernkarten/
-// Quizfragen ab und setzt den Buchinhalt-Status zurück auf "im_vorrat".
-// Schlägt irgendetwas NACH dem Löschen fehl (Netzwerkfehler, 0 Lernkarten/
-// Quizfragen erzeugt), wird der Buchinhalt-Status auf "geprueft"
-// zurückgesetzt — damit ein unvollständiges Buch NIE über Home/Vorschlag
-// ausgespielt werden kann, sondern erst nach einem manuellen Nachziehen.
+// Kernaussagen eingefügt. Danach erstelleQuizfragen() erneut aufrufen —
+// leitet aus den NEUEN Kernaussagen frische Quizfragen ab und setzt den
+// Buchinhalt-Status zurück auf "im_vorrat". Schlägt irgendetwas NACH dem
+// Löschen fehl (Netzwerkfehler, 0 Quizfragen erzeugt), wird der
+// Buchinhalt-Status auf "geprueft" zurückgesetzt — damit ein
+// unvollständiges Buch NIE über Home/Vorschlag ausgespielt werden kann,
+// sondern erst nach einem manuellen Nachziehen.
 //
-// Kostet zwei echte API-Aufrufe PRO Buch (Kernaussagen + Lernkarten/Quiz).
+// Kostet zwei echte API-Aufrufe PRO Buch (Kernaussagen + Quiz).
 // Läuft nacheinander, mit kurzer Pause zwischen den Büchern, bricht bei
 // einem einzelnen Fehler NICHT den ganzen Lauf ab.
 //
@@ -65,7 +65,7 @@ async function main() {
   );
   const { eq, inArray } = await import("drizzle-orm");
   const { kernaussagenNeuErstellen } = await import("../lib/entwurf");
-  const { erstelleLernkartenUndQuiz } = await import("../lib/lernkarten");
+  const { erstelleQuizfragen } = await import("../lib/quiz-generierung");
 
   // Sicherheitsfilter: NUR Bücher, die noch NIE gezeigt/geöffnet wurden —
   // an allem anderen hängen schon (potenziell) Lernkarten-Wiederholungen,
@@ -129,22 +129,22 @@ async function main() {
         });
       }
 
-      const lernkartenErgebnis = await erstelleLernkartenUndQuiz(zeile.buchinhaltId, zeile.titel, zeile.autor);
+      const quizErgebnis = await erstelleQuizfragen(zeile.buchinhaltId, zeile.titel, zeile.autor);
 
-      if (lernkartenErgebnis.lernkartenAnzahl === 0 || lernkartenErgebnis.quizfragenAnzahl === 0) {
+      if (quizErgebnis.quizfragenAnzahl === 0) {
         await db.update(buchinhalte).set({ status: "geprueft" }).where(eq(buchinhalte.id, zeile.buchinhaltId));
         console.warn(
-          `WARNUNG ${zeile.titel}: 0 Lernkarten/Quizfragen erzeugt — Status auf "geprueft" zurückgesetzt ` +
+          `WARNUNG ${zeile.titel}: 0 Quizfragen erzeugt — Status auf "geprueft" zurückgesetzt ` +
             `(aus Rotation genommen), bitte manuell prüfen (Buchinhalt ${zeile.buchinhaltId}).`
         );
       } else {
         console.log(
           `OK    ${zeile.titel} (${zeile.kategorie}): ${alteIds.length} -> ${ergebnis.kernaussagen.length} Kernaussagen, ` +
-            `${lernkartenErgebnis.lernkartenAnzahl} Lernkarten, ${lernkartenErgebnis.quizfragenAnzahl} Quizfragen`
+            `${quizErgebnis.quizfragenAnzahl} Quizfragen`
         );
       }
-      if (lernkartenErgebnis.uebersprungen.length > 0) {
-        console.log(`      übersprungen: ${lernkartenErgebnis.uebersprungen.join("; ")}`);
+      if (quizErgebnis.uebersprungen.length > 0) {
+        console.log(`      übersprungen: ${quizErgebnis.uebersprungen.join("; ")}`);
       }
       erfolgreich++;
     } catch (err) {

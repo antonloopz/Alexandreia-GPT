@@ -35,7 +35,7 @@ async function main() {
   const { db } = await import("./index");
   const { buchinhalte } = await import("./schema");
   const { eq } = await import("drizzle-orm");
-  const { erstelleLernkartenUndQuiz } = await import("../lib/lernkarten");
+  const { erstelleQuizfragen } = await import("../lib/quiz-generierung");
 
   const vorher = await db
     .select({ status: buchinhalte.status })
@@ -58,10 +58,9 @@ async function main() {
     return;
   }
 
-  console.log("Rufe erstelleLernkartenUndQuiz() auf (mit eingebautem automatischem Retry)...");
-  const ergebnis = await erstelleLernkartenUndQuiz(BUCHINHALT_ID, TITEL, AUTOR);
+  console.log("Rufe erstelleQuizfragen() auf (mit eingebautem automatischem Retry) — hiess zum Zeitpunkt dieses Skripts noch erstelleLernkartenUndQuiz(), seither umbenannt...");
+  const ergebnis = await erstelleQuizfragen(BUCHINHALT_ID, TITEL, AUTOR);
 
-  console.log(`Lernkarten erstellt: ${ergebnis.lernkartenAnzahl}`);
   console.log(`Quizfragen erstellt: ${ergebnis.quizfragenAnzahl}`);
   if (ergebnis.uebersprungen.length > 0) {
     console.log("Übersprungen:");

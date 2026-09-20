@@ -1,9 +1,10 @@
 // src/lib/wiederholung.ts
 //
-// Spaced-Repetition-Logik für Kernaussagen/Lernkarten. Feste Intervallstufen
+// Spaced-Repetition-Logik für Kernaussagen. Feste Intervallstufen
 // (in Tagen) statt eines vollen SM-2-Algorithmus — bewusst einfach, passend
-// zur "ein Buch pro Tag"-Philosophie. Von der Lernkarten-Bewertung UND
-// später vom Wiederholung-Screen genutzt.
+// zur "ein Buch pro Tag"-Philosophie. Von der Quiz-Bewertung (09/2026:
+// vorher der separaten, inzwischen entfernten Lernkarten-Bewertung) UND
+// vom Wiederholung-Screen genutzt.
 
 import { bewertungEnum } from "../db/schema";
 

@@ -27,6 +27,7 @@ export default async function QuizSeite({ params }: { params: Promise<{ id: stri
   const liste = await db
     .select({
       id: quizfragen.id,
+      kernaussageId: quizfragen.kernaussageId,
       frage: quizfragen.frage,
       optionen: quizfragen.optionen,
       richtigeOptionIndex: quizfragen.richtigeOptionIndex,

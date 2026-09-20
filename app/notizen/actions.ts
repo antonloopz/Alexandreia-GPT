@@ -56,8 +56,9 @@ export async function hervorhebungLoeschen(id: string) {
 // "Notizen/Hervorhebungen optional in die Wiederholung aufnehmen", 09/2026.
 // Genutzt vom Popover im Lesen-Screen (Hervorhebbarer.tsx) UND von der
 // Notizen-Übersicht selbst. Startet bewusst auf Intervallstufe 0 (morgen
-// wieder fällig) statt sofort — konsistent mit einer frisch erstellten
-// Lernkarten-Wiederholung.
+// wieder fällig) statt sofort — konsistent mit einer frisch angelegten
+// repetitionselemente-Zeile aus einer Quiz-Antwort (siehe
+// app/quiz/[id]/actions.ts).
 export async function wiederholungHinzufuegen(notizId: string) {
   const [konto] = await db.select().from(konten).limit(1);
   if (!konto) return;

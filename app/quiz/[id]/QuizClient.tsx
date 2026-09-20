@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MenuButton from "../../MenuButton";
@@ -23,8 +23,27 @@ import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 import { quizantwortenProtokollieren } from "./actions";
 
-type Frage = { id: string; frage: string; optionen: string[]; richtigeOptionIndex: number };
+type Frage = { id: string; kernaussageId: string; frage: string; optionen: string[]; richtigeOptionIndex: number };
 type FalscheAntwort = { frage: string; gewaehlt: string; richtig: string };
+
+// Dezenter Hinweis neben dem Pfeil-Button, solange die Antworten geschrieben
+// werden — gleiche Typo wie die Meta-Zeile unter dem Titel, kein Spinner.
+function SpeichertHinweis() {
+  return (
+    <span
+      style={{
+        fontFamily: "Helvetica, Arial, sans-serif",
+        fontWeight: 600,
+        fontSize: 13,
+        letterSpacing: ".06em",
+        textTransform: "uppercase",
+        color: "rgba(36,35,31,.62)",
+      }}
+    >
+      Speichert …
+    </span>
+  );
+}
 
 export default function QuizClient({
   buchinhaltId,
@@ -45,9 +64,14 @@ export default function QuizClient({
   const [falscheAntworten, setFalscheAntworten] = useState<FalscheAntwort[]>([]);
   // Jede einzelne Antwort (nicht nur die falschen) — Grundlage für das
   // Event-Log in quizantworten (siehe actions.ts, Pendenz "Event-Log für
-  // Bewertungen/Quiz-Antworten (Fortschritt-Fix)").
-  const [antworten, setAntworten] = useState<{ quizfrageId: string; richtig: boolean }[]>([]);
+  // Bewertungen/Quiz-Antworten (Fortschritt-Fix)") UND für die
+  // Wiederholung-Bewertung, die aus dem Quiz-Ergebnis abgeleitet wird
+  // (kernaussageId je Antwort mitgeführt, siehe actions.ts).
+  const [antworten, setAntworten] = useState<
+    { quizfrageId: string; kernaussageId: string; richtig: boolean }[]
+  >([]);
   const [phase, setPhase] = useState<"frage" | "auswertung">("frage");
+  const [speichert, startTransition] = useTransition();
   const router = useRouter();
 
   const aktuelle = fragen[index];
@@ -58,7 +82,10 @@ export default function QuizClient({
     if (beantwortet) return;
     setAusgewaehlt(i);
     const istRichtig = i === aktuelle.richtigeOptionIndex;
-    setAntworten((liste) => [...liste, { quizfrageId: aktuelle.id, richtig: istRichtig }]);
+    setAntworten((liste) => [
+      ...liste,
+      { quizfrageId: aktuelle.id, kernaussageId: aktuelle.kernaussageId, richtig: istRichtig },
+    ]);
     if (istRichtig) {
       setRichtigAnzahl((n) => n + 1);
     } else {
@@ -74,13 +101,29 @@ export default function QuizClient({
   }
 
   function zumAbschluss() {
-    // Bewusst nicht abgewartet — der Abschluss-Screen soll nicht auf das
-    // Protokollieren warten, das läuft im Hintergrund weiter.
-    void quizantwortenProtokollieren(buchinhaltId, antworten);
-    router.push(`/abschluss/${buchinhaltId}?richtig=${richtigAnzahl}`);
+    if (speichert) return;
+    // 09/2026: bewusst ABGEWARTET (vorher fire-and-forget). Seit der
+    // Abschaffung der Lernkarten schreibt quizantwortenProtokollieren neben
+    // dem quizantworten-Log auch die repetitionselemente-Zeilen (siehe
+    // actions.ts, mehrere Roundtrips je Kernaussage) — und genau die zählt
+    // der Abschluss-Screen für "Wiederholungen geplant" frisch aus der DB
+    // (force-dynamic). Ohne await wäre man dort, bevor geschrieben ist, und
+    // sähe beim ersten Durchlauf 0 oder eine Teilzahl.
+    startTransition(async () => {
+      try {
+        await quizantwortenProtokollieren(buchinhaltId, antworten);
+      } catch (fehler) {
+        // Fehler darf nicht auf dem Quiz-Screen festhalten: die Trefferquote
+        // selbst kommt per Query-Parameter, der Abschluss-Screen zeigt dann
+        // bloss eine zu kleine Wiederholungs-Zahl.
+        console.error("Quiz-Antworten konnten nicht protokolliert werden", fehler);
+      }
+      router.push(`/abschluss/${buchinhaltId}?richtig=${richtigAnzahl}`);
+    });
   }
 
   function weiter() {
+    if (speichert) return;
     if (istLetzte) {
       if (falscheAntworten.length > 0) {
         setPhase("auswertung");
@@ -161,9 +204,12 @@ export default function QuizClient({
           ))}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, flexShrink: 0 }}>
+          {speichert && <SpeichertHinweis />}
           <button
             onClick={zumAbschluss}
+            disabled={speichert}
+            aria-busy={speichert}
             aria-label="Zum Abschluss"
             style={{
               width: 56,
@@ -176,7 +222,8 @@ export default function QuizClient({
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              cursor: "pointer",
+              cursor: speichert ? "default" : "pointer",
+              opacity: speichert ? 0.45 : 1,
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
@@ -207,7 +254,7 @@ export default function QuizClient({
       <StatusBarColor farbe={akzent} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href={`/lernkarten/${buchinhaltId}`} aria-label="Zurück">
+          <Link href={`/kernaussagen/${buchinhaltId}`} aria-label="Zurück">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14.5 5.5 8 12l6.5 6.5" />
             </svg>
@@ -322,9 +369,20 @@ export default function QuizClient({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", visibility: beantwortet ? "visible" : "hidden" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 10,
+            visibility: beantwortet ? "visible" : "hidden",
+          }}
+        >
+          {speichert && <SpeichertHinweis />}
           <button
             onClick={weiter}
+            disabled={speichert}
+            aria-busy={speichert}
             aria-label={istLetzte ? "Zum Abschluss" : "Nächste Frage"}
             style={{
               width: 56,
@@ -337,7 +395,8 @@ export default function QuizClient({
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              cursor: "pointer",
+              cursor: speichert ? "default" : "pointer",
+              opacity: speichert ? 0.45 : 1,
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={akzent} strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">

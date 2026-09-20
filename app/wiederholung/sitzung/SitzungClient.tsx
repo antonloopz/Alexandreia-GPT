@@ -1,31 +1,38 @@
 // app/wiederholung/sitzung/SitzungClient.tsx
 //
 // Client Component: eine fällige Karte auf einmal, bücherübergreifend.
-// Gleiches Muster wie LernkartenClient (Frage+Antwort zusammen sichtbar,
-// 3 Bewertungs-Chips), aber neutrale Papierfarbe statt Kategoriefarbe, da
-// eine Sitzung mehrere Bücher/Kategorien mischen kann. Nutzt dieselbe
-// Server Action wie die Lernkarten-Bewertung (bewertungSpeichern) — die
-// repetitionselemente-Logik ist identisch, nur die Quelle der fälligen
-// Karten unterscheidet sich.
+// Neutrale Papierfarbe statt Kategoriefarbe, da eine Sitzung mehrere
+// Bücher/Kategorien mischen kann. Bewertungs-Action jetzt in
+// app/wiederholung/actions.ts (09/2026 aus dem inzwischen entfernten
+// Lernkarten-Screen hierher verschoben, siehe dort).
+//
+// 09/2026: mit Abschaffung der Lernkarten zeigt eine fällige Karte hier
+// nicht mehr Frage/Antwort einer eigens generierten Lernkarte, sondern
+// direkt die zugehörige Kernaussage (text = kurze Aussage, erklaerung =
+// Erläuterung) — dieselben zwei Felder, die auch auf dem
+// Kernaussagen-Screen erscheinen. Die repetitionselemente-Zeile, die eine
+// Karte fällig macht, entsteht jetzt entweder aus einer Quiz-Antwort
+// (siehe app/quiz/[id]/actions.ts) oder aus einer manuellen Bewertung
+// hier selbst.
 //
 // 09/2026, Pendenz "Notizen/Hervorhebungen optional in die Wiederholung
-// aufnehmen": eine Sitzung kann jetzt zwei Kartentypen mischen — die
-// klassische Lernkarte (Frage/Antwort, automatisch aus einer Kernaussage
-// erzeugt) UND eine vom Nutzer selbst hinzugefügte Hervorhebung (Zitat +
-// optionale eigene Notiz). Beide nutzen dieselben 3 Bewertungs-Chips, aber
-// unterschiedliche Server Actions zum Speichern (die Fälligkeits-Logik
-// selbst ist identisch, nur der Fremdschlüssel unterscheidet sich).
+// aufnehmen": eine Sitzung kann zwei Kartentypen mischen — die Kernaussage
+// (text/erklaerung) UND eine vom Nutzer selbst hinzugefügte Hervorhebung
+// (Zitat + optionale eigene Notiz). Beide nutzen dieselben 3
+// Bewertungs-Chips, aber unterschiedliche Server Actions zum Speichern
+// (die Fälligkeits-Logik selbst ist identisch, nur der Fremdschlüssel
+// unterscheidet sich).
 
 "use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { bewertungSpeichern, hervorhebungBewertungSpeichern } from "../../lernkarten/[id]/actions";
+import { bewertungSpeichern, hervorhebungBewertungSpeichern } from "../actions";
 import MenuButton from "../../MenuButton";
 
 export type Karte =
-  | { typ: "lernkarte"; kernaussageId: string; titel: string; frage: string; antwort: string }
+  | { typ: "kernaussage"; kernaussageId: string; titel: string; text: string; erklaerung: string }
   | { typ: "hervorhebung"; notizId: string; titel: string; textAuszug: string; text: string | null };
 type Bewertung = "nicht_gewusst" | "unsicher" | "gewusst";
 
@@ -55,7 +62,7 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
 
   function bewerten(bewertung: Bewertung) {
     startTransition(() => {
-      if (aktuelle.typ === "lernkarte") {
+      if (aktuelle.typ === "kernaussage") {
         bewertungSpeichern(aktuelle.kernaussageId, bewertung);
       } else {
         hervorhebungBewertungSpeichern(aktuelle.notizId, bewertung);
@@ -139,18 +146,18 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
             gap: 18,
           }}
         >
-          {aktuelle.typ === "lernkarte" ? (
+          {aktuelle.typ === "kernaussage" ? (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <FeldLabel>Frage</FeldLabel>
+                <FeldLabel>Kernaussage</FeldLabel>
                 <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 21, lineHeight: 1.35 }}>
-                  {aktuelle.frage}
+                  {aktuelle.text}
                 </span>
               </div>
               <div style={{ height: 1.5, background: "rgba(36,35,31,.15)" }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <FeldLabel>Antwort</FeldLabel>
-                <span style={{ fontSize: 17, lineHeight: 1.5 }}>{aktuelle.antwort}</span>
+                <FeldLabel>Erklärung</FeldLabel>
+                <span style={{ fontSize: 17, lineHeight: 1.5 }}>{aktuelle.erklaerung}</span>
               </div>
             </>
           ) : (

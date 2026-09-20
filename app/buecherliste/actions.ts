@@ -38,7 +38,7 @@ import { db } from "../../src/db";
 import { buecher, wunschlisteneintraege } from "../../src/db/schema";
 import { eq } from "drizzle-orm";
 import { pipelineSchritt } from "../../src/lib/entwurf";
-import { erstelleLernkartenUndQuiz } from "../../src/lib/lernkarten";
+import { erstelleQuizfragen } from "../../src/lib/quiz-generierung";
 import { kiDeaktiviert } from "../../src/lib/testmodus";
 
 export async function prioritaetUmschalten(eintragId: string, aktiv: boolean) {
@@ -82,7 +82,7 @@ export async function buchJetztAufbereiten(buchId: string) {
         console.error(`buchJetztAufbereiten(${buchId}): Buch nach erfolgreicher Produktion nicht gefunden.`);
         return;
       }
-      await erstelleLernkartenUndQuiz(ergebnis.buchinhaltId, buch.titel, buch.autor);
+      await erstelleQuizfragen(ergebnis.buchinhaltId, buch.titel, buch.autor);
     } catch (e) {
       // Landet im Server-Log (Terminal bei "npm run dev", Vercel-Logs in
       // Produktion) — kein Live-Fehlerbanner mehr möglich, da die Antwort an

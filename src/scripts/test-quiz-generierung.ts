@@ -1,10 +1,14 @@
-// src/scripts/test-lernkarten.ts
+// src/scripts/test-quiz-generierung.ts
 //
 // Nimmt den zuletzt erstellten, geprüften Buchinhalt und leitet dafür
-// Lernkarten + Quizfragen ab. Kostet einen einzelnen API-Aufruf (Claude
-// Sonnet 5, ohne Web-Suche — reine Ableitung aus schon geprüftem Text).
+// Quizfragen ab. Kostet einen einzelnen API-Aufruf (Claude Sonnet 5, ohne
+// Web-Suche — reine Ableitung aus schon geprüftem Text).
 //
-// Ausführen mit:  npx tsx src/scripts/test-lernkarten.ts
+// (09/2026, umbenannt von test-lernkarten.ts: leitete früher zusätzlich
+// Lernkarten ab, die inzwischen entfernt wurden — siehe
+// src/lib/quiz-generierung.ts.)
+//
+// Ausführen mit:  npx tsx src/scripts/test-quiz-generierung.ts
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -13,7 +17,7 @@ async function main() {
   const { db } = await import("../db");
   const { buchinhalte, buecher } = await import("../db/schema");
   const { eq, desc } = await import("drizzle-orm");
-  const { erstelleLernkartenUndQuiz } = await import("../lib/lernkarten");
+  const { erstelleQuizfragen } = await import("../lib/quiz-generierung");
 
   const [zeile] = await db
     .select({
@@ -32,11 +36,11 @@ async function main() {
     return;
   }
 
-  console.log(`Leite Lernkarten/Quiz ab für: ${zeile.titel} (${zeile.autor})...\n`);
+  console.log(`Leite Quiz ab für: ${zeile.titel} (${zeile.autor})...\n`);
 
-  const ergebnis = await erstelleLernkartenUndQuiz(zeile.buchinhaltId, zeile.titel, zeile.autor);
+  const ergebnis = await erstelleQuizfragen(zeile.buchinhaltId, zeile.titel, zeile.autor);
 
-  console.log(`${ergebnis.lernkartenAnzahl} Lernkarten und ${ergebnis.quizfragenAnzahl} Quizfragen gespeichert.`);
+  console.log(`${ergebnis.quizfragenAnzahl} Quizfragen gespeichert.`);
   if (ergebnis.uebersprungen.length > 0) {
     console.log(`\n${ergebnis.uebersprungen.length} übersprungen:`);
     for (const u of ergebnis.uebersprungen) console.log(`  - ${u}`);

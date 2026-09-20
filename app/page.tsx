@@ -186,7 +186,7 @@ export default async function Home() {
             </span>
             <span style={{ fontSize: 16, color: "rgba(36,35,31,.7)" }}>
               Es ist noch kein Buchinhalt mit Status &quot;im_vorrat&quot;. Erst die Pipeline
-              (Vorschlag → Entwurf → Prüfung → Lernkarten/Quiz) für mindestens ein Buch
+              (Vorschlag → Entwurf → Prüfung → Quiz) für mindestens ein Buch
               durchlaufen lassen.
             </span>
           </>

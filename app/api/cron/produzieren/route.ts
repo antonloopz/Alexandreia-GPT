@@ -2,8 +2,8 @@
 //
 // Automatisiert, was bisher nur über die lokalen Testskripte (tsx
 // src/scripts/test-*.ts) von Hand angestossen wurde: einmal täglich per
-// Vercel Cron Job die Pipeline Vorschlag → Entwurf → Prüfung → Lernkarten/
-// Quiz für GENAU EIN Buch durchlaufen lassen (Kostenkontrolle — jeder Lauf
+// Vercel Cron Job die Pipeline Vorschlag → Entwurf → Prüfung → Quiz
+// für GENAU EIN Buch durchlaufen lassen (Kostenkontrolle — jeder Lauf
 // kostet echte Claude-API-Aufrufe inkl. Websuche). vorschlaege() liefert
 // dabei automatisch Kandidaten für alle Kategorien mit Nachholbedarf
 // (knappste zuerst); produziert wird der erste davon, der bereits bestätigt
@@ -13,7 +13,7 @@
 // Absicherung nach Vercel-Doku: CRON_SECRET als Bearer-Token, das Vercel bei
 // eigenen Cron-Aufrufen automatisch mitschickt (siehe vercel.json).
 // maxDuration = 300 ist auf Hobby bereits das Maximum, reicht für einen
-// Buch-Durchlauf (Entwurf+Prüfung+Lernkarten sind zusammen meist unter 2-3
+// Buch-Durchlauf (Entwurf+Prüfung+Quiz sind zusammen meist unter 2-3
 // Minuten) komfortabel.
 //
 // Bewusst kein Lock gegen doppelte Cron-Auslieferung (laut Vercel-Doku
@@ -26,7 +26,7 @@ import { db } from "../../../../src/db";
 import { konten } from "../../../../src/db/schema";
 import { ALLE_KATEGORIEN, vorschlaege } from "../../../../src/lib/vorschlag";
 import { pipelineSchritt } from "../../../../src/lib/entwurf";
-import { erstelleLernkartenUndQuiz } from "../../../../src/lib/lernkarten";
+import { erstelleQuizfragen } from "../../../../src/lib/quiz-generierung";
 import { kiDeaktiviert } from "../../../../src/lib/testmodus";
 
 export const maxDuration = 300;
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const lernkartenErgebnis = await erstelleLernkartenUndQuiz(
+  const quizErgebnis = await erstelleQuizfragen(
     ergebnis.buchinhaltId,
     kandidat.titel,
     kandidat.autor
@@ -127,9 +127,8 @@ export async function GET(request: NextRequest) {
     kategorie: kandidat.kategorie,
     buchinhaltId: ergebnis.buchinhaltId,
     kernaussagenAnzahl: ergebnis.anzahlKernaussagen,
-    lernkartenAnzahl: lernkartenErgebnis.lernkartenAnzahl,
-    quizfragenAnzahl: lernkartenErgebnis.quizfragenAnzahl,
-    uebersprungen: lernkartenErgebnis.uebersprungen,
+    quizfragenAnzahl: quizErgebnis.quizfragenAnzahl,
+    uebersprungen: quizErgebnis.uebersprungen,
     ...(kandidaten.length > 1 ? { uebersprungeneVorschlaege: kandidaten.length - 1 } : {}),
   });
 }

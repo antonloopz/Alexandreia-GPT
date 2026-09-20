@@ -1,7 +1,9 @@
 // app/NavKreise.tsx
 //
-// Vier-Kacheln-Navigation zwischen den Hauptscreens eines Buchs (Lesen,
-// Kernaussagen, Lernkarten, Quiz). Wieder echte Kreise statt der
+// Drei-Kacheln-Navigation zwischen den Hauptscreens eines Buchs (Lesen,
+// Kernaussagen, Quiz — Lernkarten 09/2026 entfernt, das Quiz-Ergebnis
+// treibt seither die Wiederholung-Planung direkt an, siehe
+// app/quiz/[id]/actions.ts). Wieder echte Kreise statt der
 // abgerundeten Quadrate, und ohne Füllanimation beim Laden der aktiven
 // Seite (09/2026, Pendenz "4 Buttons der Leseseiten ohne Animation und
 // wieder kreisrund" — Rückbau der vorherigen Kacheln-Variante). Aktiver
@@ -13,7 +15,7 @@
 
 import Link from "next/link";
 
-type Ziel = "lesen" | "kernaussagen" | "lernkarten" | "quiz";
+type Ziel = "lesen" | "kernaussagen" | "quiz";
 
 const ZIELE: { schluessel: Ziel; hrefPraefix: string; pfade: React.ReactNode }[] = [
   {
@@ -37,18 +39,6 @@ const ZIELE: { schluessel: Ziel; hrefPraefix: string; pfade: React.ReactNode }[]
         <line x1="12" y1="19.5" x2="12" y2="22.5" />
         <line x1="1.5" y1="12" x2="4.5" y2="12" />
         <line x1="19.5" y1="12" x2="22.5" y2="12" />
-      </>
-    ),
-  },
-  {
-    schluessel: "lernkarten",
-    hrefPraefix: "/lernkarten",
-    pfade: (
-      <>
-        <path d="M9.7 5.4c-1.7-.5-3.4.6-3.7 2.3-.1.5 0 1 .1 1.4-1.2.6-1.7 2-1.1 3.2.3.6.8 1 1.3 1.3-.3.6-.3 1.3.1 1.9.6 1 1.9 1.3 2.9.7" />
-        <path d="M14.3 5.4c1.7-.5 3.4.6 3.7 2.3.1.5 0 1-.1 1.4 1.2.6 1.7 2 1.1 3.2-.3.6-.8 1-1.3 1.3.3.6.3 1.3-.1 1.9-.6 1-1.9 1.3-2.9.7" />
-        <path d="M9.2 8.6c1.9-1.5 3.7-1.5 5.6 0" />
-        <path d="M12 8v9.5" />
       </>
     ),
   },

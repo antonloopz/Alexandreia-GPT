@@ -1,13 +1,15 @@
 // app/abschluss/[id]/page.tsx
 //
-// Server Component: Abschluss-Screen nach Zusammenfassung, Kernaussagen,
-// Lernkarten und Quiz. Quiz-Ergebnis kommt als Query-Parameter (?richtig=N)
-// von QuizClient und wird hier — zusammen mit abgeschlossenAm — einmalig in
+// Server Component: Abschluss-Screen nach Zusammenfassung, Kernaussagen
+// und Quiz. Quiz-Ergebnis kommt als Query-Parameter (?richtig=N) von
+// QuizClient und wird hier — zusammen mit abgeschlossenAm — einmalig in
 // gezeigteBuecher.quizRichtigAnzahl/quizGesamtAnzahl geschrieben, damit
 // Fortschritt daraus die Quiz-Trefferquote berechnen kann. "Wiederholungen
 // geplant" ist eine echte Zählung der repetitionselemente-Zeilen, die die
-// Lernkarten-Bewertung gerade angelegt hat. "N Tage Streak" nutzt jetzt
-// dieselbe echte Streak-Berechnung wie Home (src/lib/streak.ts).
+// Quiz-Bewertung gerade angelegt hat (09/2026: vorher die separate
+// Lernkarten-Bewertung, inzwischen entfernt — siehe
+// app/quiz/[id]/actions.ts). "N Tage Streak" nutzt jetzt dieselbe echte
+// Streak-Berechnung wie Home (src/lib/streak.ts).
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,7 +20,6 @@ import {
   gezeigteBuecher,
   kernaussagen,
   konten,
-  lernkarten,
   quizfragen,
   repetitionselemente,
 } from "../../../src/db/schema";
@@ -67,12 +68,6 @@ export default async function AbschlussSeite({
   const [{ n: kernaussagenAnzahl }] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(kernaussagen)
-    .where(eq(kernaussagen.buchinhaltId, id));
-
-  const [{ n: lernkartenAnzahl }] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(lernkarten)
-    .innerJoin(kernaussagen, eq(lernkarten.kernaussageId, kernaussagen.id))
     .where(eq(kernaussagen.buchinhaltId, id));
 
   const [{ n: quizfragenAnzahl }] = await db
@@ -139,7 +134,7 @@ export default async function AbschlussSeite({
     <main
       style={{
         width: "100%",
-        // Fix wie bei Home/Lesen/Kernaussagen/Lernkarten/Quiz (09/2026): body
+        // Fix wie bei Home/Lesen/Kernaussagen/Quiz (09/2026): body
         // hat env(safe-area-inset-top) als eigenes padding-top, das zu
         // minHeight:100dvh addiert wurde -> ganze Seite musste gescrollt
         // werden, um den unteren Button zu sehen.
@@ -187,8 +182,8 @@ export default async function AbschlussSeite({
             Geschafft
           </span>
           <span style={{ fontSize: 17, lineHeight: 1.5, color: "rgba(36,35,31,.75)", maxWidth: 280 }}>
-            Zusammenfassung, {kernaussagenAnzahl} Kernaussage{kernaussagenAnzahl === 1 ? "" : "n"}, {lernkartenAnzahl}{" "}
-            Lernkarte{lernkartenAnzahl === 1 ? "" : "n"} und Quiz abgeschlossen.
+            Zusammenfassung, {kernaussagenAnzahl} Kernaussage{kernaussagenAnzahl === 1 ? "" : "n"} und Quiz
+            abgeschlossen.
           </span>
         </div>
 

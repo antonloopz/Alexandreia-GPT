@@ -1,10 +1,17 @@
 // app/wiederholung/sitzung/page.tsx
 //
-// Server Component: lädt fällige repetitionselemente mit ihrer Lernkarte,
-// übergibt an die client-seitige Schritt-für-Schritt-Sitzung. Kein eigenes
-// Mockup — orientiert sich am Lernkarten-Screen (gleiche Frage/Antwort-
-// Karte + 3 Bewertungs-Chips), da es sich fachlich um dieselbe Interaktion
-// handelt.
+// Server Component: lädt fällige repetitionselemente mit ihrer Kernaussage
+// (oder Hervorhebung), übergibt an die client-seitige Schritt-für-Schritt-
+// Sitzung. Kein eigenes Mockup — orientiert sich am ehemaligen
+// Lernkarten-Screen (gleiche Karte + 3 Bewertungs-Chips), da es sich
+// fachlich um dieselbe Interaktion handelt.
+//
+// 09/2026: mit Abschaffung der Lernkarten zeigt eine fällige Kernaussage-
+// Karte hier direkt kernaussagen.text/erklaerung statt einer eigens
+// generierten Lernkarte (siehe SitzungClient) — kein Join mehr über die
+// lernkarten-Tabelle nötig, und damit auch kein Dedup-Schritt mehr: eine
+// repetitionselemente-Zeile verweist bereits eindeutig auf genau eine
+// Kernaussage.
 //
 // 09/2026: optionaler ?buchinhaltId=... Query-Parameter beschränkt die
 // Sitzung auf ein einzelnes Buch (von den neuen Pro-Buch-Zeilen in
@@ -19,7 +26,6 @@ import {
   buecher,
   kernaussagen,
   konten,
-  lernkarten,
   notizen,
   repetitionselemente,
 } from "../../../src/db/schema";
@@ -39,19 +45,18 @@ export default async function WiederholungSitzungSeite({
 
   const heute = new Date();
 
-  const faelligLernkarten = await db
+  const faelligeKernaussagen = await db
     .select({
       kernaussageId: repetitionselemente.kernaussageId,
       naechsteFaelligkeit: repetitionselemente.naechsteFaelligkeit,
       titel: buecher.titel,
-      frage: lernkarten.frage,
-      antwort: lernkarten.antwort,
+      text: kernaussagen.text,
+      erklaerung: kernaussagen.erklaerung,
     })
     .from(repetitionselemente)
     .innerJoin(kernaussagen, eq(repetitionselemente.kernaussageId, kernaussagen.id))
     .innerJoin(buchinhalte, eq(kernaussagen.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .innerJoin(lernkarten, eq(lernkarten.kernaussageId, kernaussagen.id))
     .where(
       and(
         eq(repetitionselemente.kontoId, konto.id),
@@ -61,25 +66,12 @@ export default async function WiederholungSitzungSeite({
     )
     .orderBy(asc(repetitionselemente.naechsteFaelligkeit));
 
-  // Pro Kernaussage nur eine Karte (falls mehrere Lernkarten existieren,
-  // wird nur die erste abgefragt).
-  const gesehen = new Set<string>();
-  const lernkartenGefiltert = faelligLernkarten.filter((k) => {
-    // kernaussageId ist hier wegen des innerJoin auf kernaussagen immer
-    // gesetzt — nur die Spalte selbst ist wegen des neuen notizId-Zweigs
-    // (siehe Schema) jetzt allgemein nullable.
-    const kernaussageId = k.kernaussageId as string;
-    if (gesehen.has(kernaussageId)) return false;
-    gesehen.add(kernaussageId);
-    return true;
-  });
-
   // Fällige, vom Nutzer selbst zur Wiederholung hinzugefügte Hervorhebungen
   // (repetitionselemente.notizId) — Pendenz "Notizen/Hervorhebungen
   // optional in die Wiederholung aufnehmen", 09/2026. Werden als eigener
   // Kartentyp ("hervorhebung") in dieselbe Sitzung gemischt wie die
-  // klassischen Lernkarten (SitzungClient unterscheidet beim Rendern und
-  // beim Speichern der Bewertung).
+  // Kernaussage-Karten (SitzungClient unterscheidet beim Rendern und beim
+  // Speichern der Bewertung).
   const faelligHervorhebungen = await db
     .select({
       notizId: repetitionselemente.notizId,
@@ -106,12 +98,15 @@ export default async function WiederholungSitzungSeite({
   // Karte selbst — SitzungClient braucht sie nicht.)
   type KarteMitDatum = Karte & { naechsteFaelligkeit: Date };
   const kartenMitDatum: KarteMitDatum[] = [
-    ...lernkartenGefiltert.map((k) => ({
-      typ: "lernkarte" as const,
+    ...faelligeKernaussagen.map((k) => ({
+      typ: "kernaussage" as const,
+      // kernaussageId ist hier wegen des innerJoin auf kernaussagen immer
+      // gesetzt — nur die Spalte selbst ist wegen des notizId-Zweigs
+      // (siehe Schema) jetzt allgemein nullable.
       kernaussageId: k.kernaussageId as string,
       titel: k.titel,
-      frage: k.frage,
-      antwort: k.antwort,
+      text: k.text,
+      erklaerung: k.erklaerung,
       naechsteFaelligkeit: k.naechsteFaelligkeit,
     })),
     ...faelligHervorhebungen.map((h) => ({
@@ -127,8 +122,8 @@ export default async function WiederholungSitzungSeite({
   if (kartenMitDatum.length === 0) redirect("/wiederholung");
 
   const karten: Karte[] = kartenMitDatum.map((karte) =>
-    karte.typ === "lernkarte"
-      ? { typ: "lernkarte", kernaussageId: karte.kernaussageId, titel: karte.titel, frage: karte.frage, antwort: karte.antwort }
+    karte.typ === "kernaussage"
+      ? { typ: "kernaussage", kernaussageId: karte.kernaussageId, titel: karte.titel, text: karte.text, erklaerung: karte.erklaerung }
       : { typ: "hervorhebung", notizId: karte.notizId, titel: karte.titel, textAuszug: karte.textAuszug, text: karte.text }
   );
 

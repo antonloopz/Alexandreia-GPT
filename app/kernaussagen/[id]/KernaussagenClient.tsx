@@ -2,8 +2,8 @@
 //
 // Client Component: eine Kernaussage auf einmal, mit Fortschritts-Punkten
 // + Zähler, wie im Kernaussagen.dc.html-Mockup. Kein Seitenwechsel pro
-// Schritt — lokaler State, nur der letzte Schritt navigiert weiter zu
-// Lernkarten.
+// Schritt — lokaler State, nur der letzte Schritt navigiert weiter zum
+// Quiz (09/2026: vorher zu Lernkarten, inzwischen entfernt).
 
 "use client";
 
@@ -168,7 +168,7 @@ export default function KernaussagenClient({
       <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           {istLetzte ? (
-            <Link href={`/lernkarten/${buchinhaltId}`} aria-label="Weiter zu Lernkarten">
+            <Link href={`/quiz/${buchinhaltId}`} aria-label="Weiter zu Quiz">
               <WeiterButton akzent={akzent} />
             </Link>
           ) : (

@@ -1,6 +1,6 @@
 // app/buecherliste/AufbereitenButton.tsx
 //
-// Löst die Pipeline (Entwurf → Prüfung → Lernkarten/Quiz) sofort für ein
+// Löst die Pipeline (Entwurf → Prüfung → Quiz) sofort für ein
 // gewähltes Buch aus, statt auf den nächsten Cron-Lauf zu warten. Läuft
 // serverseitig im Hintergrund (siehe actions.ts, next/server after()) und
 // damit auch weiter, wenn diese Seite verlassen oder das Tab geschlossen
