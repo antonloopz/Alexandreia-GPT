@@ -15,6 +15,7 @@ import {
   timestamp,
   date,
   jsonb,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -210,28 +211,44 @@ export const wunschlisteneintraege = pgTable("wunschlisteneintraege", {
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });
 
-export const gezeigteBuecher = pgTable("gezeigte_buecher", {
-  id: uuid().primaryKey().defaultRandom(),
-  kontoId: uuid()
-    .notNull()
-    .references(() => konten.id),
-  buchinhaltId: uuid()
-    .notNull()
-    .references(() => buchinhalte.id),
-  datumGezeigt: date({ mode: "date" }).notNull(),
-  quelle: quelleEnum().notNull(),
-  // Gesetzt beim Erreichen von Abschluss (siehe app/abschluss/[id]/page.tsx)
-  // — null solange das Buch noch nicht durchgearbeitet wurde. Home nutzt
-  // das, um nach Abschluss nicht mehr das "heutige Buch" im Detail zu
-  // zeigen, sondern einen kompakten "geschafft"-Zustand plus weitere,
-  // bereits fertige Bücher zum Weiterlesen (siehe tagesbuch.ts).
-  abgeschlossenAm: timestamp({ mode: "date" }),
-  // Quiz-Ergebnis dieses Durchlaufs, einmalig zusammen mit abgeschlossenAm
-  // gesetzt (siehe app/abschluss/[id]/page.tsx) — beide null, bis das Quiz
-  // durchlaufen wurde. Fortschritt.tsx nutzt das für die Quiz-Trefferquote.
-  quizRichtigAnzahl: integer(),
-  quizGesamtAnzahl: integer(),
-});
+export const gezeigteBuecher = pgTable(
+  "gezeigte_buecher",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    kontoId: uuid()
+      .notNull()
+      .references(() => konten.id),
+    buchinhaltId: uuid()
+      .notNull()
+      .references(() => buchinhalte.id),
+    datumGezeigt: date({ mode: "date" }).notNull(),
+    quelle: quelleEnum().notNull(),
+    // Gesetzt beim Erreichen von Abschluss (siehe app/abschluss/[id]/page.tsx)
+    // — null solange das Buch noch nicht durchgearbeitet wurde. Home nutzt
+    // das, um nach Abschluss nicht mehr das "heutige Buch" im Detail zu
+    // zeigen, sondern einen kompakten "geschafft"-Zustand plus weitere,
+    // bereits fertige Bücher zum Weiterlesen (siehe tagesbuch.ts).
+    abgeschlossenAm: timestamp({ mode: "date" }),
+    // Quiz-Ergebnis dieses Durchlaufs, einmalig zusammen mit abgeschlossenAm
+    // gesetzt (siehe app/abschluss/[id]/page.tsx) — beide null, bis das Quiz
+    // durchlaufen wurde. Fortschritt.tsx nutzt das für die Quiz-Trefferquote.
+    quizRichtigAnzahl: integer(),
+    quizGesamtAnzahl: integer(),
+  },
+  (t) => [
+    // Ein Buch wird einem Konto nur einmal "gezeigt" (Bug-Fix 09/2026,
+    // Race Condition: naechstesBuchFuerHeute() und die Lesen-Seite konnten
+    // beide gleichzeitig sicherstelleGezeigt() aufrufen — ohne Constraint
+    // entstanden dabei zwei Zeilen fürs selbe Buch, weil der vorherige
+    // SELECT-dann-INSERT-Ablauf die Race Condition nicht verhindern konnte).
+    // sicherstelleGezeigt() (lib/tagesbuch.ts) verlässt sich jetzt auf genau
+    // diesen Constraint (INSERT ... ON CONFLICT DO NOTHING). BEWUSST KEIN
+    // zusätzliches unique je (kontoId, datumGezeigt) — an einem Tag können
+    // mehrere "Bereit"-Bücher direkt geöffnet werden (app/lesen/[id]/
+    // page.tsx), das ist gewolltes Verhalten, kein Bug.
+    unique("gezeigte_buecher_konto_buchinhalt_key").on(t.kontoId, t.buchinhaltId),
+  ]
+);
 
 export const repetitionselemente = pgTable("repetitionselemente", {
   id: uuid().primaryKey().defaultRandom(),

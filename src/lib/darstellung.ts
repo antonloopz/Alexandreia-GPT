@@ -47,5 +47,15 @@ export function relativesDatum(datum: Date): string {
   if (tageDiff <= 0) return "heute";
   if (tageDiff === 1) return "gestern";
   if (tageDiff < 7) return `vor ${tageDiff} Tagen`;
-  return new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" }).format(datum);
+  // Ab hier ein festes Datum statt "vor N Tagen" — bei einem Datum aus
+  // einem VORHERIGEN Jahr zusätzlich die Jahreszahl anhängen (09/2026,
+  // Pendenz "relativesDatum: Jahresangabe bei älteren Daten"), sonst ist
+  // z.B. "3. Sept." bei älteren Büchern mehrdeutig (dieses Jahr oder eines
+  // der Vorjahre?).
+  const jahresangabeNoetig = datum.getFullYear() !== heute.getFullYear();
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "numeric",
+    month: "short",
+    year: jahresangabeNoetig ? "numeric" : undefined,
+  }).format(datum);
 }

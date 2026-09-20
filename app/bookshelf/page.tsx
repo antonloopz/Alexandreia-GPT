@@ -43,6 +43,7 @@ import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import BibliothekSuche from "./BibliothekSuche";
 import { sicherstelleBuchinfos } from "../../src/lib/buchinfos";
+import { mitBegrenzterParallelitaet } from "../../src/lib/parallelitaet";
 
 export const dynamic = "force-dynamic";
 
@@ -183,12 +184,12 @@ export default async function BookshelfSeite({
   // deckt auch das gepinnte "heutige Buch" mit ab (das ist ja selbst ein
   // im_vorrat-Eintrag), ein separater Lauf dafür ist nicht nötig.
   after(async () => {
-    await Promise.all(
-      alleImVorrat.map(async (buch) => {
-        if (!buch.buchId) return;
-        await sicherstelleBuchinfos(buch.buchId, buch.titel, buch.autor, buch.buchinfosGeprueftAm);
-      })
-    );
+    // Concurrency-Limit (09/2026, Pendenz "Concurrency-Limit für Open-
+    // Library-Anfragen") — analog Wunschliste, siehe dortigen Kommentar.
+    await mitBegrenzterParallelitaet(alleImVorrat, 3, async (buch) => {
+      if (!buch.buchId) return;
+      await sicherstelleBuchinfos(buch.buchId, buch.titel, buch.autor, buch.buchinfosGeprueftAm);
+    });
   });
 
   const uebrigeNachKategorie = !kategorieFilter ? uebrige : uebrige.filter((b) => b.kategorie === kategorieFilter);

@@ -22,6 +22,7 @@ import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/
 import { kategorieUebersicht, vorschlaege, wunschlisteBestandProKategorie, type Kategorie } from "../../src/lib/vorschlag";
 import { sicherstelleUmfang } from "../../src/lib/umfang";
 import { sicherstelleBuchinfos } from "../../src/lib/buchinfos";
+import { mitBegrenzterParallelitaet } from "../../src/lib/parallelitaet";
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import PrioritaetToggle from "./PrioritaetToggle";
@@ -310,23 +311,28 @@ export default async function BuecherlisteSeite({
   // die Nachschlage-Arbeit läuft NACH dem Response im Hintergrund weiter
   // (Next.js after()) und füllt buecher.umfang für den nächsten Aufruf.
   after(async () => {
-    await Promise.all(
-      zeilen.map(async (zeile) => {
-        if (!zeile.buchId || !zeile.titel || !zeile.autor) return;
-        // Umfang UND die übrigen Buchinfos parallel anstossen, nicht mehr
-        // hinter demselben Skip-Check — beide haben ihren EIGENEN
-        // Negativ-Cache-Zeitstempel (umfangGeprueftAm/buchinfosGeprueftAm),
-        // sicherstelleUmfang()/sicherstelleBuchinfos() prüfen intern schon
-        // selbst, ob überhaupt nachgeschlagen werden muss. Ohne diese
-        // Entkopplung hätte kein Alt-Bestand (umfang längst gesetzt) je die
-        // neuen Buchinfos bekommen, weil der alte Skip-Check (`zeile.umfang`)
-        // schon vorher abgebrochen hätte.
-        await Promise.all([
-          sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang, zeile.umfangGeprueftAm),
-          sicherstelleBuchinfos(zeile.buchId, zeile.titel, zeile.autor, zeile.buchinfosGeprueftAm),
-        ]);
-      })
-    );
+    // Concurrency-Limit (09/2026, Pendenz "Concurrency-Limit für Open-
+    // Library-Anfragen"): vorher ungedrosseltes Promise.all über ALLE
+    // Zeilen gleichzeitig — bei vielen Büchern auf einmal reichte das für
+    // Rate-Limiting bei Open Library (siehe Bug-Fix-Kommentar in
+    // lib/buchinfos.ts). mitBegrenzterParallelitaet lässt höchstens 3
+    // Zeilen gleichzeitig laufen (jede davon stösst intern bis zu zwei
+    // Anfragen parallel an, s.u.).
+    await mitBegrenzterParallelitaet(zeilen, 3, async (zeile) => {
+      if (!zeile.buchId || !zeile.titel || !zeile.autor) return;
+      // Umfang UND die übrigen Buchinfos parallel anstossen, nicht mehr
+      // hinter demselben Skip-Check — beide haben ihren EIGENEN
+      // Negativ-Cache-Zeitstempel (umfangGeprueftAm/buchinfosGeprueftAm),
+      // sicherstelleUmfang()/sicherstelleBuchinfos() prüfen intern schon
+      // selbst, ob überhaupt nachgeschlagen werden muss. Ohne diese
+      // Entkopplung hätte kein Alt-Bestand (umfang längst gesetzt) je die
+      // neuen Buchinfos bekommen, weil der alte Skip-Check (`zeile.umfang`)
+      // schon vorher abgebrochen hätte.
+      await Promise.all([
+        sicherstelleUmfang(zeile.buchId, zeile.titel, zeile.autor, zeile.umfang, zeile.umfangGeprueftAm),
+        sicherstelleBuchinfos(zeile.buchId, zeile.titel, zeile.autor, zeile.buchinfosGeprueftAm),
+      ]);
+    });
   });
 
   // Kategorie-Chips farbig (09/2026, Pendenz "Wunschliste:

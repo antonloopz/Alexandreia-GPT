@@ -256,13 +256,6 @@ export async function sicherstelleGezeigt(
   buchinhaltId: string,
   buchId: string
 ): Promise<void> {
-  const [vorhanden] = await db
-    .select({ id: gezeigteBuecher.id })
-    .from(gezeigteBuecher)
-    .where(and(eq(gezeigteBuecher.kontoId, kontoId), eq(gezeigteBuecher.buchinhaltId, buchinhaltId)));
-
-  if (vorhanden) return;
-
   const wunschlistenTreffer = await db
     .select()
     .from(wunschlisteneintraege)
@@ -277,12 +270,22 @@ export async function sicherstelleGezeigt(
     quelle = buch?.herkunft ?? "klassiker";
   }
 
-  await db.insert(gezeigteBuecher).values({
-    kontoId,
-    buchinhaltId,
-    datumGezeigt: heuteDatum(),
-    quelle,
-  });
+  // Bug-Fix 09/2026 (Race Condition): vorher erst per SELECT geprüft, ob
+  // schon eine Zeile existiert, und nur dann eingefügt — bei zwei fast
+  // gleichzeitigen Aufrufen (z.B. Home + Lesen-Seite, oder zwei Geräte)
+  // konnten beide den SELECT als "noch nichts da" sehen und je eine Zeile
+  // einfügen. Jetzt übernimmt der unique-Constraint auf (kontoId,
+  // buchinhaltId) in schema.ts das Idempotenz-Versprechen ATOMAR direkt in
+  // der Datenbank — ON CONFLICT DO NOTHING statt eines vorherigen Checks.
+  await db
+    .insert(gezeigteBuecher)
+    .values({
+      kontoId,
+      buchinhaltId,
+      datumGezeigt: heuteDatum(),
+      quelle,
+    })
+    .onConflictDoNothing({ target: [gezeigteBuecher.kontoId, gezeigteBuecher.buchinhaltId] });
 }
 
 // "Bereit zum Weiterlesen": fertig produzierte ("im_vorrat") Bücher, die
