@@ -1,14 +1,7 @@
 // app/layout.tsx
 
 import type { Metadata, Viewport } from "next";
-import { Work_Sans } from "next/font/google";
 import "./globals.css";
-
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-work-sans",
-});
 
 export const metadata: Metadata = {
   title: "Alexandreia",
@@ -52,7 +45,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={workSans.variable}>
+    <html lang="de">
       <body>
         {children}
       </body>

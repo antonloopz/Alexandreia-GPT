@@ -15,7 +15,7 @@ const feldStil: React.CSSProperties = {
   borderRadius: 12,
   border: "1.5px solid #24231F",
   background: "none",
-  fontFamily: "'Work Sans', Arial, sans-serif",
+  fontFamily: "Helvetica, Arial, sans-serif",
   fontSize: 17,
   color: "#24231F",
 };
@@ -55,7 +55,7 @@ export default async function TesterZugangSeite({
         <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>
           Alexandreia — Testversion
         </span>
-        <span style={{ fontFamily: "'Work Sans', Arial, sans-serif", fontSize: 15, color: "rgba(36,35,31,.6)" }}>
+        <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, color: "rgba(36,35,31,.6)" }}>
           Voll funktionsfähig, ausser Funktionen mit echten Kosten.
         </span>
       </div>

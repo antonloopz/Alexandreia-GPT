@@ -20,7 +20,10 @@ body {
   padding: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-work-sans), "Work Sans", Arial, sans-serif;
+  /* Helvetica ist eine Systemschrift (macOS/iOS) — kein next/font-Ladevorgang
+     noetig, nur der Fallback-Stack wie im Design Canvas. Auf anderen Systemen
+     greift automatisch Arial. */
+  font-family: Helvetica, Arial, sans-serif;
 }
 
 /* Farbige Statusleiste im installierten (Home-Bildschirm-)Modus auf iOS:
@@ -41,13 +44,6 @@ body {
      Quiz) überschreibt StatusBarColor.tsx --status-farbe mit der
      jeweiligen Kategoriefarbe. */
   background: var(--status-farbe, var(--ink));
-}
-
-/* Helvetica ist eine Systemschrift (macOS/iOS) — kein next/font-Ladevorgang
-   nötig, nur der Fallback-Stack wie im Design Canvas. Auf anderen Systemen
-   greift automatisch Arial. */
-.font-helvetica {
-  font-family: Helvetica, Arial, sans-serif;
 }
 
 a {

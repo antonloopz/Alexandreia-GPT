@@ -282,7 +282,7 @@ export default function Hervorhebbarer({
                 border: "1.5px solid #24231F",
                 borderRadius: 10,
                 padding: "8px 10px",
-                fontFamily: "'Work Sans', Arial, sans-serif",
+                fontFamily: "Helvetica, Arial, sans-serif",
                 fontSize: 14.5,
                 color: "#24231F",
                 background: "none",

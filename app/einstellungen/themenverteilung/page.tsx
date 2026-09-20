@@ -37,7 +37,7 @@ const feldStil: React.CSSProperties = {
   borderRadius: 10,
   border: "1.5px solid #24231F",
   background: "none",
-  fontFamily: "'Work Sans', Arial, sans-serif",
+  fontFamily: "Helvetica, Arial, sans-serif",
   fontSize: 17,
   color: "#24231F",
   textAlign: "center",
