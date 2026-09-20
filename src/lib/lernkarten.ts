@@ -39,25 +39,16 @@ export type LernkartenErgebnis = {
   uebersprungen: string[]; // strukturell ungültige Einträge, mit Begründung
 };
 
-export async function erstelleLernkartenUndQuiz(
-  buchinhaltId: string,
+// Ein einzelner Versuch: ein Claude-Call + JSON-Parsing + strukturelle
+// Validierung + Insert. Ausgelagert, damit erstelleLernkartenUndQuiz()
+// weiter unten bis zu zweimal aufrufen kann, ohne den kompletten Ablauf zu
+// duplizieren.
+async function versucheLernkartenUndQuiz(
   titel: string,
-  autor: string
+  autor: string,
+  alleKernaussagen: (typeof kernaussagen.$inferSelect)[],
+  kernaussagenListe: string
 ): Promise<LernkartenErgebnis> {
-  const alleKernaussagen = await db
-    .select()
-    .from(kernaussagen)
-    .where(eq(kernaussagen.buchinhaltId, buchinhaltId))
-    .orderBy(asc(kernaussagen.reihenfolge));
-
-  if (alleKernaussagen.length === 0) {
-    throw new Error(`Keine Kernaussagen für Buchinhalt ${buchinhaltId} gefunden.`);
-  }
-
-  const kernaussagenListe = alleKernaussagen
-    .map((k, i) => `${i}. ${k.text}\n   ${k.erklaerung}`)
-    .join("\n\n");
-
   const systemPrompt = `Du leitest aus bereits geprüften Kernaussagen eines Buchs für Alexandreia Lernkarten und Multiple-Choice-Quizfragen ab. Die inhaltliche Richtigkeit der Kernaussagen ist bereits abgesichert — deine Aufgabe ist reine Ableitung, keine neue Recherche.
 
 Regeln:
@@ -144,6 +135,56 @@ Regeln:
     }
   }
 
+  return { lernkartenAnzahl, quizfragenAnzahl, uebersprungen };
+}
+
+export async function erstelleLernkartenUndQuiz(
+  buchinhaltId: string,
+  titel: string,
+  autor: string
+): Promise<LernkartenErgebnis> {
+  const alleKernaussagen = await db
+    .select()
+    .from(kernaussagen)
+    .where(eq(kernaussagen.buchinhaltId, buchinhaltId))
+    .orderBy(asc(kernaussagen.reihenfolge));
+
+  if (alleKernaussagen.length === 0) {
+    throw new Error(`Keine Kernaussagen für Buchinhalt ${buchinhaltId} gefunden.`);
+  }
+
+  const kernaussagenListe = alleKernaussagen
+    .map((k, i) => `${i}. ${k.text}\n   ${k.erklaerung}`)
+    .join("\n\n");
+
+  let ergebnis = await versucheLernkartenUndQuiz(titel, autor, alleKernaussagen, kernaussagenListe);
+
+  // Ein einzelner Claude-Call kann legitim (ohne dass etwas "kaputt" ist)
+  // eine leere oder komplett strukturell ungültige Ableitung zurückgeben —
+  // das ist kein Bug, sondern eine spec-abweichende Modellantwort, die
+  // gelegentlich vorkommt. Ein automatischer zweiter, unabhängiger Versuch
+  // (neuer API-Call, kein Wiederverwenden der ersten Antwort) räumt die
+  // meisten dieser Fälle ohne manuelles Eingreifen aus dem Weg. Bleibt es
+  // auch beim zweiten Versuch bei 0, ist das selten genug, dass wir nicht
+  // endlos weiter retryen, sondern nur noch laut loggen und abbrechen.
+  if (!(ergebnis.lernkartenAnzahl > 0 && ergebnis.quizfragenAnzahl > 0)) {
+    console.warn(
+      `[lernkarten] Erster Versuch für Buchinhalt ${buchinhaltId} ("${titel}") ergab ${ergebnis.lernkartenAnzahl} Lernkarten / ${ergebnis.quizfragenAnzahl} Quizfragen — starte automatischen zweiten Versuch. Übersprungen: ${
+        ergebnis.uebersprungen.length > 0 ? ergebnis.uebersprungen.join(" | ") : "leere eintraege-Liste"
+      }`
+    );
+
+    const zweiterVersuch = await versucheLernkartenUndQuiz(titel, autor, alleKernaussagen, kernaussagenListe);
+
+    ergebnis = {
+      lernkartenAnzahl: ergebnis.lernkartenAnzahl + zweiterVersuch.lernkartenAnzahl,
+      quizfragenAnzahl: ergebnis.quizfragenAnzahl + zweiterVersuch.quizfragenAnzahl,
+      uebersprungen: [...ergebnis.uebersprungen, ...zweiterVersuch.uebersprungen],
+    };
+  }
+
+  const { lernkartenAnzahl, quizfragenAnzahl, uebersprungen } = ergebnis;
+
   // Buchinhalt-Lebenszyklus: "geprueft" (Entwurf+Prüfung bestanden) wird erst
   // jetzt, wo auch Lernkarten+Quiz existieren, zu "im_vorrat" — DAS ist der
   // Status, den Home/Vorschlag als "wirklich zeigbar" zählen.
@@ -152,6 +193,17 @@ Regeln:
       .update(buchinhalte)
       .set({ status: "im_vorrat" })
       .where(eq(buchinhalte.id, buchinhaltId));
+  } else {
+    // Auch nach dem eingebauten Retry keine verwertbare Ableitung — bleibt
+    // absichtlich bei "geprueft" stehen (siehe Kommentar oben), aber das
+    // soll nicht stillschweigend passieren: greppbar in den Vercel-Logs,
+    // damit so ein Fall auffällt, ohne dass jemand den Response-Body
+    // mitgeschnitten haben muss.
+    console.error(
+      `[lernkarten] Feststeckend: Buchinhalt ${buchinhaltId} ("${titel}" von ${autor}) bleibt bei Status "geprueft" — auch nach zwei Versuchen nur ${lernkartenAnzahl} Lernkarten / ${quizfragenAnzahl} Quizfragen. Übersprungen: ${
+        uebersprungen.length > 0 ? uebersprungen.join(" | ") : "leere eintraege-Liste"
+      }`
+    );
   }
 
   return { lernkartenAnzahl, quizfragenAnzahl, uebersprungen };
