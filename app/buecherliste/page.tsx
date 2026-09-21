@@ -6,20 +6,22 @@
 // Einträgen vollläuft, die man hier eigentlich gar nicht mehr braucht.
 // Jeder Eintrag hat zwei Aktionen: sofort ad-hoc aufbereiten
 // (AufbereitenButton) oder für den nächsten automatischen Cron-Lauf
-// vormerken (PrioritaetToggle) — siehe actions.ts. Zusätzlich eine
-// aufklappbare "Kategorie-Rotation"-Übersicht: pro Kategorie der aktuelle
-// Bestand und das jeweils nächste vorgesehene Buch.
+// vormerken (PrioritaetToggle) — siehe actions.ts. Unter der Liste eine
+// aufklappbare "Kategorie-Rotation"-Übersicht: pro Kategorie bereit
+// (Bestand/Mindestbestand), vorgemerkt und auf der Liste, plus das jeweils
+// nächste vorgesehene Buch — der einzige Ort mit Zahlen pro Kategorie.
 // "+"-Button bewusst oben im Header statt unten als grosser Kreisbutton
 // (wie sonst üblich) — bei wachsender Listenlänge müsste man sonst erst
 // runterscrollen, um ein Buch hinzuzufügen.
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { after } from "next/server";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, konten, wunschlisteneintraege } from "../../src/db/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
-import { kategorieUebersicht, vorschlaege, wunschlisteBestandProKategorie, type Kategorie } from "../../src/lib/vorschlag";
+import { kategorieUebersicht, vorschlaege } from "../../src/lib/vorschlag";
 import { sicherstelleUmfang } from "../../src/lib/umfang";
 import { sicherstelleBuchinfos } from "../../src/lib/buchinfos";
 import { mitBegrenzterParallelitaet } from "../../src/lib/parallelitaet";
@@ -232,19 +234,28 @@ export default async function BuecherlisteSeite({
   // Cron-Job nutzt, um zu entscheiden, was als Nächstes produziert wird.
   const naechsteKandidaten = await vorschlaege(konto.id, 3);
   const kategorien = await kategorieUebersicht(konto.id);
-  // Vorgemerkt/Nicht vorgemerkt/Aufbereitet pro Kategorie — für die
-  // farbigen Filter-Chips unten (09/2026, Pendenz "Wunschliste:
-  // Zahlangabe Bestand/Aufbereitet", nachgeschärft zu drei Zahlen statt
-  // einer Summe — siehe wunschlisteBestandProKategorie()). Bewusst eine
-  // EIGENE, ungefilterte Abfrage statt aus `zeilen` abgeleitet, weil
-  // `zeilen` schon aufbereitete Einträge strukturell ausschliesst (die
-  // sind ja in der Bibliothek).
-  const wunschlisteBestand = await wunschlisteBestandProKategorie(konto.id);
 
   const zeilen = liste.sort((a, b) => {
     if (a.bald !== b.bald) return a.bald ? -1 : 1;
     return (a.titel ?? a.rohTitel ?? "").localeCompare(b.titel ?? b.rohTitel ?? "");
   });
+
+  // Spalten "Vorgemerkt"/"Auf der Liste" der Kategorie-Rotation: aus
+  // denselben, UNGEFILTERTEN `zeilen` gruppiert, die auch Kopfzeile und
+  // Abschnitte speisen, mit derselben Definition (vorgemerkt = bald) —
+  // ohne aktiven Filter ergeben die Spaltensummen (inkl. Zeile "Nicht
+  // zugeordnet") also per Konstruktion genau die Zahlen der Kopfzeile.
+  // Bewusst ungefiltert: die Rotation ist eine Übersicht aller Kategorien,
+  // unabhängig von Chip-Filter oder Suche. Schlüssel "ohne" = keine Kategorie.
+  const aufListeProKategorie = new Map<string, { vorgemerkt: number; gesamt: number }>();
+  for (const z of zeilen) {
+    const schluessel = z.kategorie ?? "ohne";
+    const eintrag = aufListeProKategorie.get(schluessel) ?? { vorgemerkt: 0, gesamt: 0 };
+    eintrag.gesamt += 1;
+    if (z.bald) eintrag.vorgemerkt += 1;
+    aufListeProKategorie.set(schluessel, eintrag);
+  }
+  const ohneKategorieAufListe = aufListeProKategorie.get("ohne");
 
   // Kategorie-Filter (09/2026, Pendenz "Wunschliste nach Kategorien
   // filtern") — rein über den ?kategorie=-Query-Parameter, damit der
@@ -252,12 +263,12 @@ export default async function BuecherlisteSeite({
   // steht für Einträge ohne zugeordnete Kategorie (rohTitel/rohAutor, noch
   // kein Datenbank-Abgleich). Nur Kategorien anzeigen, die auf der Liste
   // TATSÄCHLICH vorkommen — sonst stünden bei einer kleinen Wunschliste
-  // meist leere Filter-Chips da.
-  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) => {
-    if (zeilen.some((z) => z.kategorie === k)) return true;
-    const eintrag = wunschlisteBestand.get(k as Kategorie);
-    return Boolean(eintrag && eintrag.vorgemerkt + eintrag.nichtVorgemerkt + eintrag.aufbereitet > 0);
-  });
+  // meist leere Filter-Chips da. Seit 09/2026 auch keine Chips mehr für
+  // Kategorien, deren Wunschlisten-Bücher alle schon aufbereitet sind: die
+  // führten nur zu "Keine Einträge in dieser Kategorie".
+  const kategorienVorhanden = Object.keys(KATEGORIE_LABEL).filter((k) =>
+    zeilen.some((z) => z.kategorie === k)
+  );
   const ohneKategorieVorhanden = zeilen.some((z) => z.kategorie === null);
 
   const nachKategorieGefiltert = !kategorieFilter
@@ -295,6 +306,39 @@ export default async function BuecherlisteSeite({
   // "noch nicht vorgemerkten".
   const vorgemerkteZeilen = gefilterteZeilen.filter((z) => z.bald);
   const uebrigeZeilen = gefilterteZeilen.filter((z) => !z.bald);
+
+  // Eine lesbare Kopfzeile statt der früheren Versal-Zeile mit der
+  // Gesamtzahl (09/2026, Umbau "Wunschliste lesbarer machen") — gleiche
+  // Zählbasis wie die beiden Abschnitte unten, also bei aktivem Filter/Suche
+  // "x von y", wie vorher.
+  const buchWort = (n: number, dativ = false) => (n === 1 ? "Buch" : dativ ? "Büchern" : "Bücher");
+  const listenAnzahl = filterAktiv
+    ? `${gefilterteZeilen.length} von ${zeilen.length} ${buchWort(zeilen.length, true)}`
+    : `${zeilen.length} ${buchWort(zeilen.length)}`;
+  const kopfzeile = `${listenAnzahl} auf der Liste · ${vorgemerkteZeilen.length} für den nächsten Lauf vorgemerkt`;
+
+  // Gemeinsame Stile der Kategorie-Rotation (Spaltenköpfe + Zahlen).
+  const spaltenkopfStyle = {
+    fontFamily: "Helvetica, Arial, sans-serif",
+    fontWeight: 600,
+    fontSize: 13,
+    letterSpacing: ".04em",
+    textTransform: "uppercase" as const,
+    color: "rgba(36,35,31,.5)",
+    textAlign: "right" as const,
+    alignSelf: "end" as const,
+    paddingBottom: 6,
+    borderBottom: "1px solid rgba(36,35,31,.08)",
+  };
+  const zahlStyle = {
+    fontFamily: "Helvetica, Arial, sans-serif",
+    fontSize: 14.5,
+    fontVariantNumeric: "tabular-nums" as const,
+    color: "rgba(36,35,31,.75)",
+    textAlign: "right" as const,
+    alignSelf: "center" as const,
+    paddingTop: 8,
+  };
 
   // Umfang für ALLE angezeigten Einträge nachschlagen (nicht nur die
   // gerade vorgeschlagenen) — sonst bleibt die Angabe bei den meisten
@@ -410,17 +454,8 @@ export default async function BuecherlisteSeite({
         </div>
       )}
 
-      <span
-        style={{
-          fontFamily: "Helvetica, Arial, sans-serif",
-          fontWeight: 600,
-          fontSize: 13,
-          letterSpacing: ".06em",
-          textTransform: "uppercase",
-          color: "rgba(36,35,31,.62)",
-        }}
-      >
-        {filterAktiv ? `${gefilterteZeilen.length} von ${zeilen.length}` : zeilen.length} noch nicht vorbereitet
+      <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, lineHeight: 1.4, color: "rgba(36,35,31,.65)" }}>
+        {kopfzeile}
       </span>
 
       {zeilen.length > 0 && <WunschlisteSuche initial={suche ?? ""} />}
@@ -433,10 +468,7 @@ export default async function BuecherlisteSeite({
           {kategorienVorhanden.map((k) => (
             <Link key={k} href={`/buecherliste?kategorie=${encodeURIComponent(k)}`}>
               <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
-                <span>{KATEGORIE_LABEL[k] ?? k}</span>
-                <span style={{ opacity: 0.6, fontWeight: 700 }}>
-                  {wunschlisteBestand.get(k as Kategorie)?.vorgemerkt ?? 0}/{wunschlisteBestand.get(k as Kategorie)?.nichtVorgemerkt ?? 0}/{wunschlisteBestand.get(k as Kategorie)?.aufbereitet ?? 0}
-                </span>
+                {KATEGORIE_LABEL[k] ?? k}
               </span>
             </Link>
           ))}
@@ -468,73 +500,6 @@ export default async function BuecherlisteSeite({
         </div>
       )}
 
-      <details className="buecherliste-abschnitt">
-        <summary
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            cursor: "pointer",
-            fontFamily: "Helvetica, Arial, sans-serif",
-            fontWeight: 600,
-            fontSize: 13,
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "rgba(36,35,31,.62)",
-            padding: "4px 0",
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 5.5 15.5 12 9 18.5" />
-          </svg>
-          Kategorie-Rotation
-        </summary>
-        <div style={{ display: "flex", flexDirection: "column", marginTop: 10 }}>
-          {kategorien.map((k) => (
-            <div
-              key={k.kategorie}
-              style={{
-                padding: "8px 0",
-                borderBottom: "1px solid rgba(36,35,31,.08)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[k.kategorie] ?? "#ccc", flexShrink: 0 }} />
-                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 15 }}>
-                    {KATEGORIE_LABEL[k.kategorie] ?? k.kategorie}
-                  </span>
-                </div>
-                {/* Bestand 0 rot (09/2026, Wunsch Nutzer): eine Kategorie ganz ohne
-                    fertig aufbereitetes Buch soll in der Rotation sofort auffallen. */}
-                <span
-                  style={{
-                    fontSize: 13.5,
-                    color: k.bestand === 0 ? "#B3261E" : "rgba(36,35,31,.5)",
-                    fontWeight: k.bestand === 0 ? 600 : undefined,
-                    flexShrink: 0,
-                  }}
-                >
-                  {k.bestand}/{k.mindestbestand}
-                </span>
-              </div>
-              <span style={{ fontSize: 14, color: k.bestand < k.mindestbestand ? "rgba(36,35,31,.75)" : "rgba(36,35,31,.45)" }}>
-                {k.bestand < k.mindestbestand
-                  ? k.naechsterKandidat
-                    ? `Als Nächstes: ${k.naechsterKandidat.titel} (${k.naechsterKandidat.autor})`
-                    : "Unter Mindestbestand, aber kein Kandidat auf der Wunschliste"
-                  : k.naechsterKandidat
-                    ? `Im Soll · danach: ${k.naechsterKandidat.titel}`
-                    : "Im Soll"}
-              </span>
-            </div>
-          ))}
-        </div>
-      </details>
-
       {zeilen.length === 0 ? (
         <div
           style={{
@@ -552,7 +517,7 @@ export default async function BuecherlisteSeite({
             <path d="M12 6.5v11" />
           </svg>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 250 }}>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19 }}>Alles vorbereitet</span>
+            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 19 }}>Alles aufbereitet</span>
             <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
               Jedes Buch auf deiner Liste ist schon produziert — schau in der Bibliothek vorbei, oder füge Neues hinzu.
             </span>
@@ -610,7 +575,7 @@ export default async function BuecherlisteSeite({
           )}
 
           {uebrigeZeilen.length > 0 && (
-            <details className="buecherliste-abschnitt" open>
+            <details className="buecherliste-abschnitt">
               <summary
                 style={{
                   display: "flex",
@@ -640,6 +605,113 @@ export default async function BuecherlisteSeite({
           )}
         </div>
       )}
+
+      {/* Kategorie-Rotation (09/2026, Umbau "Wunschliste lesbarer machen"):
+          jetzt UNTER der Liste und der einzige Ort mit Zahlen pro Kategorie
+          (vorher zusätzlich als x/y/z direkt in den Filter-Chips). Ein
+          gemeinsames CSS-Grid statt einem Flex-Container pro Zeile, damit
+          die drei Zahlenspalten über alle Kategorien bündig untereinander
+          stehen. "Bereit" bleibt pro Zeile als bestand/mindestbestand, weil
+          der Mindestbestand pro Kategorie einstellbar ist (siehe
+          mindestbestandProKategorie() in lib/vorschlag.ts). "Vorgemerkt" und
+          "Auf der Liste" (= vorgemerkt + nicht vorgemerkt) aus
+          aufListeProKategorie, also aus denselben ungefilterten `zeilen`
+          wie Kopfzeile und Abschnitte. */}
+      <details className="buecherliste-abschnitt">
+        <summary
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            cursor: "pointer",
+            fontFamily: "Helvetica, Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 13,
+            letterSpacing: ".06em",
+            textTransform: "uppercase",
+            color: "rgba(36,35,31,.62)",
+            padding: "4px 0",
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 5.5 15.5 12 9 18.5" />
+          </svg>
+          Kategorie-Rotation
+        </summary>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto auto", columnGap: 8, marginTop: 10 }}>
+          <span style={{ borderBottom: "1px solid rgba(36,35,31,.08)" }} />
+          <span style={spaltenkopfStyle}>Bereit</span>
+          <span style={spaltenkopfStyle}>Vorgemerkt</span>
+          <span style={spaltenkopfStyle}>
+            Auf der
+            <br />
+            Liste
+          </span>
+          {kategorien.map((k) => {
+            const aufListe = aufListeProKategorie.get(k.kategorie);
+            const vorgemerkt = aufListe?.vorgemerkt ?? 0;
+            const gesamt = aufListe?.gesamt ?? 0;
+            return (
+              <Fragment key={k.kategorie}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, paddingTop: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[k.kategorie] ?? "#ccc", flexShrink: 0 }} />
+                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 15, hyphens: "auto", overflowWrap: "break-word", minWidth: 0 }}>
+                    {KATEGORIE_LABEL[k.kategorie] ?? k.kategorie}
+                  </span>
+                </div>
+                {/* Bestand 0 rot (09/2026, Wunsch Nutzer): eine Kategorie ganz ohne
+                    fertig aufbereitetes Buch soll in der Rotation sofort auffallen. */}
+                <span
+                  style={{
+                    ...zahlStyle,
+                    color: k.bestand === 0 ? "#B3261E" : zahlStyle.color,
+                    fontWeight: k.bestand === 0 ? 600 : undefined,
+                  }}
+                >
+                  {k.bestand}/{k.mindestbestand}
+                </span>
+                <span style={zahlStyle}>{vorgemerkt}</span>
+                <span style={zahlStyle}>{gesamt}</span>
+                <span
+                  style={{
+                    gridColumn: "1 / -1",
+                    paddingTop: 2,
+                    paddingBottom: 8,
+                    borderBottom: "1px solid rgba(36,35,31,.08)",
+                    fontSize: 14,
+                    color: k.bestand < k.mindestbestand ? "rgba(36,35,31,.75)" : "rgba(36,35,31,.45)",
+                  }}
+                >
+                  {k.bestand < k.mindestbestand
+                    ? k.naechsterKandidat
+                      ? `Als Nächstes: ${k.naechsterKandidat.titel} (${k.naechsterKandidat.autor})`
+                      : "Unter Mindestbestand, aber kein Kandidat auf der Wunschliste"
+                    : k.naechsterKandidat
+                      ? `Im Soll · danach: ${k.naechsterKandidat.titel}`
+                      : "Im Soll"}
+                </span>
+              </Fragment>
+            );
+          })}
+          {/* Einträge ohne Kategorie (reiner rohTitel, noch kein Abgleich)
+              zählen in der Kopfzeile mit — daher auch hier eine eigene
+              Zeile, sonst gingen die Spaltensummen nicht auf. Kein
+              Bestand/Mindestbestand, weil es keine Rotations-Kategorie ist. */}
+          {ohneKategorieAufListe && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, paddingTop: 8, paddingBottom: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: "#ccc", flexShrink: 0 }} />
+                <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 15, minWidth: 0 }}>
+                  Nicht zugeordnet
+                </span>
+              </div>
+              <span style={{ ...zahlStyle, paddingBottom: 8 }}>–</span>
+              <span style={{ ...zahlStyle, paddingBottom: 8 }}>{ohneKategorieAufListe.vorgemerkt}</span>
+              <span style={{ ...zahlStyle, paddingBottom: 8 }}>{ohneKategorieAufListe.gesamt}</span>
+            </>
+          )}
+        </div>
+      </details>
       </div>
     </main>
   );
