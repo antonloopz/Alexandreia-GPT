@@ -77,6 +77,16 @@ Immer, vor jedem Commit-Vorschlag:
   3-Parameter-`pgTable`-Form mit Constraint-Callback als drittem Argument).
   Beispiel: `gezeigteBuecher` in `src/db/schema.ts` + `sicherstelleGezeigt()`
   in `src/lib/tagesbuch.ts`.
+- **`drizzle-kit push` nie Tabellen leeren lassen:** Beim Hinzufügen eines
+  `unique(...)`-Constraints zu einer befüllten Tabelle bietet drizzle-kit
+  an, die Tabelle zu leeren ("Yes, I want to truncate …") — und meldet
+  bestehende Constraints teils fälschlich als fehlend. Immer "No, abort"
+  wählen. Constraints stattdessen per SQL-Skript anlegen (Muster:
+  `src/db/unique-constraints-2026-09-21.ts`, idempotent, prüft
+  `pg_constraint`), vorher Duplikate prüfen (z.B.
+  `src/db/dedupe-repetitionselemente-2026-09-21.ts`). Neuer Code mit
+  `onConflict…({ target })` erst pushen, wenn der Constraint in der DB
+  existiert — sonst scheitert das Insert in Produktion.
 - **Einmalige Reparatur-/Diagnose-Skripte** liegen unter `src/db/`, benannt
   mit Datumssuffix (z.B. `reset-buchinfos-cache-2026-09-19.ts`,
   `dedupe-gezeigte-buecher-2026-09-20.ts`,
