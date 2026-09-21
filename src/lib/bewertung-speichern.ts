@@ -39,25 +39,29 @@ export async function kernaussageBewertungSpeichern(
   const neueStufe = naechsteStufe(bewertung, aktuelleStufe);
   const faelligkeit = faelligkeitFuer(neueStufe);
 
-  if (bestehend) {
-    await db
-      .update(repetitionselemente)
-      .set({
-        intervallstufe: neueStufe,
-        naechsteFaelligkeit: faelligkeit,
-        letzteBewertung: bewertung,
-        aktualisiertAm: new Date(),
-      })
-      .where(eq(repetitionselemente.id, bestehend.id));
-  } else {
-    await db.insert(repetitionselemente).values({
+  // Echtes Upsert über den unique-Constraint (kontoId, kernaussageId) statt
+  // SELECT-dann-INSERT/UPDATE (09/2026): zwei fast gleichzeitige Aufrufe
+  // können so keine zweite Zeile mehr anlegen. Die Stufe wird weiterhin aus
+  // dem vorher gelesenen Stand berechnet — im (unwahrscheinlichen) Fall
+  // zweier gleichzeitiger Bewertungen gewinnt die letzte, ohne Duplikat.
+  await db
+    .insert(repetitionselemente)
+    .values({
       kontoId,
       kernaussageId,
       naechsteFaelligkeit: faelligkeit,
       intervallstufe: neueStufe,
       letzteBewertung: bewertung,
+    })
+    .onConflictDoUpdate({
+      target: [repetitionselemente.kontoId, repetitionselemente.kernaussageId],
+      set: {
+        intervallstufe: neueStufe,
+        naechsteFaelligkeit: faelligkeit,
+        letzteBewertung: bewertung,
+        aktualisiertAm: new Date(),
+      },
     });
-  }
 
   await db.insert(bewertungsereignisse).values({ kontoId, kernaussageId, bewertung });
 }

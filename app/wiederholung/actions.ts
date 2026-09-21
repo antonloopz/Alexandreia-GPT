@@ -74,25 +74,26 @@ export async function hervorhebungBewertungSpeichern(notizId: string, bewertung:
   const neueStufe = naechsteStufe(bewertung, aktuelleStufe);
   const faelligkeit = faelligkeitFuer(neueStufe);
 
-  if (bestehend) {
-    await db
-      .update(repetitionselemente)
-      .set({
-        intervallstufe: neueStufe,
-        naechsteFaelligkeit: faelligkeit,
-        letzteBewertung: bewertung,
-        aktualisiertAm: new Date(),
-      })
-      .where(eq(repetitionselemente.id, bestehend.id));
-  } else {
-    await db.insert(repetitionselemente).values({
+  // Upsert über den unique-Constraint (kontoId, notizId) — siehe
+  // kernaussageBewertungSpeichern (lib/bewertung-speichern.ts).
+  await db
+    .insert(repetitionselemente)
+    .values({
       kontoId: konto.id,
       notizId,
       naechsteFaelligkeit: faelligkeit,
       intervallstufe: neueStufe,
       letzteBewertung: bewertung,
+    })
+    .onConflictDoUpdate({
+      target: [repetitionselemente.kontoId, repetitionselemente.notizId],
+      set: {
+        intervallstufe: neueStufe,
+        naechsteFaelligkeit: faelligkeit,
+        letzteBewertung: bewertung,
+        aktualisiertAm: new Date(),
+      },
     });
-  }
 
   await db.insert(bewertungsereignisse).values({ kontoId: konto.id, notizId, bewertung });
 }

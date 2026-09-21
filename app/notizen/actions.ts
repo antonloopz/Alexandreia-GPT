@@ -63,18 +63,18 @@ export async function wiederholungHinzufuegen(notizId: string) {
   const [konto] = await db.select().from(konten).limit(1);
   if (!konto) return;
 
-  const [bestehend] = await db
-    .select()
-    .from(repetitionselemente)
-    .where(and(eq(repetitionselemente.kontoId, konto.id), eq(repetitionselemente.notizId, notizId)));
-  if (bestehend) return;
-
-  await db.insert(repetitionselemente).values({
-    kontoId: konto.id,
-    notizId,
-    naechsteFaelligkeit: faelligkeitFuer(0),
-    intervallstufe: 0,
-  });
+  // Schon in der Wiederholung → nichts tun (bestehender Fortschritt bleibt).
+  // ON CONFLICT statt vorherigem SELECT (09/2026, unique-Constraint
+  // (kontoId, notizId), siehe schema.ts).
+  await db
+    .insert(repetitionselemente)
+    .values({
+      kontoId: konto.id,
+      notizId,
+      naechsteFaelligkeit: faelligkeitFuer(0),
+      intervallstufe: 0,
+    })
+    .onConflictDoNothing({ target: [repetitionselemente.kontoId, repetitionselemente.notizId] });
 }
 
 export async function wiederholungEntfernen(notizId: string) {

@@ -369,28 +369,45 @@ export const gezeigteBuecher = pgTable(
   ]
 );
 
-export const repetitionselemente = pgTable("repetitionselemente", {
-  id: uuid().primaryKey().defaultRandom(),
-  kontoId: uuid()
-    .notNull()
-    .references(() => konten.id),
-  // Genau eines von kernaussageId/notizId ist gesetzt: automatisch erzeugte
-  // Lernkarten-Wiederholung (kernaussageId) ODER eine vom Nutzer selbst zur
-  // Wiederholung hinzugefügte Hervorhebung/Notiz (notizId) — Pendenz
-  // "Notizen/Hervorhebungen optional in die Wiederholung aufnehmen", 09/2026.
-  // Beide nullable statt eines diskriminierenden Enums, da dasselbe Muster
-  // bereits an anderer Stelle im Schema verwendet wird (z.B. notizen selbst).
-  // onDelete cascade bei notizId, damit das Löschen einer Hervorhebung
-  // (hervorhebungLoeschen) nicht an einer verbleibenden Wiederholungs-Zeile
-  // scheitert.
-  kernaussageId: uuid().references(() => kernaussagen.id),
-  notizId: uuid().references(() => notizen.id, { onDelete: "cascade" }),
-  naechsteFaelligkeit: date({ mode: "date" }).notNull(),
-  // Index in die Intervallstufen 1/3/7/16/35 Tage
-  intervallstufe: integer().notNull().default(0),
-  letzteBewertung: bewertungEnum(),
-  aktualisiertAm: timestamp({ mode: "date" }).defaultNow().notNull(),
-});
+export const repetitionselemente = pgTable(
+  "repetitionselemente",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    kontoId: uuid()
+      .notNull()
+      .references(() => konten.id),
+    // Genau eines von kernaussageId/notizId ist gesetzt: automatisch erzeugte
+    // Lernkarten-Wiederholung (kernaussageId) ODER eine vom Nutzer selbst zur
+    // Wiederholung hinzugefügte Hervorhebung/Notiz (notizId) — Pendenz
+    // "Notizen/Hervorhebungen optional in die Wiederholung aufnehmen", 09/2026.
+    // Beide nullable statt eines diskriminierenden Enums, da dasselbe Muster
+    // bereits an anderer Stelle im Schema verwendet wird (z.B. notizen selbst).
+    // onDelete cascade bei notizId, damit das Löschen einer Hervorhebung
+    // (hervorhebungLoeschen) nicht an einer verbleibenden Wiederholungs-Zeile
+    // scheitert.
+    kernaussageId: uuid().references(() => kernaussagen.id),
+    notizId: uuid().references(() => notizen.id, { onDelete: "cascade" }),
+    naechsteFaelligkeit: date({ mode: "date" }).notNull(),
+    // Index in die Intervallstufen 1/3/7/16/35 Tage
+    intervallstufe: integer().notNull().default(0),
+    letzteBewertung: bewertungEnum(),
+    aktualisiertAm: timestamp({ mode: "date" }).defaultNow().notNull(),
+  },
+  (t) => [
+    // Pro Konto höchstens EINE Zeile je Kernaussage bzw. je Notiz (09/2026,
+    // Pendenz "Unique-Constraint auf repetitionselemente") — gleiche
+    // Fehlerklasse wie bei gezeigteBuecher: das frühere SELECT-dann-INSERT
+    // konnte bei zwei fast gleichzeitigen Bewertungen Duplikate anlegen. Die
+    // Schreiblogik (lib/bewertung-speichern.ts, app/wiederholung/actions.ts,
+    // app/notizen/actions.ts) verlässt sich jetzt auf diese Constraints
+    // (ON CONFLICT). NULL zählt in Postgres als verschieden, deshalb stören
+    // sich die Notiz-Zeilen (kernaussageId null) und Kernaussage-Zeilen
+    // (notizId null) gegenseitig nicht. Vor dem push Duplikate bereinigen:
+    // src/db/dedupe-repetitionselemente-2026-09-21.ts.
+    unique("repetitionselemente_konto_kernaussage_key").on(t.kontoId, t.kernaussageId),
+    unique("repetitionselemente_konto_notiz_key").on(t.kontoId, t.notizId),
+  ]
+);
 
 export const notizen = pgTable("notizen", {
   id: uuid().primaryKey().defaultRandom(),
