@@ -33,6 +33,10 @@
 // landet dann auf einer Seite ohne eigenen Ausweg (nur der Zurück-Pfeil).
 // ankerPfad überschreibt für diesen Fall den tatsächlichen Pfad durch den
 // bekannten, "richtigen" Elternscreen (hier: /einstellungen).
+//
+// inline (optional, 09/2026, Lesen-Screen): ohne eigene Vollbreite-Zeile,
+// damit der Trigger in die Kopfzeile einer Seite (neben den Seitentitel)
+// gesetzt werden kann — spart eine ganze Zeile Höhe über dem Scrollbereich.
 
 "use client";
 
@@ -96,7 +100,7 @@ const EINTRAEGE: { href: string; label: string; pfade: React.ReactNode }[] = [
   },
 ];
 
-export default function MenuButton({ ankerPfad }: { ankerPfad?: string } = {}) {
+export default function MenuButton({ ankerPfad, inline }: { ankerPfad?: string; inline?: boolean } = {}) {
   const [offen, setOffen] = useState(false);
   const pathname = usePathname();
 
@@ -106,7 +110,7 @@ export default function MenuButton({ ankerPfad }: { ankerPfad?: string } = {}) {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+      <div style={inline ? { display: "flex" } : { display: "flex", justifyContent: "flex-end", width: "100%" }}>
         <button
           onClick={() => setOffen((o) => !o)}
           aria-label={offen ? "Menü schliessen" : "Menü öffnen"}

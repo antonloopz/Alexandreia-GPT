@@ -243,23 +243,26 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Lesen</span>
         </div>
+        {/* Menü in der Kopfzeile statt in einer eigenen Zeile darunter
+            (09/2026) — mehr Höhe für den Scrollbereich. */}
+        <MenuButton inline />
       </div>
-      <MenuButton />
-
-      <span
-        style={{
-          fontFamily: "Helvetica, Arial, sans-serif",
-          fontWeight: 600,
-          fontSize: 13,
-          letterSpacing: ".06em",
-          textTransform: "uppercase",
-          color: "rgba(36,35,31,.62)",
-        }}
-      >
-        {zeile.titel} — {kategorieLabel}
-      </span>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 22, overflowY: "auto" }}>
+        {/* Buchtitel scrollt mit (09/2026), statt fest über dem Lesebereich
+            Platz zu belegen. */}
+        <span
+          style={{
+            fontFamily: "Helvetica, Arial, sans-serif",
+            fontWeight: 600,
+            fontSize: 13,
+            letterSpacing: ".06em",
+            textTransform: "uppercase",
+            color: "rgba(36,35,31,.62)",
+          }}
+        >
+          {zeile.titel} — {kategorieLabel}
+        </span>
         {zusammenfassungsEbenen.map((ebene, e) => (
           <Abschnitt key={e} label={ebene.titel ?? "Zusammenfassung"} hinweis={vh.zusammenfassung}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

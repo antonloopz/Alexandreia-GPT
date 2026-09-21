@@ -25,14 +25,20 @@
 // selbst ein Komma enthalten,
 // z.B. "Thinking, Fast and
 // Slow"), exakter Titel-Text:  npx tsx src/scripts/zusammenfassungen-regenerieren.ts --titel="Meditationen|Der Staat"
-// Nur noch nie gezeigte Bücher: npx tsx src/scripts/zusammenfassungen-regenerieren.ts --nur-ungelesen
+// Nur ungelesene Bücher:        npx tsx src/scripts/zusammenfassungen-regenerieren.ts --nur-ungelesen
 //
 // --nur-ungelesen (09/2026, Pendenz "Zusammenfassung in drei Ebenen
-// strukturieren"): beschränkt den Lauf auf Buchinhalte ohne
-// gezeigteBuecher-Zeile. Bei bereits gelesenen Büchern hängen evtl.
-// Hervorhebungen (notizen.textAuszug, wörtlich aus der ALTEN Zusammenfassung)
-// dran — die würden im neuen Text ihren Anker verlieren (die Notiz selbst
-// bliebe zwar erhalten, wäre im Lesen-Screen aber nicht mehr markiert).
+// strukturieren"): überspringt Buchinhalte, die (a) abgeschlossen sind
+// (gezeigteBuecher.abgeschlossenAm gesetzt) ODER (b) Hervorhebungen in der
+// Zusammenfassung haben (notizen.feld = "zusammenfassung"). Bloss
+// GEÖFFNETE Bücher (gezeigteBuecher-Zeile ohne abgeschlossenAm) zählen
+// bewusst als ungelesen — der Lesen-Screen legt die Zeile schon beim
+// ersten Aufruf an (sicherstelleGezeigt), das allein heisst nicht
+// "gelesen". (b) schützt die Hervorhebungen: notizen.textAuszug ist
+// wörtlich aus der ALTEN Zusammenfassung und würde im neuen Text seinen
+// Anker verlieren. Übersprungen werden ausserdem Zusammenfassungen, die
+// bereits im Drei-Ebenen-Format vorliegen ("# Worum geht es?"), damit ein
+// erneuter Lauf keine API-Kosten für schon umgestellte Bücher verursacht.
 // Kombinierbar mit --limit und --titel.
 
 import { config } from "dotenv";
@@ -58,8 +64,8 @@ async function main() {
   const nurUngelesen = process.argv.includes("--nur-ungelesen");
 
   const { db } = await import("../db");
-  const { buchinhalte, buecher, gezeigteBuecher } = await import("../db/schema");
-  const { eq, inArray } = await import("drizzle-orm");
+  const { buchinhalte, buecher, gezeigteBuecher, notizen } = await import("../db/schema");
+  const { eq, inArray, isNotNull } = await import("drizzle-orm");
   const { zusammenfassungNeuErstellen } = await import("../lib/entwurf");
 
   let zeilen = await db
@@ -77,12 +83,22 @@ async function main() {
     .where(inArray(buchinhalte.status, ["geprueft", "im_vorrat"]));
 
   if (nurUngelesen) {
-    const gezeigt = new Set(
-      (await db.select({ buchinhaltId: gezeigteBuecher.buchinhaltId }).from(gezeigteBuecher)).map(
-        (g) => g.buchinhaltId
-      )
+    const abgeschlossen = (
+      await db
+        .select({ buchinhaltId: gezeigteBuecher.buchinhaltId })
+        .from(gezeigteBuecher)
+        .where(isNotNull(gezeigteBuecher.abgeschlossenAm))
+    ).map((g) => g.buchinhaltId);
+    const mitHervorhebungen = (
+      await db
+        .select({ buchinhaltId: notizen.buchinhaltId })
+        .from(notizen)
+        .where(eq(notizen.feld, "zusammenfassung"))
+    ).map((n) => n.buchinhaltId);
+    const ausschliessen = new Set([...abgeschlossen, ...mitHervorhebungen]);
+    zeilen = zeilen.filter(
+      (z) => !ausschliessen.has(z.buchinhaltId) && !/^#\s+Worum geht es\?/m.test(z.alteZusammenfassung ?? "")
     );
-    zeilen = zeilen.filter((z) => !gezeigt.has(z.buchinhaltId));
   }
   if (titelFilter) zeilen = zeilen.filter((z) => titelFilter.has(z.titel));
   if (limit) zeilen = zeilen.slice(0, limit);
