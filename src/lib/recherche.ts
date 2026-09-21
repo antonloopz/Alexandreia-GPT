@@ -13,6 +13,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { buecher, buchinhalte, gezeigteBuecher, wunschlisteneintraege } from "../db/schema";
 import { jsonAusText } from "./json";
+import { erstelleMitFortsetzung } from "./anfrage";
 import { umfangNachschlagen } from "./umfang";
 import type { Kategorie } from "./vorschlag";
 
@@ -131,7 +132,7 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
   "begruendung": string
 }`;
 
-  const message = await client.messages.create({
+  const message = await erstelleMitFortsetzung(client, {
     model: MODELL,
     max_tokens: 4000,
     system: systemPrompt,

@@ -44,3 +44,6 @@ next-env.d.ts
 # Notizen fertigstellen") — enthält einen hartcodierten, maschinenspezifischen
 # Vault-Pfad, wird pro Rechner einmalig lokal eingerichtet, nicht deployt.
 /tools/obsidian-export-helfer/
+
+# Debug-Dumps für Claude (z.B. JSON-Rohtexte aus der Pipeline)
+/.debug/

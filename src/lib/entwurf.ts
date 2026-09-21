@@ -18,6 +18,7 @@ import { db } from "../db";
 import { buecher, buchinhalte, kernaussagen } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { jsonAusText } from "./json";
+import { erstelleMitFortsetzung } from "./anfrage";
 
 const MODELL = "claude-sonnet-5";
 
@@ -252,7 +253,7 @@ Regeln:
   }
 }`;
 
-  const message = await client.messages.create({
+  const message = await erstelleMitFortsetzung(client, {
     model: MODELL,
     max_tokens: 16000,
     system: systemPrompt,
@@ -321,7 +322,7 @@ Regeln:
   "vertrauenshinweis": "verifiziert" | "eingeordnet"
 }`;
 
-  const message = await client.messages.create({
+  const message = await erstelleMitFortsetzung(client, {
     model: MODELL,
     max_tokens: 12000,
     system: systemPrompt,
@@ -371,7 +372,7 @@ Regeln:
   "kernaussagen": [{ "text": string, "erklaerung": string }]
 }`;
 
-  const message = await client.messages.create({
+  const message = await erstelleMitFortsetzung(client, {
     model: MODELL,
     max_tokens: 8000,
     system: systemPrompt,
@@ -422,7 +423,7 @@ Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text d
 
 "probleme" ist eine leere Liste, wenn "bestanden" true ist. Sei streng — im Zweifel "bestanden": false.`;
 
-  const message = await client.messages.create({
+  const message = await erstelleMitFortsetzung(client, {
     model: MODELL,
     max_tokens: 6000,
     system: systemPrompt,
