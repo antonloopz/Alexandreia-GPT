@@ -24,7 +24,8 @@ type Kategorie =
   | "biografie_memoir"
   | "literatur_klassiker"
   | "spiritualitaet_sinnfragen"
-  | "persoenliche_entwicklung";
+  | "persoenliche_entwicklung"
+  | "technologie_technik";
 
 const buecherDaten: { titel: string; autor: string; originalsprache: string; kategorie: Kategorie }[] = [
   // Philosophie

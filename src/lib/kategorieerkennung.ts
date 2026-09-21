@@ -21,6 +21,16 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const ALLE_KATEGORIEN = Object.keys(KATEGORIE_LABEL) as Kategorie[];
 
+// Abgrenzungshinweis für die 09/2026 neu hinzugekommene Kategorie
+// Technologie — ohne ihn landen Technikbücher je nach Titel mal bei
+// Naturwissenschaft, mal bei Wirtschaft oder Gesellschaft/Politik.
+const ABGRENZUNG =
+  "Abgrenzung: technologie_technik = Technik, Software, Informatik, KI, Internet, " +
+  "Ingenieurwesen, Erfindungen, Technikgeschichte und Technikfolgen. Reine Naturwissenschaft " +
+  "(Physik, Biologie, Chemie, Evolution) gehört zu naturwissenschaft; Unternehmensführung und " +
+  "Ökonomie (auch von Tech-Firmen) zu wirtschaft_business; Politik und Gesellschaft allgemein " +
+  "zu gesellschaft_politik.";
+
 type ErkennungJSON = { kategorie: string };
 
 async function letzterTextblock(message: Anthropic.Message): Promise<string> {
@@ -43,7 +53,8 @@ export async function kategorieErkennen(titel: string, autor: string): Promise<K
           role: "user",
           content:
             `Buch: "${titel}"${autor ? ` von ${autor}` : ""}.\n\n` +
-            `Welcher dieser zehn Kategorie-Codes passt am besten? ${optionen}\n\n` +
+            `Welcher dieser ${ALLE_KATEGORIEN.length} Kategorie-Codes passt am besten? ${optionen}\n\n` +
+            `${ABGRENZUNG}\n\n` +
             `Antworte NUR mit JSON, ohne Text davor oder danach: {"kategorie": "<einer der Codes>"}`,
         },
       ],

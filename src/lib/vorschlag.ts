@@ -43,6 +43,7 @@ export const ALLE_KATEGORIEN = [
   "literatur_klassiker",
   "spiritualitaet_sinnfragen",
   "persoenliche_entwicklung",
+  "technologie_technik",
 ] as const;
 
 export type Kategorie = (typeof ALLE_KATEGORIEN)[number];

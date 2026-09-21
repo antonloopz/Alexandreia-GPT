@@ -34,6 +34,10 @@ export const kategorieEnum = pgEnum("kategorie", [
   "literatur_klassiker",
   "spiritualitaet_sinnfragen",
   "persoenliche_entwicklung",
+  // 09/2026 (Pendenz "Technologie/Technik als 11. Hauptkategorie") —
+  // danach bewusst keine weiteren Hauptkategorien, feinere Differenzierung
+  // läuft über Tags.
+  "technologie_technik",
 ]);
 
 export const buchinhaltStatusEnum = pgEnum("buchinhalt_status", [

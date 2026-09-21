@@ -8,7 +8,8 @@
 // vorgegebene Referenz (Säule/Kopf/Balkendiagramm/Gebäude/Person+Buch/Buch/
 // Setzling) — für die drei dort nicht abgedeckten Kategorien
 // (Naturwissenschaft, Gesellschaft/Politik, Spiritualität) im selben
-// Linienstil ergänzt (Kolben, Globus, Sonne). Reine, serverkompatible
+// Linienstil ergänzt (Kolben, Globus, Sonne; 09/2026 zusätzlich Mikrochip
+// für Technologie). Reine, serverkompatible
 // Komponente ohne Client-Interaktivität — direkt in Server Components
 // wie app/bookshelf/page.tsx nutzbar.
 
@@ -116,6 +117,21 @@ function KategorieIconInhalt({ kategorie }: { kategorie: string }) {
           <path d="M12 19v-6" />
           <path d="M12 13c0-2.8 2.2-5 5-5 0 2.8-2.2 5-5 5Z" />
           <path d="M12 15c0-2.2-1.8-4-4-4 0 2.2 1.8 4 4 4Z" />
+        </>
+      );
+    case "technologie_technik":
+      // Mikrochip
+      return (
+        <>
+          <rect x="7.5" y="7.5" width="9" height="9" rx="1.2" />
+          <path d="M10 4.5v3" />
+          <path d="M14 4.5v3" />
+          <path d="M10 16.5v3" />
+          <path d="M14 16.5v3" />
+          <path d="M4.5 10h3" />
+          <path d="M4.5 14h3" />
+          <path d="M16.5 10h3" />
+          <path d="M16.5 14h3" />
         </>
       );
     default:

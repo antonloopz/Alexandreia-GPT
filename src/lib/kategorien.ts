@@ -14,6 +14,8 @@ export const KATEGORIE_FARBE: Record<string, string> = {
   literatur_klassiker: "#B7D5CE",
   spiritualitaet_sinnfragen: "#D5C0D3",
   persoenliche_entwicklung: "#E6D39F",
+  // 09/2026: warmes Taupe — hebt sich von den übrigen zehn Pastelltönen ab.
+  technologie_technik: "#D6CCC2",
 };
 
 export const KATEGORIE_LABEL: Record<string, string> = {
@@ -27,6 +29,7 @@ export const KATEGORIE_LABEL: Record<string, string> = {
   literatur_klassiker: "Literatur/Klassiker",
   spiritualitaet_sinnfragen: "Spiritualität",
   persoenliche_entwicklung: "Pers. Entwicklung",
+  technologie_technik: "Technologie",
 };
 
 // Anzeige-Label für den Kernaussagen-Screen (Einzahl für den Schritt-für-
@@ -48,6 +51,7 @@ export const KERNAUSSAGEN_LABEL: Record<string, { einzeln: string; mehrzahl: str
   literatur_klassiker: { einzeln: "Thema", mehrzahl: "Zentrale Themen" },
   spiritualitaet_sinnfragen: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
   persoenliche_entwicklung: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
+  technologie_technik: { einzeln: "Kernaussage", mehrzahl: "Kernaussagen" },
 };
 
 // Kurzhelfer für die Kategorie-Chips, geteilt von app/buecherliste/page.tsx,
