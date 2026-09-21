@@ -105,8 +105,13 @@ function zusammenfassungRegel(kategorie: string): string {
     'die Position des Autors bzw. den Inhalt des Werks wieder — mit klarer Zuschreibung ' +
     '("X argumentiert", "laut X", "X zufolge"), Behauptungen des Autors nie als Tatsachen in ' +
     `eigener Stimme. Eigene Deutung, Kritik oder Kontextualisierung nur in separaten Absätzen, ` +
-    `die mit "${EINORDNUNG_PRAEFIX} " beginnen (ein Absatz, eine Zeile). Sparsam, nur in ` +
-    'Ebene 2 und 3, nie in "Worum geht es?"; ohne solide Grundlage lieber weglassen als raten.'
+    `die mit "${EINORDNUNG_PRAEFIX} " beginnen (ein Absatz, eine Zeile). Nie in "Worum geht ` +
+    'es?". Sparsam: höchstens EINE Einordnung pro Ebene und insgesamt höchstens drei — nur ' +
+    'dort, wo sie wirklich etwas hinzufügt (z.B. eine wesentliche Gegenposition oder den ' +
+    'Stand der Forschung). Jede Einordnung bringt einen NEUEN Gedanken: keine Wiederholung ' +
+    'derselben Referenz (z.B. dasselbe Vorbild-Werk) oder derselben Wertung (z.B. mehrfach ' +
+    '"umstritten") in mehreren Einordnungen. Ohne solide Grundlage lieber weglassen als raten; ' +
+    'null Einordnungen sind völlig in Ordnung.'
   );
 }
 
@@ -405,7 +410,7 @@ Prüfkriterien:
 - Ist der Text in sich kohärent und widerspruchsfrei (z.B. einheitliche Schreibweise von Titeln/Namen über alle Felder hinweg)?
 - Ist die Zusammenfassung ausführlich und vertiefend genug (siehe Vorgabe im Entwurf: mehrere Abschnitte, konkrete Beispiele/Argumentationsstränge — keine knappe Überblicks- oder Klappentext-Fassung)? Zu kurz und oberflächlich ist ein Fehler. "Aufgebläht" gilt nur bei echten Wiederholungen oder Füllstoff ohne Substanz — reine Ausführlichkeit ist kein Mangel.
 - Hat die Zusammenfassung genau drei Ebenen mit "# "-Überschriften in der vorgegebenen Reihenfolge ("# Worum geht es?" mit 2–4 Sätzen, danach die Argumentations-/Deutungsebene, zuletzt "# Zusammenfassung")? Ist die ausführliche Ebene nach Argumentationssträngen statt Kapitel für Kapitel gegliedert?
-- Ist die Position des Autors klar zugeschrieben? Eigene Deutung/Kritik darf NUR in Absätzen mit "${EINORDNUNG_PRAEFIX}" stehen — als Tatsache formulierte Wertungen im übrigen Text oder eine Einordnung in "Worum geht es?" sind ein Fehler.
+- Ist die Position des Autors klar zugeschrieben? Eigene Deutung/Kritik darf NUR in Absätzen mit "${EINORDNUNG_PRAEFIX}" stehen — als Tatsache formulierte Wertungen im übrigen Text oder eine Einordnung in "Worum geht es?" sind ein Fehler. Ebenso ein Fehler: mehr als eine Einordnung pro Ebene, mehr als drei insgesamt, oder Einordnungen, die dieselbe Referenz/Wertung wiederholen.
 - Ist vertrauenshinweise.kernzitat null, wenn kein Kernzitat vorhanden ist (kernzitat_original/kernzitat_uebersetzung = null)? Ein Vertrauenshinweis für ein nicht vorhandenes Zitat ist ein Fehler.
 
 Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text davor oder danach:

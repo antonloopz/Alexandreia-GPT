@@ -38,8 +38,10 @@
 // wörtlich aus der ALTEN Zusammenfassung und würde im neuen Text seinen
 // Anker verlieren. Übersprungen werden ausserdem Zusammenfassungen, die
 // bereits im Drei-Ebenen-Format vorliegen ("# Worum geht es?"), damit ein
-// erneuter Lauf keine API-Kosten für schon umgestellte Bücher verursacht.
-// Kombinierbar mit --limit und --titel.
+// erneuter Lauf keine API-Kosten für schon umgestellte Bücher verursacht —
+// AUSSER bei explizitem --titel: dann ist die erneute Erzeugung gewollt
+// (z.B. nach einer Prompt-Anpassung), der Schutz für abgeschlossene Bücher
+// und Hervorhebungen gilt aber weiterhin. Kombinierbar mit --limit und --titel.
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -97,7 +99,9 @@ async function main() {
     ).map((n) => n.buchinhaltId);
     const ausschliessen = new Set([...abgeschlossen, ...mitHervorhebungen]);
     zeilen = zeilen.filter(
-      (z) => !ausschliessen.has(z.buchinhaltId) && !/^#\s+Worum geht es\?/m.test(z.alteZusammenfassung ?? "")
+      (z) =>
+        !ausschliessen.has(z.buchinhaltId) &&
+        (titelFilter !== undefined || !/^#\s+Worum geht es\?/m.test(z.alteZusammenfassung ?? ""))
     );
   }
   if (titelFilter) zeilen = zeilen.filter((z) => titelFilter.has(z.titel));
