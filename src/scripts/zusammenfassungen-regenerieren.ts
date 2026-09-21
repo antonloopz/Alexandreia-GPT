@@ -25,6 +25,15 @@
 // selbst ein Komma enthalten,
 // z.B. "Thinking, Fast and
 // Slow"), exakter Titel-Text:  npx tsx src/scripts/zusammenfassungen-regenerieren.ts --titel="Meditationen|Der Staat"
+// Nur noch nie gezeigte Bücher: npx tsx src/scripts/zusammenfassungen-regenerieren.ts --nur-ungelesen
+//
+// --nur-ungelesen (09/2026, Pendenz "Zusammenfassung in drei Ebenen
+// strukturieren"): beschränkt den Lauf auf Buchinhalte ohne
+// gezeigteBuecher-Zeile. Bei bereits gelesenen Büchern hängen evtl.
+// Hervorhebungen (notizen.textAuszug, wörtlich aus der ALTEN Zusammenfassung)
+// dran — die würden im neuen Text ihren Anker verlieren (die Notiz selbst
+// bliebe zwar erhalten, wäre im Lesen-Screen aber nicht mehr markiert).
+// Kombinierbar mit --limit und --titel.
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -46,8 +55,10 @@ async function main() {
     ? new Set(titelArg.slice("--titel=".length).split("|").map((t) => t.trim()))
     : undefined;
 
+  const nurUngelesen = process.argv.includes("--nur-ungelesen");
+
   const { db } = await import("../db");
-  const { buchinhalte, buecher } = await import("../db/schema");
+  const { buchinhalte, buecher, gezeigteBuecher } = await import("../db/schema");
   const { eq, inArray } = await import("drizzle-orm");
   const { zusammenfassungNeuErstellen } = await import("../lib/entwurf");
 
@@ -65,6 +76,14 @@ async function main() {
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(inArray(buchinhalte.status, ["geprueft", "im_vorrat"]));
 
+  if (nurUngelesen) {
+    const gezeigt = new Set(
+      (await db.select({ buchinhaltId: gezeigteBuecher.buchinhaltId }).from(gezeigteBuecher)).map(
+        (g) => g.buchinhaltId
+      )
+    );
+    zeilen = zeilen.filter((z) => !gezeigt.has(z.buchinhaltId));
+  }
   if (titelFilter) zeilen = zeilen.filter((z) => titelFilter.has(z.titel));
   if (limit) zeilen = zeilen.slice(0, limit);
 

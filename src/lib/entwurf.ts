@@ -27,19 +27,88 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // zusammenfassungNeuErstellen() (Nachzieh-Lauf über bereits produzierte
 // Bücher, siehe unten) — an einer Stelle gepflegt, damit beide Prompts nie
 // auseinanderlaufen.
-const ZUSAMMENFASSUNG_REGEL =
-  'Zusammenfassung: ausführlich und vertiefend, KEIN knapper Überblick oder ' +
-  'Klappentext-Stil. Ziel ist, dass Leser:innen die zentralen Gedankengänge ' +
-  'wirklich nachvollziehen, nicht nur ihren Titel kennen. Sachbücher/Ratgeber/' +
-  'Philosophie/Wissenschaft: typischerweise 1800–3200 Wörter, gegliedert in ' +
-  '3–6 mit "## Zwischentitel" betitelte Abschnitte, die je einen ' +
-  'Argumentationsstrang, ein zentrales Konzept oder Experiment vertiefen ' +
-  '(konkrete Beispiele/Studien/Begriffe benennen, nicht nur andeuten). ' +
-  'Erzählende Werke (Romane, literarische Klassiker): volle Nacherzählung von ' +
-  'Handlung, Figuren und Motiven, typischerweise 1000–1800 Wörter, ab ca. 400 ' +
-  'Wörtern ebenfalls mit Zwischentiteln gliedern. Diese Bandbreiten sind ' +
-  'Richtwerte, keine harte Grenze — ein Werk mit besonders viel Substanz darf ' +
-  'auch länger ausfallen.';
+//
+// 09/2026 (Pendenz "Zusammenfassung in drei Ebenen strukturieren"): statt
+// eines einzigen, kapitelweise gegliederten Texts drei feste Ebenen, jede
+// mit einer "# Überschrift" (erste Ebene) — "Worum geht es?" (2–4 Sätze),
+// die Argumentationsstruktur des Autors und die ausführliche Darstellung.
+// Bewusst weiterhin EIN Textfeld (buchinhalte.zusammenfassung), keine neuen
+// Spalten: Hervorhebungen (notizen.textAuszug), Teaser und Wortanzahl
+// funktionieren so unverändert weiter, alte Zusammenfassungen ohne "#"-
+// Überschriften bleiben lesbar (siehe parseZusammenfassung() in
+// app/lesen/[id]/page.tsx).
+//
+// Ebene 2 heisst je nach Kategorie anders — ein Roman hat keine
+// "Argumentation" im Sinne eines Sachbuchs, eine Biografie eher tragende
+// Zusammenhänge als eine These. Die Drei-Ebenen-Logik bleibt gleich, nur
+// Titel und Anleitung passen sich an (analog kernaussagenAnleitung() unten).
+//
+// Trennung Autor/Alexandreia: alles ausserhalb markierter Einordnungs-
+// Absätze gibt ausschliesslich die Position des Autors wieder. Eigene
+// Deutung/Kritik steht nur in Absätzen mit dem Präfix "> Einordnung:", die
+// der Lesen-Screen optisch abgesetzt darstellt. Belegte Urteile wie
+// "umstritten"/"überholt" sind NICHT Teil dieser Regel (Pendenz
+// "Einordnungs-Block") — hier nur der dafür vorgesehene Platz.
+const EINORDNUNG_PRAEFIX = "> Einordnung:";
+
+function zweiteEbene(kategorie: string): { titel: string; anleitung: string } {
+  switch (kategorie) {
+    case "literatur_klassiker":
+      return {
+        titel: "Deutung & Motive",
+        anleitung:
+          'die zentralen Themen, Motive und Deutungslinien des Werks und wie Handlung, ' +
+          'Figuren und Form sie tragen — hier NICHT die Handlung nacherzählen (das folgt ' +
+          'in Ebene 3).',
+      };
+    case "biografie_memoir":
+    case "geschichte":
+      return {
+        titel: "Zusammenhänge",
+        anleitung:
+          'die tragenden Zusammenhänge: Ausgangslage, Ursachen, Wendepunkte, Entscheidungen ' +
+          'und Folgen — und wie der Autor diese deutet und gewichtet (seine Lesart, nicht ' +
+          'eine neutrale Chronik).',
+      };
+    default:
+      return {
+        titel: "Argumentation",
+        anleitung:
+          'die zentrale Logik des Autors: Ausgangsfrage/Problem → Hauptthese → die ' +
+          'wichtigsten Begründungsschritte und Belege → Schlussfolgerung. Sichtbar machen, ' +
+          'wie die Gedanken aufeinander aufbauen (ein kurzer Absatz pro Schritt), statt ' +
+          'Inhalte bloss aufzuzählen.',
+      };
+  }
+}
+
+function zusammenfassungRegel(kategorie: string): string {
+  const ebene2 = zweiteEbene(kategorie);
+  return (
+    'Zusammenfassung: in GENAU drei Ebenen, jede eingeleitet durch eine Überschrift erster ' +
+    'Ebene auf eigener Zeile, exakt in dieser Reihenfolge und mit exakt diesen Titeln:\n' +
+    '  1. "# Worum geht es?" — 2–4 Sätze: Thema, Kernfrage und Hauptanliegen des Werks. ' +
+    'Nüchtern, kein Klappentext- oder Werbeton, keine Einordnung.\n' +
+    `  2. "# ${ebene2.titel}" — ${ebene2.anleitung} Typischerweise 250–500 Wörter, ohne ` +
+    '"##"-Zwischentitel.\n' +
+    '  3. "# Zusammenfassung" — ausführlich und vertiefend, KEIN knapper Überblick. Ziel ist, ' +
+    'dass Leser:innen die zentralen Gedankengänge wirklich nachvollziehen. Sachbücher/' +
+    'Ratgeber/Philosophie/Wissenschaft: typischerweise 1500–2800 Wörter, gegliedert in 3–6 ' +
+    'mit "## Zwischentitel" betitelte Abschnitte, die je einen Argumentationsstrang, ein ' +
+    'zentrales Konzept oder Experiment vertiefen (konkrete Beispiele/Studien/Begriffe ' +
+    'benennen, nicht nur andeuten). Die Gliederung folgt der Argumentationsstruktur, NICHT ' +
+    'den Kapiteln des Buchs — keine Kapitel-für-Kapitel-Zusammenfassung. Erzählende Werke ' +
+    '(Romane, literarische Klassiker): volle Nacherzählung von Handlung und Figuren, ' +
+    'typischerweise 900–1600 Wörter, ebenfalls mit "##"-Zwischentiteln. Die Bandbreiten ' +
+    'sind Richtwerte, keine harte Grenze.\n' +
+    'Trennung Autor/Alexandreia: Alles ausserhalb von Einordnungs-Absätzen gibt AUSSCHLIESSLICH ' +
+    'die Position des Autors bzw. den Inhalt des Werks wieder — mit klarer Zuschreibung ' +
+    '("X argumentiert", "laut X", "X zufolge"), Behauptungen des Autors nie als Tatsachen in ' +
+    `eigener Stimme. Eigene Deutung, Kritik oder Kontextualisierung nur in separaten Absätzen, ` +
+    `die mit "${EINORDNUNG_PRAEFIX} " beginnen (ein Absatz, eine Zeile). Sparsam, nur in ` +
+    'Ebene 2 und 3, nie in "Worum geht es?"; ohne solide Grundlage lieber weglassen als raten.'
+  );
+}
 
 // Bug 09/2026: bei aktiver Websuche hat das Modell teils seine interne
 // Zitations-Markierung (z.B. `<cite index="12-3">...</cite>`) wörtlich in
@@ -156,7 +225,7 @@ export async function entwurfErstellen(
 Nutze die Web-Suche aktiv, um Fakten (Entstehungsjahr, Kontext, ggf. Zitat) abzusichern, statt nur aus vorhandenem Wissen zu arbeiten.
 
 Regeln:
-- ${ZUSAMMENFASSUNG_REGEL}
+- ${zusammenfassungRegel(kategorie)}
 - ${KEINE_ZITATIONS_TAGS_REGEL}
 - ${kernaussagenAnleitung(kategorie)}
 - Kernzitat: ${kernzitatErlaubt ? "dieses Werk ist ein literarischer Klassiker — liefere ein kulturell verankertes, wortgetreues Kernzitat in der Originalsprache UND in deutscher Übersetzung. Prüfe Wortlaut und Übersetzung gegen mindestens eine verlässliche Quelle und bleib bei EINER Schreibweise/Transliteration des Originaltitels, auch wenn mehrere kursieren." : "dieses Werk ist kein literarischer Klassiker — kernzitat_original und kernzitat_uebersetzung müssen null sein."}
@@ -234,10 +303,10 @@ export async function zusammenfassungNeuErstellen(
   kategorie: string,
   originalsprache: string
 ): Promise<{ zusammenfassung: string; vertrauenshinweis: Vertrauenshinweis }> {
-  const systemPrompt = `Du schreibst für Alexandreia die Zusammenfassung eines Buchs neu — ausführlicher und vertiefender als eine bisherige, zu knappe Fassung. Zielsprache für den Text ist Deutsch, unabhängig von der Originalsprache des Werks. Nutze die Web-Suche, um Inhalt und Argumentation abzusichern.
+  const systemPrompt = `Du schreibst für Alexandreia die Zusammenfassung eines Buchs neu — in der vorgegebenen Drei-Ebenen-Struktur und vertiefend, anstelle einer bisherigen Fassung. Zielsprache für den Text ist Deutsch, unabhängig von der Originalsprache des Werks. Nutze die Web-Suche, um Inhalt und Argumentation abzusichern.
 
 Regeln:
-- ${ZUSAMMENFASSUNG_REGEL}
+- ${zusammenfassungRegel(kategorie)}
 - ${KEINE_ZITATIONS_TAGS_REGEL}
 - Vertrauenshinweis: "verifiziert" (durch Recherche bestätigt) oder "eingeordnet" (plausibel eingeschätzt, aber nicht wortgetreu geprüft).
 - Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text davor oder danach:
@@ -335,6 +404,8 @@ Prüfkriterien:
 - Sind historische/biografische Angaben (Entstehungsjahr, Kontext, Autorenfakten) korrekt?
 - Ist der Text in sich kohärent und widerspruchsfrei (z.B. einheitliche Schreibweise von Titeln/Namen über alle Felder hinweg)?
 - Ist die Zusammenfassung ausführlich und vertiefend genug (siehe Vorgabe im Entwurf: mehrere Abschnitte, konkrete Beispiele/Argumentationsstränge — keine knappe Überblicks- oder Klappentext-Fassung)? Zu kurz und oberflächlich ist ein Fehler. "Aufgebläht" gilt nur bei echten Wiederholungen oder Füllstoff ohne Substanz — reine Ausführlichkeit ist kein Mangel.
+- Hat die Zusammenfassung genau drei Ebenen mit "# "-Überschriften in der vorgegebenen Reihenfolge ("# Worum geht es?" mit 2–4 Sätzen, danach die Argumentations-/Deutungsebene, zuletzt "# Zusammenfassung")? Ist die ausführliche Ebene nach Argumentationssträngen statt Kapitel für Kapitel gegliedert?
+- Ist die Position des Autors klar zugeschrieben? Eigene Deutung/Kritik darf NUR in Absätzen mit "${EINORDNUNG_PRAEFIX}" stehen — als Tatsache formulierte Wertungen im übrigen Text oder eine Einordnung in "Worum geht es?" sind ein Fehler.
 - Ist vertrauenshinweise.kernzitat null, wenn kein Kernzitat vorhanden ist (kernzitat_original/kernzitat_uebersetzung = null)? Ein Vertrauenshinweis für ein nicht vorhandenes Zitat ist ein Fehler.
 
 Antworte NUR mit einem validen JSON-Objekt, ohne Markdown-Codeblock, ohne Text davor oder danach:

@@ -73,17 +73,76 @@ function Abschnitt({
 
 // Zusammenfassung kann "## Zwischentitel" enthalten (siehe entwurf.ts-Prompt)
 // — bei längeren Texten in benannte Absätze aufteilen, sonst als ein Block.
-function parseZusammenfassung(text: string): { titel: string | null; body: string }[] {
+//
+// Seit 09/2026 (Pendenz "Zusammenfassung in drei Ebenen strukturieren")
+// zusätzlich eine Ebene darüber: "# Worum geht es?", "# Argumentation" (bzw.
+// kategorieabhängig "# Deutung & Motive"/"# Zusammenhänge") und
+// "# Zusammenfassung" — jede wird ein eigener Abschnitt mit eigenem Label.
+// Alte Texte ohne "# "-Überschriften ergeben genau eine Ebene ohne Titel und
+// werden wie bisher unter "Zusammenfassung" angezeigt.
+//
+// Absätze mit dem Präfix "> Einordnung:" (siehe EINORDNUNG_PRAEFIX in
+// entwurf.ts) sind Deutung durch Alexandreia, nicht Aussage des Autors —
+// sie werden als eigene, optisch abgesetzte Blöcke herausgelöst. Alle
+// übrigen Absätze bleiben wie bisher zu einem Textblock zusammengefasst
+// (unverändert für Hervorhebungen, die per textAuszug im Text gesucht werden).
+type Block = { einordnung: boolean; text: string };
+type Unterabschnitt = { titel: string | null; bloecke: Block[] };
+type Ebene = { titel: string | null; unterabschnitte: Unterabschnitt[] };
+
+const EINORDNUNG_MUSTER = /^>\s*Einordnung:\s*/;
+
+function parseBloecke(body: string): Block[] {
+  const bloecke: Block[] = [];
+  let sammler: string[] = [];
+  const sammlerAbschliessen = () => {
+    if (sammler.length > 0) bloecke.push({ einordnung: false, text: sammler.join("\n\n") });
+    sammler = [];
+  };
+  // Absatzgrenze = Leerzeile ODER Zeilenumbruch direkt vor "> Einordnung:"
+  // (falls das Modell die Einordnung ohne Leerzeile anhängt).
+  for (const absatz of body.split(/\n\s*\n|\n(?=>\s*Einordnung:)/)) {
+    const getrimmt = absatz.trim();
+    if (!getrimmt) continue;
+    if (EINORDNUNG_MUSTER.test(getrimmt)) {
+      sammlerAbschliessen();
+      // Evtl. über mehrere Zeilen fortgesetzte "> "-Zitatzeilen mit entfernen.
+      const text = getrimmt.replace(EINORDNUNG_MUSTER, "").replace(/\n>\s?/g, "\n").trim();
+      if (text) bloecke.push({ einordnung: true, text });
+    } else {
+      sammler.push(getrimmt);
+    }
+  }
+  sammlerAbschliessen();
+  return bloecke;
+}
+
+function parseUnterabschnitte(text: string): Unterabschnitt[] {
   const teile = text.split(/\n(?=##\s)/);
   return teile
     .map((teil) => {
       const match = teil.match(/^##\s+(.+?)\n([\s\S]*)$/);
       if (match) {
-        return { titel: match[1].trim(), body: match[2].trim() };
+        return { titel: match[1].trim(), bloecke: parseBloecke(match[2]) };
       }
-      return { titel: null, body: teil.trim() };
+      return { titel: null, bloecke: parseBloecke(teil) };
     })
-    .filter((t) => t.body.length > 0);
+    .filter((t) => t.bloecke.length > 0);
+}
+
+function parseZusammenfassung(text: string): Ebene[] {
+  // "#\s" trifft nur Überschriften erster Ebene — "## " hat an zweiter
+  // Stelle ein "#" statt Leerraum.
+  const teile = text.trim().split(/\n(?=#\s)/);
+  return teile
+    .map((teil) => {
+      const match = teil.match(/^#\s+(.+?)\n([\s\S]*)$/);
+      if (match) {
+        return { titel: match[1].trim(), unterabschnitte: parseUnterabschnitte(match[2].trim()) };
+      }
+      return { titel: null, unterabschnitte: parseUnterabschnitte(teil.trim()) };
+    })
+    .filter((e) => e.unterabschnitte.length > 0);
 }
 
 export default async function LesenSeite({ params }: { params: Promise<{ id: string }> }) {
@@ -124,7 +183,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
   const akzent = KATEGORIE_FARBE[zeile.kategorie] ?? "var(--paper)";
   const kategorieLabel = KATEGORIE_LABEL[zeile.kategorie] ?? zeile.kategorie;
   const vh = (zeile.vertrauenshinweise ?? {}) as Record<string, Vertrauenshinweis>;
-  const zusammenfassungsAbschnitte = parseZusammenfassung(zeile.zusammenfassung);
+  const zusammenfassungsEbenen = parseZusammenfassung(zeile.zusammenfassung);
 
   // Bestehende Hervorhebungen/Notizen dieses Buchinhalts, nach Feld sortiert
   // (Feature "Notiz-/Highlight-Funktion" 09/2026) — an Hervorhebbarer
@@ -201,27 +260,66 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
       </span>
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 22, overflowY: "auto" }}>
-        <Abschnitt label="Zusammenfassung" hinweis={vh.zusammenfassung}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {zusammenfassungsAbschnitte.map((abschnitt, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {abschnitt.titel && (
-                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
-                    {abschnitt.titel}
-                  </span>
-                )}
-                <Hervorhebbarer
-                  text={abschnitt.body}
-                  buchinhaltId={zeile.buchinhaltId}
-                  feld="zusammenfassung"
-                  bestehende={nachFeld("zusammenfassung")}
-                  akzent={akzent}
-                  style={{ fontSize: 17, lineHeight: 1.55 }}
-                />
-              </div>
-            ))}
-          </div>
-        </Abschnitt>
+        {zusammenfassungsEbenen.map((ebene, e) => (
+          <Abschnitt key={e} label={ebene.titel ?? "Zusammenfassung"} hinweis={vh.zusammenfassung}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {ebene.unterabschnitte.map((abschnitt, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {abschnitt.titel && (
+                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
+                      {abschnitt.titel}
+                    </span>
+                  )}
+                  {abschnitt.bloecke.map((block, b) =>
+                    block.einordnung ? (
+                      <div
+                        key={b}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                          borderLeft: "2px solid rgba(36,35,31,.35)",
+                          paddingLeft: 12,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "Helvetica, Arial, sans-serif",
+                            fontWeight: 700,
+                            fontSize: 12,
+                            letterSpacing: ".06em",
+                            textTransform: "uppercase",
+                            color: "rgba(36,35,31,.55)",
+                          }}
+                        >
+                          Einordnung Alexandreia
+                        </span>
+                        <Hervorhebbarer
+                          text={block.text}
+                          buchinhaltId={zeile.buchinhaltId}
+                          feld="zusammenfassung"
+                          bestehende={nachFeld("zusammenfassung")}
+                          akzent={akzent}
+                          style={{ fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.72)" }}
+                        />
+                      </div>
+                    ) : (
+                      <Hervorhebbarer
+                        key={b}
+                        text={block.text}
+                        buchinhaltId={zeile.buchinhaltId}
+                        feld="zusammenfassung"
+                        bestehende={nachFeld("zusammenfassung")}
+                        akzent={akzent}
+                        style={{ fontSize: 17, lineHeight: 1.55 }}
+                      />
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+          </Abschnitt>
+        ))}
 
         <Abschnitt label="Entstehungsgeschichte" hinweis={vh.entstehungsgeschichte}>
           <Hervorhebbarer
