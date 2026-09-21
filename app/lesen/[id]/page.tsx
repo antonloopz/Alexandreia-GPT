@@ -16,6 +16,7 @@ import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 import Hervorhebbarer, { type Hervorhebung } from "./Hervorhebbarer";
 import type { NotizFeld } from "../../../src/lib/notizen";
+import type { Einordnung, EinordnungUrteil } from "../../../src/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,91 @@ function Abschnitt({
         <TrustIcon hinweis={hinweis} />
       </div>
       {children}
+    </div>
+  );
+}
+
+// Einordnungs-Block (09/2026, Pendenz "Einordnungs-Block"): eigener
+// Abschnitt nach der Zusammenfassung, nur wenn der Buchinhalt einen hat
+// (ältere nicht). Umfang "voll" = vier Felder + heute, "nur_heute" = nur
+// heute (siehe src/lib/kategorieprofile.ts). Nicht hervorhebbar — das
+// bräuchte neue Werte im notizFeld-Enum.
+const URTEIL_LABEL: Record<EinordnungUrteil, string> = {
+  belegt: "Belegt",
+  umstritten: "Umstritten",
+  ueberholt: "Überholt",
+  weiterhin_relevant: "Weiterhin relevant",
+};
+
+const EINORDNUNG_LABEL_STIL = {
+  fontFamily: "Helvetica, Arial, sans-serif",
+  fontWeight: 700,
+  fontSize: 12,
+  letterSpacing: ".06em",
+  textTransform: "uppercase" as const,
+  color: "rgba(36,35,31,.55)",
+};
+
+function EinordnungBlock({ einordnung, akzent }: { einordnung: Einordnung; akzent: string }) {
+  const felder = [
+    { label: "Zentrales Argument", text: einordnung.zentralesArgument },
+    { label: "Stärkster Beleg", text: einordnung.staerksterBeleg },
+    { label: "Zentrale Annahme", text: einordnung.zentraleAnnahme },
+    { label: "Offene Schwachstelle", text: einordnung.offeneSchwachstelle },
+  ].filter((f): f is { label: string; text: string } => Boolean(f.text));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {felder.map((f) => (
+        <div key={f.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={EINORDNUNG_LABEL_STIL}>{f.label}</span>
+          <span style={{ fontSize: 17, lineHeight: 1.55 }}>{f.text}</span>
+        </div>
+      ))}
+      {einordnung.heute && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            boxSizing: "border-box",
+            padding: "12px 14px",
+            borderRadius: 12,
+            background: `linear-gradient(rgba(0,0,0,.06),rgba(0,0,0,.06)), ${akzent}`,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={EINORDNUNG_LABEL_STIL}>Heute</span>
+            <span
+              style={{
+                fontFamily: "Helvetica, Arial, sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                padding: "3px 10px",
+                borderRadius: 999,
+                background: "#24231F",
+                color: "#FBFAF7",
+              }}
+            >
+              {URTEIL_LABEL[einordnung.heute.urteil] ?? einordnung.heute.urteil}
+            </span>
+          </div>
+          <span style={{ fontSize: 16, lineHeight: 1.55 }}>{einordnung.heute.begruendung}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {einordnung.heute.quellen.map((q) => (
+              <a
+                key={q.url}
+                href={q.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 14, lineHeight: 1.4, color: "rgba(36,35,31,.75)", textDecoration: "underline", overflowWrap: "anywhere" }}
+              >
+                {q.titel}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -161,6 +247,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
       kernzitatOriginal: buchinhalte.kernzitatOriginal,
       kernzitatUebersetzung: buchinhalte.kernzitatUebersetzung,
       vertrauenshinweise: buchinhalte.vertrauenshinweise,
+      einordnung: buchinhalte.einordnung,
     })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
@@ -323,6 +410,12 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
             </div>
           </Abschnitt>
         ))}
+
+        {zeile.einordnung && (
+          <Abschnitt label="Einordnung" hinweis="eingeordnet">
+            <EinordnungBlock einordnung={zeile.einordnung} akzent={akzent} />
+          </Abschnitt>
+        )}
 
         <Abschnitt label="Entstehungsgeschichte" hinweis={vh.entstehungsgeschichte}>
           <Hervorhebbarer

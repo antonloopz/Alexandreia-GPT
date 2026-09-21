@@ -42,7 +42,7 @@ export default async function AbschlussSeite({
   const { richtig } = await searchParams;
 
   const [buch] = await db
-    .select({ titel: buecher.titel, kategorie: buecher.kategorie })
+    .select({ titel: buecher.titel, kategorie: buecher.kategorie, bleibtHaengen: buchinhalte.bleibtHaengen })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(eq(buchinhalte.id, id));
@@ -199,6 +199,60 @@ export default async function AbschlussSeite({
             abgeschlossen.
           </span>
         </div>
+        {/* "Das bleibt hängen" (09/2026, Pendenz "Abschlussansicht") — die 3
+            wichtigsten Ideen + 1 offene Frage, in der Pipeline mit erzeugt.
+            Ältere Bücher haben das (noch) nicht, dann fehlt der Block. */}
+        {buch.bleibtHaengen && (
+          <div
+            style={{
+              boxSizing: "border-box",
+              width: "100%",
+              maxWidth: 420,
+              padding: "14px 16px",
+              borderRadius: 14,
+              background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              textAlign: "left",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "Helvetica, Arial, sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                letterSpacing: ".06em",
+                textTransform: "uppercase",
+                color: "rgba(36,35,31,.62)",
+              }}
+            >
+              Das bleibt hängen
+            </span>
+            <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+              {buch.bleibtHaengen.ideen.map((idee, i) => (
+                <li key={i} style={{ fontSize: 16, lineHeight: 1.5 }}>
+                  {idee}
+                </li>
+              ))}
+            </ol>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 2 }}>
+              <span
+                style={{
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  color: "rgba(36,35,31,.55)",
+                }}
+              >
+                Offene Frage
+              </span>
+              <span style={{ fontSize: 16, lineHeight: 1.5, fontStyle: "italic" }}>{buch.bleibtHaengen.offeneFrage}</span>
+            </div>
+          </div>
+        )}
 
         <div
           style={{

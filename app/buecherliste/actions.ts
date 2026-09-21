@@ -35,10 +35,9 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "../../src/db";
-import { buecher, wunschlisteneintraege } from "../../src/db/schema";
+import { wunschlisteneintraege } from "../../src/db/schema";
 import { eq } from "drizzle-orm";
 import { pipelineSchritt } from "../../src/lib/entwurf";
-import { erstelleQuizfragen } from "../../src/lib/quiz-generierung";
 import { kiDeaktiviert } from "../../src/lib/testmodus";
 
 export async function prioritaetUmschalten(eintragId: string, aktiv: boolean) {
@@ -71,18 +70,11 @@ export async function buchJetztAufbereiten(buchId: string) {
 
   after(async () => {
     try {
-      const ergebnis = await pipelineSchritt(buchId);
-      if (ergebnis.status === "verworfen") {
-        console.error(`buchJetztAufbereiten(${buchId}): Entwurf verworfen (Prüfung nicht bestanden).`);
-        return;
-      }
-
-      const [buch] = await db.select().from(buecher).where(eq(buecher.id, buchId));
-      if (!buch) {
-        console.error(`buchJetztAufbereiten(${buchId}): Buch nach erfolgreicher Produktion nicht gefunden.`);
-        return;
-      }
-      await erstelleQuizfragen(ergebnis.buchinhaltId, buch.titel, buch.autor);
+      // Seit 09/2026 nur noch Stufe 1 (Entwurf, Status "in_aufbereitung").
+      // Prüfung + Korrektur (Stufe 2) und Synthese/Wissensstatus/Quiz
+      // (Stufe 3) erledigen die nächsten Morgenläufe — alles zusammen passt
+      // nicht sicher in maxDuration (300 s).
+      await pipelineSchritt(buchId);
     } catch (e) {
       // Landet im Server-Log (Terminal bei "npm run dev", Vercel-Logs in
       // Produktion) — kein Live-Fehlerbanner mehr möglich, da die Antwort an

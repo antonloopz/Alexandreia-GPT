@@ -88,6 +88,32 @@ Immer, vor jedem Commit-Vorschlag:
   (Wiederkehrende, nicht-einmalige Skripte liegen dagegen unter
   `src/scripts/`, z.B. `kernaussagen-regenerieren.ts`.)
 
+## Inhaltliches Grundprinzip (Aufbereitung von Büchern)
+
+Ziel ist eine dauerhafte persönliche Wissensbibliothek, nicht eine möglichst
+elegante Buchzusammenfassung (Entscheid 21.09.2026). Jeder Buchinhalt
+besteht aus drei Informationsschichten:
+
+1. **Original** — was steht im Buch? (Zusammenfassung "Worum geht es?" +
+   ausführlicher Teil, Kernaussagen mit Beispiel; stets dem Autor
+   zugeschrieben)
+2. **Synthese** — die wichtigsten Gedanken, Modelle und Argumente
+   (Argumentation/Ebene 2, Einordnung: Argument/Beleg/Annahme/Schwachstelle,
+   "Das bleibt hängen"; später Konzepte + Querverbindungen über Tags)
+3. **Wissensstatus** — was davon gilt heute noch? (Einordnung "heute" pro
+   Buch + Wissensstatus pro Kernaussage, jeweils nur mit Quelle)
+
+**Grundsatz:** Die KI darf Informationen komprimieren, aber nie deren
+epistemischen Status verändern — Vorbehalte ("könnte", "deutet darauf hin")
+bleiben erhalten, eine Einzelstudie oder Vermutung wird nicht zur
+gesicherten Tatsache, Autorenmeinung bleibt als solche zugeschrieben, keine
+Zahlen/Studien/Zitate ohne Beleg. Das gilt auch für Alexandreia selbst: die
+Pipeline hat den Buchtext NICHT (Modellwissen + Websuche), die Schicht
+"Original" ist also eine Rekonstruktion — das bleibt über die
+Vertrauenshinweise sichtbar. Deshalb bewusst **keine Kapitelstruktur**
+(nicht verlässlich belegbar; erfundene Kapitelangaben wären schlimmer als
+keine).
+
 ## Produkt-Kontext (wichtig für Feature-Vorschläge/Reviews)
 
 - Persönliches Ein-Nutzer-Hobbyprojekt (kein Multi-Tenant-SaaS) — bewusst

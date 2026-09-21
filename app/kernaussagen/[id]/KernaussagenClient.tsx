@@ -14,8 +14,25 @@ import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
 import Hervorhebbarer, { type Hervorhebung } from "../../lesen/[id]/Hervorhebbarer";
 import type { NotizFeld } from "../../../src/lib/notizen";
+import type { Wissensstatus, WissensstatusWert } from "../../../src/db/schema";
 
-type Kernaussage = { id: string; text: string; erklaerung: string };
+type Kernaussage = {
+  id: string;
+  text: string;
+  erklaerung: string;
+  beispiel: string | null;
+  wissensstatus: Wissensstatus | null;
+};
+
+// Wissensstatus pro Kernaussage (09/2026, Schicht "Wissensstatus" — siehe
+// CLAUDE.md): was die heutige Forschung zu genau dieser Aussage sagt. Nur
+// vorhanden, wenn in Stufe 3 mit Quelle belegt.
+const WISSENSSTATUS_LABEL: Record<WissensstatusWert, string> = {
+  belegt: "Belegt",
+  umstritten: "Umstritten",
+  ueberholt: "Überholt",
+  unklar: "Forschungslage unklar",
+};
 
 // Rohzeile aus der DB (app/kernaussagen/[id]/page.tsx) — inWiederholung ist
 // dort bereits aus repetitionselemente vorberechnet, kernaussageId/feld
@@ -130,7 +147,7 @@ export default function KernaussagenClient({
         </span>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, overflowY: "auto" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", justifyContent: "safe center", gap: 16, overflowY: "auto" }}>
         <span
           style={{
             fontFamily: "Helvetica, Arial, sans-serif",
@@ -163,6 +180,89 @@ export default function KernaussagenClient({
           akzent={akzent}
           style={{ fontSize: 18, lineHeight: 1.6 }}
         />
+        {/* Beispiel zur Kernaussage (09/2026) — nur bei Kernaussagen, die
+            eins haben (ältere nicht). Bewusst nicht hervorhebbar: das
+            bräuchte einen neuen Wert im notizFeld-Enum. */}
+        {aktuelle.beispiel && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              borderLeft: "2px solid rgba(36,35,31,.35)",
+              paddingLeft: 12,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "Helvetica, Arial, sans-serif",
+                fontWeight: 700,
+                fontSize: 12,
+                letterSpacing: ".06em",
+                textTransform: "uppercase",
+                color: "rgba(36,35,31,.55)",
+              }}
+            >
+              Beispiel
+            </span>
+            <span style={{ fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.8)" }}>{aktuelle.beispiel}</span>
+          </div>
+        )}
+        {aktuelle.wissensstatus && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              boxSizing: "border-box",
+              padding: "10px 12px",
+              borderRadius: 12,
+              background: "rgba(36,35,31,.07)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span
+                style={{
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  color: "rgba(36,35,31,.55)",
+                }}
+              >
+                Forschung heute
+              </span>
+              <span
+                style={{
+                  fontFamily: "Helvetica, Arial, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  background: "#24231F",
+                  color: "#FBFAF7",
+                }}
+              >
+                {WISSENSSTATUS_LABEL[aktuelle.wissensstatus.status] ?? aktuelle.wissensstatus.status}
+              </span>
+            </div>
+            <span style={{ fontSize: 15, lineHeight: 1.5, color: "rgba(36,35,31,.8)" }}>
+              {aktuelle.wissensstatus.begruendung}
+            </span>
+            {aktuelle.wissensstatus.quellen.map((q) => (
+              <a
+                key={q.url}
+                href={q.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 13.5, lineHeight: 1.4, color: "rgba(36,35,31,.7)", textDecoration: "underline", overflowWrap: "anywhere" }}
+              >
+                {q.titel}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 28, flexShrink: 0 }}>

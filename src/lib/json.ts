@@ -147,7 +147,12 @@ function extrahiereJsonKern(text: string): string {
 // zurückgegeben statt den eigentlichen Fehler zu verschleiern.
 function schreibeDebugDump(text: string): string | null {
   try {
-    const ordner = path.join(os.tmpdir(), "alexandreia-json-fehler");
+    // Lokal (Skripte im Terminal): existiert im Projekt ein .debug-Ordner
+    // (gitignored, 09/2026), landet der Dump dort — so kann eine Claude-
+    // Session ihn direkt lesen. Sonst (z.B. Vercel) wie bisher im tmpdir.
+    const projektDebug = path.join(process.cwd(), ".debug");
+    const basis = fs.existsSync(projektDebug) ? projektDebug : os.tmpdir();
+    const ordner = path.join(basis, "alexandreia-json-fehler");
     fs.mkdirSync(ordner, { recursive: true });
 
     const dateiname = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`;

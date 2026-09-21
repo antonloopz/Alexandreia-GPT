@@ -2,8 +2,12 @@
 //
 // Automatisiert, was bisher nur über die lokalen Testskripte (tsx
 // src/scripts/test-*.ts) von Hand angestossen wurde: einmal täglich per
-// Vercel Cron Job die Pipeline Vorschlag → Entwurf → Prüfung → Quiz
-// für GENAU EIN Buch durchlaufen lassen (Kostenkontrolle — jeder Lauf
+// Vercel Cron Job Vorschlag → Entwurf für GENAU EIN Buch durchlaufen
+// lassen. Seit 09/2026 ist das nur noch Stufe 1 von drei (siehe
+// CLAUDE.md, Inhaltliches Grundprinzip): Stufe 2 = Prüfung + Korrektur
+// (app/api/cron/pruefen), Stufe 3 = Synthese, Wissensstatus, Quiz
+// (app/api/cron/fertigstellen) — zusammen passt das nicht sicher in
+// maxDuration (Kostenkontrolle — jeder Lauf
 // kostet echte Claude-API-Aufrufe inkl. Websuche). vorschlaege() liefert
 // dabei automatisch Kandidaten für alle Kategorien mit Nachholbedarf
 // (knappste zuerst); produziert wird der erste davon, der bereits bestätigt
@@ -26,7 +30,6 @@ import { db } from "../../../../src/db";
 import { konten } from "../../../../src/db/schema";
 import { ALLE_KATEGORIEN, vorschlaege } from "../../../../src/lib/vorschlag";
 import { pipelineSchritt } from "../../../../src/lib/entwurf";
-import { erstelleQuizfragen } from "../../../../src/lib/quiz-generierung";
 import { kiDeaktiviert } from "../../../../src/lib/testmodus";
 
 export const maxDuration = 300;
@@ -102,21 +105,6 @@ export async function GET(request: NextRequest) {
 
   const ergebnis = await pipelineSchritt(kandidat.buchId);
 
-  if (ergebnis.status === "verworfen") {
-    return Response.json({
-      status: "verworfen",
-      buch: `${kandidat.titel} (${kandidat.autor})`,
-      kategorie: kandidat.kategorie,
-      probleme: ergebnis.probleme,
-    });
-  }
-
-  const quizErgebnis = await erstelleQuizfragen(
-    ergebnis.buchinhaltId,
-    kandidat.titel,
-    kandidat.autor
-  );
-
   // uebersprungeneVorschlaege: wie viele der angefragten Kandidaten NICHT
   // produziert wurden (unbestätigte KI-Vorschläge anderer knapper
   // Kategorien, die dieser Lauf übersprungen hat) — rein informativ für die
@@ -127,8 +115,7 @@ export async function GET(request: NextRequest) {
     kategorie: kandidat.kategorie,
     buchinhaltId: ergebnis.buchinhaltId,
     kernaussagenAnzahl: ergebnis.anzahlKernaussagen,
-    quizfragenAnzahl: quizErgebnis.quizfragenAnzahl,
-    uebersprungen: quizErgebnis.uebersprungen,
+    info: "Stufe 1 fertig (Entwurf, Status in_aufbereitung) — Prüfung folgt im Lauf pruefen, Synthese/Quiz im Lauf fertigstellen.",
     ...(kandidaten.length > 1 ? { uebersprungeneVorschlaege: kandidaten.length - 1 } : {}),
   });
 }

@@ -4,6 +4,22 @@
     {
       "path": "/api/cron/produzieren",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/pruefen",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/fertigstellen",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/pruefen-2",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/fertigstellen-2",
+      "schedule": "0 8 * * *"
     }
   ]
 }

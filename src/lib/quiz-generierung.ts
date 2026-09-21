@@ -20,9 +20,10 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "../db";
-import { buchinhalte, kernaussagen, quizfragen } from "../db/schema";
+import { buchinhalte, buecher, kernaussagen, quizfragen } from "../db/schema";
 import { eq, asc } from "drizzle-orm";
 import { jsonAusText } from "./json";
+import { kategorieProfil } from "./kategorieprofile";
 
 const MODELL = "claude-sonnet-5";
 
@@ -52,12 +53,14 @@ async function versucheQuizfragen(
   titel: string,
   autor: string,
   alleKernaussagen: (typeof kernaussagen.$inferSelect)[],
-  kernaussagenListe: string
+  kernaussagenListe: string,
+  quizFragetypen: string
 ): Promise<QuizErgebnis> {
   const systemPrompt = `Du leitest aus bereits geprüften Kernaussagen eines Buchs für Alexandreia Multiple-Choice-Quizfragen ab. Die inhaltliche Richtigkeit der Kernaussagen ist bereits abgesichert — deine Aufgabe ist reine Ableitung, keine neue Recherche.
 
 Regeln:
 - Pro Kernaussage mindestens eine Quizfrage. Bei besonders reichhaltigen Kernaussagen gerne mehrere — aber nicht künstlich aufblähen, nur wenn der Inhalt es hergibt.
+- Fragetypen bewusst mischen (09/2026): Verständnis (was sagt die Kernaussage?), Anwendung (in welcher Situation greift sie?), Transfer (auf einen neuen Kontext übertragen), Unterscheidung (von einer ähnlichen, aber anderen Aussage/Position abgrenzen), kritische Reflexion (Grenze, Voraussetzung oder Einwand erkennen). Für dieses Buch passen ${quizFragetypen}. Pro Buch mindestens drei verschiedene Fragetypen, nicht nur reine Wissensabfrage. Auch Anwendungs-, Transfer- und Reflexionsfragen brauchen genau EINE eindeutig richtige Antwort, die sich aus Kernaussage, Erklärung oder Beispiel begründen lässt.
 - Quizfragen: genau 4 Antwortoptionen, plausible Distraktoren (keine offensichtlichen Unsinnsantworten), die Position der richtigen Antwort (richtige_option_index, 0-basiert) über die Fragen hinweg variieren, nicht immer an derselben Stelle.
 - Sprache: Deutsch.
 - Antworte NUR mit einem validen JSON-Objekt in genau diesem Format, ohne Markdown-Codeblock, ohne Text davor oder danach:
@@ -73,7 +76,12 @@ Regeln:
 
   const message = await client.messages.create({
     model: MODELL,
-    max_tokens: 8000,
+    // 16000 statt 8000 (Bug 09/2026, Testlauf "Die Brüder Karamasow"): mit
+    // den vorgeschriebenen gemischten Fragetypen verbraucht das Modell vor
+    // der eigentlichen Antwort deutlich mehr Tokens — die JSON-Antwort
+    // (nur ~800 Tokens) wurde bei max_tokens mitten im Text abgeschnitten.
+    // Abgerechnet werden nur tatsächlich genutzte Tokens.
+    max_tokens: 16000,
     system: systemPrompt,
     messages: [
       {
@@ -83,12 +91,20 @@ Regeln:
     ],
   });
 
-  const textBlock = message.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
+  // Alle Textblöcke zusammen (wie gesamtText() in entwurf.ts), nicht nur den
+  // ersten — die Antwort kann in mehrere Blöcke aufgeteilt sein.
+  const text = message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+  if (!text.trim()) {
     throw new Error(`Keine Textantwort vom Modell erhalten (stop_reason: ${message.stop_reason}).`);
   }
+  if (message.stop_reason === "max_tokens") {
+    throw new Error("Quiz-Antwort bei max_tokens abgeschnitten (JSON unvollständig).");
+  }
 
-  const ableitung = jsonAusText(textBlock.text) as AbleitungJSON;
+  const ableitung = jsonAusText(text) as AbleitungJSON;
 
   let quizfragenAnzahl = 0;
   const uebersprungen: string[] = [];
@@ -143,10 +159,32 @@ export async function erstelleQuizfragen(
   }
 
   const kernaussagenListe = alleKernaussagen
-    .map((k, i) => `${i}. ${k.text}\n   ${k.erklaerung}`)
+    .map((k, i) => `${i}. ${k.text}\n   ${k.erklaerung}${k.beispiel ? `\n   Beispiel: ${k.beispiel}` : ""}`)
     .join("\n\n");
 
-  let ergebnis = await versucheQuizfragen(titel, autor, alleKernaussagen, kernaussagenListe);
+  // Kategorie für die passenden Fragetypen (kategorieprofile.ts) — hier
+  // nachgeschlagen statt als Parameter, damit die Aufrufer (Cron,
+  // Wunschliste, Skripte) unverändert bleiben.
+  const [buch] = await db
+    .select({ kategorie: buecher.kategorie })
+    .from(buchinhalte)
+    .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
+    .where(eq(buchinhalte.id, buchinhaltId));
+  const quizFragetypen = kategorieProfil(buch?.kategorie ?? "").quizFragetypen;
+
+  // Bug 09/2026 (Testlauf "Die Brüder Karamasow"): ein JSON-Fehler im ersten
+  // Versuch warf bisher direkt eine Exception — der automatische zweite
+  // Versuch unten griff nur bei 0 Quizfragen. Jetzt gilt ein Fehler im
+  // ersten Versuch wie ein leeres Ergebnis und löst den zweiten Versuch
+  // aus. (Das Parsen passiert vor jedem Insert, ein gescheiterter Versuch
+  // hinterlässt also keine halben Quizfragen.)
+  let ergebnis: QuizErgebnis;
+  try {
+    ergebnis = await versucheQuizfragen(titel, autor, alleKernaussagen, kernaussagenListe, quizFragetypen);
+  } catch (err) {
+    const nachricht = err instanceof Error ? err.message : String(err);
+    ergebnis = { quizfragenAnzahl: 0, uebersprungen: [`Erster Versuch fehlgeschlagen: ${nachricht}`] };
+  }
 
   // Ein einzelner Claude-Call kann legitim (ohne dass etwas "kaputt" ist)
   // eine leere oder komplett strukturell ungültige Ableitung zurückgeben —
@@ -163,7 +201,7 @@ export async function erstelleQuizfragen(
       }`
     );
 
-    const zweiterVersuch = await versucheQuizfragen(titel, autor, alleKernaussagen, kernaussagenListe);
+    const zweiterVersuch = await versucheQuizfragen(titel, autor, alleKernaussagen, kernaussagenListe, quizFragetypen);
 
     ergebnis = {
       quizfragenAnzahl: ergebnis.quizfragenAnzahl + zweiterVersuch.quizfragenAnzahl,

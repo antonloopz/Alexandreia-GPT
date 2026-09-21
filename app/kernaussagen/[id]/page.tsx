@@ -24,7 +24,13 @@ export default async function KernaussagenSeite({ params }: { params: Promise<{ 
   if (!buch) notFound();
 
   const liste = await db
-    .select({ id: kernaussagen.id, text: kernaussagen.text, erklaerung: kernaussagen.erklaerung })
+    .select({
+      id: kernaussagen.id,
+      text: kernaussagen.text,
+      erklaerung: kernaussagen.erklaerung,
+      beispiel: kernaussagen.beispiel,
+      wissensstatus: kernaussagen.wissensstatus,
+    })
     .from(kernaussagen)
     .where(eq(kernaussagen.buchinhaltId, id))
     .orderBy(asc(kernaussagen.reihenfolge));

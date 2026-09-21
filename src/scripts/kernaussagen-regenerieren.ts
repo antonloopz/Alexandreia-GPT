@@ -18,7 +18,8 @@
 // Ablauf pro Buch: neue Kernaussagen ERST erzeugen (API-Aufruf) — erst wenn
 // das klappt, werden die alten Quizfragen + Lernkarten + Kernaussagen
 // gelöscht (in dieser Reihenfolge, wegen der Fremdschlüssel) und die neuen
-// Kernaussagen eingefügt. Danach erstelleQuizfragen() erneut aufrufen —
+// Kernaussagen eingefügt (seit 09/2026 inkl. "beispiel"). Danach
+// erstelleQuizfragen() erneut aufrufen —
 // leitet aus den NEUEN Kernaussagen frische Quizfragen ab und setzt den
 // Buchinhalt-Status zurück auf "im_vorrat". Schlägt irgendetwas NACH dem
 // Löschen fehl (Netzwerkfehler, 0 Quizfragen erzeugt), wird der
@@ -41,6 +42,16 @@
 // getrennt (NICHT Komma —
 // Titel können selbst ein
 // Komma enthalten):            npx tsx src/scripts/kernaussagen-regenerieren.ts --titel="Sapiens|Silent Spring"
+//
+// Sicherheitsfilter gelockert (09/2026, Pendenz "Aufbereitung:
+// kategorieabhängige Prompts"): vorher galt jedes Buch mit gezeigteBuecher-
+// Zeile als gelesen — der Lesen-Screen legt die aber schon beim blossen
+// Öffnen an. Jetzt übersprungen werden nur Bücher, bei denen tatsächlich
+// Fortschritt an den Kernaussagen hängt: abgeschlossen (abgeschlossenAm),
+// Wiederholungs-Einträge (repetitionselemente.kernaussageId) oder Notizen/
+// Hervorhebungen an Kernaussagen (notizen.kernaussageId). Ausserdem
+// übersprungen: Bücher, deren Kernaussagen schon alle ein "beispiel" haben
+// (bereits im neuen Format — spart API-Kosten bei einem erneuten Lauf).
 
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -60,22 +71,39 @@ async function main() {
     : undefined;
 
   const { db } = await import("../db");
-  const { buchinhalte, buecher, gezeigteBuecher, kernaussagen, lernkarten, quizfragen } = await import(
-    "../db/schema"
-  );
-  const { eq, inArray } = await import("drizzle-orm");
+  const { buchinhalte, buecher, gezeigteBuecher, kernaussagen, lernkarten, notizen, quizfragen, repetitionselemente } =
+    await import("../db/schema");
+  const { eq, inArray, isNotNull } = await import("drizzle-orm");
   const { kernaussagenNeuErstellen } = await import("../lib/entwurf");
   const { erstelleQuizfragen } = await import("../lib/quiz-generierung");
 
-  // Sicherheitsfilter: NUR Bücher, die noch NIE gezeigt/geöffnet wurden —
-  // an allem anderen hängen schon (potenziell) Lernkarten-Wiederholungen,
-  // Notizen/Hervorhebungen oder Quiz-Antworten, die durch das Ersetzen
-  // verloren gingen bzw. die Datenbank beim Löschen blockieren würde.
-  const gezeigtIds = new Set(
-    (await db.select({ buchinhaltId: gezeigteBuecher.buchinhaltId }).from(gezeigteBuecher)).map(
-      (r) => r.buchinhaltId
-    )
-  );
+  // Sicherheitsfilter (siehe Kopfkommentar): Buchinhalte, an deren
+  // Kernaussagen echter Fortschritt hängt, werden NIE angefasst.
+  const geschuetzt = new Set<string>();
+  for (const g of await db
+    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId })
+    .from(gezeigteBuecher)
+    .where(isNotNull(gezeigteBuecher.abgeschlossenAm))) {
+    geschuetzt.add(g.buchinhaltId);
+  }
+  for (const r of await db
+    .select({ buchinhaltId: kernaussagen.buchinhaltId })
+    .from(repetitionselemente)
+    .innerJoin(kernaussagen, eq(repetitionselemente.kernaussageId, kernaussagen.id))) {
+    geschuetzt.add(r.buchinhaltId);
+  }
+  for (const n of await db
+    .select({ buchinhaltId: kernaussagen.buchinhaltId })
+    .from(notizen)
+    .innerJoin(kernaussagen, eq(notizen.kernaussageId, kernaussagen.id))) {
+    geschuetzt.add(n.buchinhaltId);
+  }
+
+  // Bereits im neuen Format: ALLE Kernaussagen haben ein Beispiel.
+  const alleKernaussagenZeilen = await db
+    .select({ buchinhaltId: kernaussagen.buchinhaltId, beispiel: kernaussagen.beispiel })
+    .from(kernaussagen);
+  const ohneBeispiel = new Set(alleKernaussagenZeilen.filter((k) => !k.beispiel).map((k) => k.buchinhaltId));
 
   let zeilen = await db
     .select({
@@ -88,7 +116,7 @@ async function main() {
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(eq(buchinhalte.status, "im_vorrat"));
 
-  zeilen = zeilen.filter((z) => !gezeigtIds.has(z.buchinhaltId));
+  zeilen = zeilen.filter((z) => !geschuetzt.has(z.buchinhaltId) && ohneBeispiel.has(z.buchinhaltId));
 
   if (kategorieFilter) zeilen = zeilen.filter((z) => kategorieFilter.has(z.kategorie));
   if (titelFilter) zeilen = zeilen.filter((z) => titelFilter.has(z.titel));
@@ -125,6 +153,7 @@ async function main() {
           buchinhaltId: zeile.buchinhaltId,
           text: k.text,
           erklaerung: k.erklaerung,
+          beispiel: k.beispiel?.trim() || null,
           reihenfolge: i,
         });
       }

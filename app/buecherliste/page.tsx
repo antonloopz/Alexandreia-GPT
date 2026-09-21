@@ -19,7 +19,7 @@ import Link from "next/link";
 import { after } from "next/server";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, konten, wunschlisteneintraege } from "../../src/db/schema";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
 import { kategorieUebersicht, vorschlaege } from "../../src/lib/vorschlag";
 import { sicherstelleUmfang } from "../../src/lib/umfang";
@@ -51,6 +51,11 @@ type WunschlisteZeile = {
   coverUrl: string | null;
   buchinfosGeprueftAm: Date | null;
   herkunft: string;
+  // In der dreistufigen Produktion (09/2026, siehe
+  // src/lib/fertigstellung.ts): "entwurf" = Stufe 1 fertig, wartet auf
+  // Prüfung; "geprueft" = wartet auf Stufe 3. Dann KEIN "Jetzt aufbereiten"
+  // mehr anbieten, sonst entstünde ein zweiter, bezahlter Buchinhalt.
+  inProduktion: "entwurf" | "geprueft" | null;
 };
 
 // Beschriftung für Wunschlisten-Einträge, die NICHT vom Nutzer selbst
@@ -155,8 +160,28 @@ function WunschlisteKarte({ zeile }: { zeile: WunschlisteZeile }) {
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
           {zeile.buchId && (
             <>
-              <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
-              <AufbereitenButton buchId={zeile.buchId} />
+              {zeile.inProduktion ? (
+                <span
+                  style={{
+                    fontFamily: "Helvetica, Arial, sans-serif",
+                    fontWeight: 600,
+                    fontSize: 13.5,
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    background: "rgba(36,35,31,.08)",
+                    color: "rgba(36,35,31,.65)",
+                  }}
+                >
+                  {zeile.inProduktion === "entwurf"
+                    ? "Entwurf erstellt · wird am nächsten Morgen geprüft"
+                    : "Geprüft · wird am nächsten Morgen fertiggestellt"}
+                </span>
+              ) : (
+                <>
+                  <PrioritaetToggle eintragId={zeile.id} aktiv={zeile.bald} />
+                  <AufbereitenButton buchId={zeile.buchId} />
+                </>
+              )}
               <Link href={`/buecherliste/${zeile.id}/bearbeiten`}>
                 <span
                   style={{
@@ -235,10 +260,23 @@ export default async function BuecherlisteSeite({
   const naechsteKandidaten = await vorschlaege(konto.id, 3);
   const kategorien = await kategorieUebersicht(konto.id);
 
-  const zeilen = liste.sort((a, b) => {
-    if (a.bald !== b.bald) return a.bald ? -1 : 1;
-    return (a.titel ?? a.rohTitel ?? "").localeCompare(b.titel ?? b.rohTitel ?? "");
-  });
+  // Bücher, deren Buchinhalt noch in der Produktion steckt (Status
+  // "in_aufbereitung" oder "geprueft", siehe WunschlisteZeile.inProduktion).
+  const inProduktion = new Map<string, "entwurf" | "geprueft">(
+    (
+      await db
+        .select({ buchId: buchinhalte.buchId, status: buchinhalte.status })
+        .from(buchinhalte)
+        .where(inArray(buchinhalte.status, ["in_aufbereitung", "geprueft"]))
+    ).map((b) => [b.buchId, b.status === "in_aufbereitung" ? "entwurf" : "geprueft"])
+  );
+
+  const zeilen = liste
+    .map((z) => ({ ...z, inProduktion: (z.buchId && inProduktion.get(z.buchId)) || null }))
+    .sort((a, b) => {
+      if (a.bald !== b.bald) return a.bald ? -1 : 1;
+      return (a.titel ?? a.rohTitel ?? "").localeCompare(b.titel ?? b.rohTitel ?? "");
+    });
 
   // Spalten "Vorgemerkt"/"Auf der Liste" der Kategorie-Rotation: aus
   // denselben, UNGEFILTERTEN `zeilen` gruppiert, die auch Kopfzeile und

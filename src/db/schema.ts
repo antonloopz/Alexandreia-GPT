@@ -19,6 +19,54 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+// Einordnungs-Block eines Buchinhalts (09/2026, Pendenz "Einordnungs-Block:
+// Autorenposition, Evidenz, Interpretation trennen"). umfang "voll" bei
+// Sachbuch-Kategorien (Argument/Beleg/Annahme/Schwachstelle + heute),
+// "nur_heute" bei Literatur/Biografie/Geschichte (siehe
+// src/lib/kategorieprofile.ts). heute ist null, wenn kein Urteil mit Quelle
+// aus der Websuche belegt werden konnte — lieber weglassen als raten.
+export type EinordnungUrteil = "belegt" | "umstritten" | "ueberholt" | "weiterhin_relevant";
+export type Einordnung = {
+  umfang: "voll" | "nur_heute";
+  zentralesArgument: string | null;
+  staerksterBeleg: string | null;
+  zentraleAnnahme: string | null;
+  offeneSchwachstelle: string | null;
+  heute: {
+    urteil: EinordnungUrteil;
+    begruendung: string;
+    quellen: { titel: string; url: string }[];
+  } | null;
+};
+
+// Wissensstatus einer einzelnen Kernaussage (09/2026, Schicht
+// "Wissensstatus" — siehe CLAUDE.md, Inhaltliches Grundprinzip): was die
+// heutige Forschung zu genau dieser Aussage sagt. Ein Buch kann in Teilen
+// gut belegt und in anderen überholt sein (z.B. Thinking, Fast and Slow:
+// Prospect Theory vs. Priming). Nur mit Quelle gespeichert, sonst null.
+export type WissensstatusWert = "belegt" | "umstritten" | "ueberholt" | "unklar";
+export type Wissensstatus = {
+  status: WissensstatusWert;
+  begruendung: string;
+  quellen: { titel: string; url: string }[];
+};
+
+// Protokoll der Prüfung (Stufe 2, 09/2026): welche Korrekturen die Prüfung
+// vorgenommen hat und ob sie sich anwenden liessen. Macht nachvollziehbar,
+// was die KI am Entwurf geändert hat (Transparenz zum epistemischen Status)
+// und ist die Grundlage für eine spätere Pipeline-Anzeige.
+export type Pruefprotokoll = {
+  versuche: number;
+  korrekturen: { feld: string; alt: string; neu: string; grund: string | null; angewendet: boolean }[];
+  hinweise: string[];
+  zuletztGeprueftAm: string;
+};
+
+// "Das bleibt hängen" auf dem Abschluss-Screen (09/2026, Pendenz
+// "Abschlussansicht 'Das bleibt hängen'"): die 3 wichtigsten Ideen des
+// Buchs + 1 offene Frage, in der Pipeline mit erzeugt.
+export type BleibtHaengen = { ideen: string[]; offeneFrage: string };
+
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
@@ -155,6 +203,12 @@ export const buchinhalte = pgTable("buchinhalte", {
     autorenhintergrund: "verifiziert" | "eingeordnet";
     kernzitat: "verifiziert" | "eingeordnet" | null;
   }>(),
+  // Beide nullable: Buchinhalte von vor 09/2026 haben sie (noch) nicht —
+  // die Screens blenden die Abschnitte dann einfach aus. Nachziehen über
+  // src/scripts/ergaenzungen-nachziehen.ts.
+  einordnung: jsonb().$type<Einordnung>(),
+  bleibtHaengen: jsonb().$type<BleibtHaengen>(),
+  pruefprotokoll: jsonb().$type<Pruefprotokoll>(),
   erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
 });
 
@@ -165,6 +219,14 @@ export const kernaussagen = pgTable("kernaussagen", {
     .references(() => buchinhalte.id),
   text: text().notNull(),
   erklaerung: text().notNull(),
+  // Konkretes Beispiel zur Kernaussage (09/2026, Pendenz "Aufbereitung:
+  // kategorieabhängige Prompts") — Studie, Szene, Episode oder Anwendung je
+  // nach Kategorie. Nullable: ältere Kernaussagen haben keins.
+  beispiel: text(),
+  // Siehe Typ Wissensstatus oben. Nullable: ohne belegte Quelle, bei
+  // Literatur (Themen/Motive haben keinen Forschungsstand) und bei älteren
+  // Kernaussagen.
+  wissensstatus: jsonb().$type<Wissensstatus>(),
   reihenfolge: integer().notNull(),
 });
 
