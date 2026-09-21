@@ -508,7 +508,16 @@ export default async function BuecherlisteSeite({
                     {KATEGORIE_LABEL[k.kategorie] ?? k.kategorie}
                   </span>
                 </div>
-                <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)", flexShrink: 0 }}>
+                {/* Bestand 0 rot (09/2026, Wunsch Nutzer): eine Kategorie ganz ohne
+                    fertig aufbereitetes Buch soll in der Rotation sofort auffallen. */}
+                <span
+                  style={{
+                    fontSize: 13.5,
+                    color: k.bestand === 0 ? "#B3261E" : "rgba(36,35,31,.5)",
+                    fontWeight: k.bestand === 0 ? 600 : undefined,
+                    flexShrink: 0,
+                  }}
+                >
                   {k.bestand}/{k.mindestbestand}
                 </span>
               </div>
