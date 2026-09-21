@@ -85,8 +85,8 @@ export default async function ThemenverteilungSeite() {
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Themenverteilung</span>
         </div>
+        <MenuButton inline ankerPfad="/einstellungen" />
       </div>
-      <MenuButton ankerPfad="/einstellungen" />
 
       <span style={{ fontSize: 15.5, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
         Mindestbestand pro Kategorie — sinkt der Vorrat an fertigen Büchern einer Kategorie

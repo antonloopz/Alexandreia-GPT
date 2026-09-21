@@ -130,8 +130,8 @@ export default async function WiederholungSeite() {
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Wiederholung</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
       {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
           Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:

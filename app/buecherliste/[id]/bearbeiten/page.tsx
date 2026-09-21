@@ -83,8 +83,8 @@ export default async function EintragBearbeitenSeite({ params }: { params: Promi
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Buch bearbeiten</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
       <form action={eintragAktualisierenMitId} style={{ display: "flex", flexDirection: "column", gap: 18, flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

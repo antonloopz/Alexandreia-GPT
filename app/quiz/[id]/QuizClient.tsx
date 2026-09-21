@@ -178,8 +178,8 @@ export default function QuizClient({
         <StatusBarColor farbe={akzent} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Auswertung</span>
+          <MenuButton inline />
         </div>
-        <MenuButton />
 
         <span
           style={{
@@ -284,8 +284,8 @@ export default function QuizClient({
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Quiz</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
       <span
         style={{

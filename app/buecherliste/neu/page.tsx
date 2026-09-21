@@ -88,8 +88,8 @@ export default async function NeuesBuchSeite({
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Neues Buch</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
       {kategorieFehler && (
         <div

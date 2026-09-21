@@ -99,8 +99,8 @@ export default function SitzungClient({ karten }: { karten: Karte[] }) {
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Wiederholung</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
       <span
         style={{

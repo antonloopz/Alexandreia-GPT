@@ -111,8 +111,8 @@ export default function KernaussagenClient({
           </Link>
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>{kernaussagenLabel.mehrzahl}</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
       <span
         style={{

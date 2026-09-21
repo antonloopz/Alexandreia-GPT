@@ -157,8 +157,8 @@ export default async function AbschlussSeite({
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Abschluss</span>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
       {/* minHeight/overflowY + "safe center" (09/2026, Buch-Bewertung):
           mit dem Feedback-Block darunter reicht die Höhe auf kleinen
