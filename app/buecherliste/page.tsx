@@ -423,13 +423,39 @@ export default async function BuecherlisteSeite({
               </svg>
             </div>
           </Link>
+          <MenuButton inline />
         </div>
       </div>
-      <MenuButton />
 
-      {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
-          Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:
-          oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
+      {/* Kopfzeile, Suche und Filter bleiben beim Scrollen fixiert (09/2026:
+          Menü in die Kopfzeile, Suche/Filter nachgerückt und fix) — nur der
+          Wrapper darunter scrollt. */}
+      <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, lineHeight: 1.4, color: "rgba(36,35,31,.65)" }}>
+        {kopfzeile}
+      </span>
+
+      {zeilen.length > 0 && <WunschlisteSuche initial={suche ?? ""} />}
+
+      {kategorienVorhanden.length + (ohneKategorieVorhanden ? 1 : 0) > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", flexShrink: 0, scrollbarWidth: "none" }}>
+          <Link href="/buecherliste">
+            <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
+          </Link>
+          {kategorienVorhanden.map((k) => (
+            <Link key={k} href={`/buecherliste?kategorie=${encodeURIComponent(k)}`}>
+              <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
+                {KATEGORIE_LABEL[k] ?? k}
+              </span>
+            </Link>
+          ))}
+          {ohneKategorieVorhanden && (
+            <Link href="/buecherliste?kategorie=ohne">
+              <span style={kategorieChipStyle(kategorieFilter === "ohne")}>Nicht zugeordnet</span>
+            </Link>
+          )}
+        </div>
+      )}
+
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
 
       {/* fehler=verworfen/technisch: aktuell nicht mehr erreichbar, seit
@@ -451,32 +477,6 @@ export default async function BuecherlisteSeite({
           {fehler === "verworfen"
             ? "Aufbereitung fehlgeschlagen: die Prüfung hat den Entwurf nicht bestanden. Einfach nochmal versuchen."
             : "Aufbereitung fehlgeschlagen (technischer Fehler, z.B. unbrauchbare Modellantwort). Einfach nochmal versuchen."}
-        </div>
-      )}
-
-      <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, lineHeight: 1.4, color: "rgba(36,35,31,.65)" }}>
-        {kopfzeile}
-      </span>
-
-      {zeilen.length > 0 && <WunschlisteSuche initial={suche ?? ""} />}
-
-      {kategorienVorhanden.length + (ohneKategorieVorhanden ? 1 : 0) > 1 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <Link href="/buecherliste">
-            <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
-          </Link>
-          {kategorienVorhanden.map((k) => (
-            <Link key={k} href={`/buecherliste?kategorie=${encodeURIComponent(k)}`}>
-              <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
-                {KATEGORIE_LABEL[k] ?? k}
-              </span>
-            </Link>
-          ))}
-          {ohneKategorieVorhanden && (
-            <Link href="/buecherliste?kategorie=ohne">
-              <span style={kategorieChipStyle(kategorieFilter === "ohne")}>Nicht zugeordnet</span>
-            </Link>
-          )}
         </div>
       )}
 

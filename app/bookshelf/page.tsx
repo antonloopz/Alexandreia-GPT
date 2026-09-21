@@ -328,13 +328,12 @@ export default async function BookshelfSeite({
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Bibliothek</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
-      {/* Oberster Bereich (Header) bleibt beim Scrollen fixiert, analog den
-          Buttons auf den Lese-Seiten (09/2026, Pendenz "Dropdown-Seiten:
-          oberster Bereich nicht scrollbar") — nur dieser Wrapper scrollt. */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
+      {/* Kopfzeile, Suche und Filter bleiben beim Scrollen fixiert (09/2026:
+          Menü in die Kopfzeile, Suche/Filter nachgerückt und fix) — nur der
+          Wrapper darunter scrollt. */}
       <span
         style={{
           fontFamily: "Helvetica, Arial, sans-serif",
@@ -355,7 +354,7 @@ export default async function BookshelfSeite({
       {gesamtAnzahl > 0 && <BibliothekSuche initial={suche ?? ""} />}
 
       {kategorienVorhanden.length > 1 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", flexShrink: 0, scrollbarWidth: "none" }}>
           <Link href="/bookshelf">
             <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
           </Link>
@@ -371,7 +370,7 @@ export default async function BookshelfSeite({
       )}
 
       {(bewertungenVorhanden.length > 0 || originalVorhanden || aufbereitungVorhanden) && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", flexShrink: 0, scrollbarWidth: "none" }}>
           {originalVorhanden && (
             <Link href={feedbackFilterHref("original", originalFilter ? null : "1")}>
               <span style={kategorieChipStyle(originalFilter)}>Im Original lesen</span>
@@ -390,6 +389,7 @@ export default async function BookshelfSeite({
         </div>
       )}
 
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
       {gesamtAnzahl === 0 ? (
         <div
           style={{

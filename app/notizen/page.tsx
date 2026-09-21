@@ -183,10 +183,26 @@ export default async function NotizenSeite({
           <SchliessenButton />
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 22 }}>Notizen</span>
         </div>
+        <MenuButton inline />
       </div>
-      <MenuButton />
 
+      {/* Suche und Kategorie-Filter fix über dem Scrollbereich (09/2026). */}
       {alleGruppen.length > 0 && <NotizenSuche initial={suche} />}
+      {kategorienVorhanden.length > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", flexShrink: 0, scrollbarWidth: "none" }}>
+          <Link href={chipHref()}>
+            <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
+          </Link>
+          {kategorienVorhanden.map((k) => (
+            <Link key={k} href={chipHref(k)}>
+              <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
+                <span>{KATEGORIE_LABEL[k] ?? k}</span>
+                <span style={{ opacity: 0.6, fontWeight: 700 }}>{eintraegeProKategorie.get(k) ?? 0}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
         {alleGruppen.length === 0 ? (
@@ -195,22 +211,6 @@ export default async function NotizenSeite({
           </span>
         ) : (
           <>
-            {kategorienVorhanden.length > 1 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <Link href={chipHref()}>
-                  <span style={kategorieChipStyle(!kategorieFilter)}>Alle</span>
-                </Link>
-                {kategorienVorhanden.map((k) => (
-                  <Link key={k} href={chipHref(k)}>
-                    <span style={kategorieChipStyle(kategorieFilter === k, KATEGORIE_FARBE[k])}>
-                      <span>{KATEGORIE_LABEL[k] ?? k}</span>
-                      <span style={{ opacity: 0.6, fontWeight: 700 }}>{eintraegeProKategorie.get(k) ?? 0}</span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-
             {gruppen.length === 0 ? (
               <div
                 style={{
