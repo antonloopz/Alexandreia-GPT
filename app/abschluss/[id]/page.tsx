@@ -10,6 +10,13 @@
 // Lernkarten-Bewertung, inzwischen entfernt — siehe
 // app/quiz/[id]/actions.ts). "N Tage Streak" nutzt jetzt dieselbe echte
 // Streak-Berechnung wie Home (src/lib/streak.ts).
+//
+// Pendenz "Abschlussansicht 'Das bleibt hängen'" (09/2026): zusätzlich
+// (1) "Durchgearbeitet" — was in diesem Buch durchlaufen wurde, über die
+// vier Teile Zusammenfassung / Kernaussagen / Quiz / Einordnung (ersetzt den
+// früheren Einzeiler und die separate Quiz-Kachel), und (2) "Verwandte
+// Bücher" über gemeinsame Tags (lib/tags.ts verwandteBuecher) als erster
+// Schritt der Querverbindungen, vor der Pendenz "Vernetzung".
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -24,12 +31,38 @@ import {
   repetitionselemente,
 } from "../../../src/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import type { EinordnungUrteil } from "../../../src/db/schema";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { aktuellerStreak } from "../../../src/lib/streak";
+import { verwandteBuecher } from "../../../src/lib/tags";
 import MenuButton from "../../MenuButton";
 import BuchBewertungAuswahl from "./BuchBewertung";
 
 export const dynamic = "force-dynamic";
+
+const URTEIL_LABEL: Record<EinordnungUrteil, string> = {
+  belegt: "heute belegt",
+  umstritten: "heute umstritten",
+  ueberholt: "heute überholt",
+  weiterhin_relevant: "weiterhin relevant",
+};
+
+const KARTEN_TITEL_STIL = {
+  fontFamily: "Helvetica, Arial, sans-serif",
+  fontWeight: 700,
+  fontSize: 13,
+  letterSpacing: ".06em",
+  textTransform: "uppercase" as const,
+  color: "rgba(36,35,31,.62)",
+};
+
+function Haken({ an }: { an: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: an ? 1 : 0.3 }}>
+      {an ? <path d="M5 12.5 10 17.5 19 7" /> : <line x1="7" y1="12" x2="17" y2="12" />}
+    </svg>
+  );
+}
 
 export default async function AbschlussSeite({
   params,
@@ -42,7 +75,13 @@ export default async function AbschlussSeite({
   const { richtig } = await searchParams;
 
   const [buch] = await db
-    .select({ titel: buecher.titel, kategorie: buecher.kategorie, bleibtHaengen: buchinhalte.bleibtHaengen })
+    .select({
+      buchId: buecher.id,
+      titel: buecher.titel,
+      kategorie: buecher.kategorie,
+      bleibtHaengen: buchinhalte.bleibtHaengen,
+      einordnung: buchinhalte.einordnung,
+    })
     .from(buchinhalte)
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
     .where(eq(buchinhalte.id, id));
@@ -136,6 +175,22 @@ export default async function AbschlussSeite({
 
   const akzent = KATEGORIE_FARBE[buch.kategorie] ?? "var(--paper)";
   const kategorieLabel = KATEGORIE_LABEL[buch.kategorie] ?? buch.kategorie;
+  const kartenHintergrund = `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`;
+  const verwandte = await verwandteBuecher(buch.buchId);
+
+  // Einordnung: Urteil "heute" falls vorhanden, sonst nur "vorhanden" —
+  // ältere Bücher ohne Einordnung zeigen einen Strich statt eines Hakens.
+  const einordnungWert = !buch.einordnung
+    ? "nicht vorhanden"
+    : buch.einordnung.heute
+      ? URTEIL_LABEL[buch.einordnung.heute.urteil] ?? buch.einordnung.heute.urteil
+      : "gelesen";
+  const durchgearbeitet: { label: string; wert: string; an: boolean }[] = [
+    { label: "Zusammenfassung", wert: "gelesen", an: true },
+    { label: "Kernaussagen", wert: String(kernaussagenAnzahl), an: kernaussagenAnzahl > 0 },
+    { label: "Quiz", wert: `${richtigAnzahl} / ${quizfragenAnzahl} richtig`, an: quizfragenAnzahl > 0 },
+    { label: "Einordnung", wert: einordnungWert, an: Boolean(buch.einordnung) },
+  ];
 
   return (
     <main
@@ -194,10 +249,32 @@ export default async function AbschlussSeite({
           <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 34, lineHeight: 1.15 }}>
             Geschafft
           </span>
-          <span style={{ fontSize: 17, lineHeight: 1.5, color: "rgba(36,35,31,.75)", maxWidth: 280 }}>
-            Zusammenfassung, {kernaussagenAnzahl} Kernaussage{kernaussagenAnzahl === 1 ? "" : "n"} und Quiz
-            abgeschlossen.
-          </span>
+        </div>
+
+        <div
+          style={{
+            boxSizing: "border-box",
+            width: "100%",
+            maxWidth: 420,
+            padding: "14px 16px",
+            borderRadius: 14,
+            background: kartenHintergrund,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            textAlign: "left",
+          }}
+        >
+          <span style={KARTEN_TITEL_STIL}>Durchgearbeitet</span>
+          {durchgearbeitet.map((schritt) => (
+            <div key={schritt.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Haken an={schritt.an} />
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 600, fontSize: 15.5, flex: 1 }}>
+                {schritt.label}
+              </span>
+              <span style={{ fontSize: 15, color: "rgba(36,35,31,.7)", textAlign: "right" }}>{schritt.wert}</span>
+            </div>
+          ))}
         </div>
         {/* "Das bleibt hängen" (09/2026, Pendenz "Abschlussansicht") — die 3
             wichtigsten Ideen + 1 offene Frage, in der Pipeline mit erzeugt.
@@ -210,25 +287,14 @@ export default async function AbschlussSeite({
               maxWidth: 420,
               padding: "14px 16px",
               borderRadius: 14,
-              background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
+              background: kartenHintergrund,
               display: "flex",
               flexDirection: "column",
               gap: 10,
               textAlign: "left",
             }}
           >
-            <span
-              style={{
-                fontFamily: "Helvetica, Arial, sans-serif",
-                fontWeight: 700,
-                fontSize: 13,
-                letterSpacing: ".06em",
-                textTransform: "uppercase",
-                color: "rgba(36,35,31,.62)",
-              }}
-            >
-              Das bleibt hängen
-            </span>
+            <span style={KARTEN_TITEL_STIL}>Das bleibt hängen</span>
             <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
               {buch.bleibtHaengen.ideen.map((idee, i) => (
                 <li key={i} style={{ fontSize: 16, lineHeight: 1.5 }}>
@@ -254,6 +320,40 @@ export default async function AbschlussSeite({
           </div>
         )}
 
+        {verwandte.length > 0 && (
+          <div
+            style={{
+              boxSizing: "border-box",
+              width: "100%",
+              maxWidth: 420,
+              padding: "14px 16px",
+              borderRadius: 14,
+              background: kartenHintergrund,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              textAlign: "left",
+            }}
+          >
+            <span style={KARTEN_TITEL_STIL}>Verwandte Bücher</span>
+            {verwandte.map((v) => (
+              <Link key={v.buchinhaltId} href={`/lesen/${v.buchinhaltId}`} style={{ color: "inherit", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: KATEGORIE_FARBE[v.kategorie] ?? "#ccc", flexShrink: 0, alignSelf: "flex-start", marginTop: 7 }} />
+                <span style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 16 }}>{v.titel}</span>
+                  <span style={{ fontSize: 14, color: "rgba(36,35,31,.65)" }}>{v.autor}</span>
+                  <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.55)" }}>
+                    {v.gemeinsameTags.map((t) => `#${t.name}`).join("  ")}
+                  </span>
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#24231F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M9.5 5.5 16 12l-6.5 6.5" />
+                </svg>
+              </Link>
+            ))}
+          </div>
+        )}
+
         <div
           style={{
             display: "flex",
@@ -272,25 +372,8 @@ export default async function AbschlussSeite({
           </span>
         </div>
 
+        {/* Quiz-Ergebnis steht jetzt in "Durchgearbeitet" oben. */}
         <div style={{ display: "flex", gap: 10 }}>
-          <div
-            style={{
-              boxSizing: "border-box",
-              padding: "12px 16px",
-              borderRadius: 14,
-              background: `linear-gradient(rgba(0,0,0,.07),rgba(0,0,0,.07)), ${akzent}`,
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
-              {richtigAnzahl} / {quizfragenAnzahl}
-            </span>
-            <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 13, color: "rgba(36,35,31,.65)" }}>
-              im Quiz richtig
-            </span>
-          </div>
           <div
             style={{
               boxSizing: "border-box",

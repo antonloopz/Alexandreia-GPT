@@ -28,9 +28,9 @@
 // kann per src/scripts/tags-nachziehen.ts ergänzt werden.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../db";
-import { buchTags, tags } from "../db/schema";
+import { buchinhalte, buecher, buchTags, tags } from "../db/schema";
 import { jsonAusText } from "./json";
 import { KATEGORIE_LABEL } from "./kategorien";
 
@@ -231,4 +231,58 @@ export async function tagsFuerBuecher(buchIds: string[]): Promise<Map<string, Ta
 export async function hatTags(buchId: string): Promise<boolean> {
   const [z] = await db.select({ tagId: buchTags.tagId }).from(buchTags).where(eq(buchTags.buchId, buchId)).limit(1);
   return Boolean(z);
+}
+
+// Verwandte Bücher (09/2026, Pendenz "Abschlussansicht 'Das bleibt
+// hängen'", Querverbindungen — erster, einfacher Schritt vor der Pendenz
+// "Vernetzung"): andere Bücher im Vorrat, sortiert nach Anzahl gemeinsamer
+// Tags, bei Gleichstand alphabetisch. Nur Bücher mit mindestens einem
+// gemeinsamen Tag.
+export type VerwandtesBuch = {
+  buchinhaltId: string;
+  titel: string;
+  autor: string;
+  kategorie: string;
+  gemeinsameTags: TagInfo[];
+};
+
+export async function verwandteBuecher(buchId: string, limit = 3): Promise<VerwandtesBuch[]> {
+  const eigene = await db.select({ tagId: buchTags.tagId }).from(buchTags).where(eq(buchTags.buchId, buchId));
+  if (eigene.length === 0) return [];
+
+  const zeilen = await db
+    .select({
+      buchId: buecher.id,
+      buchinhaltId: buchinhalte.id,
+      titel: buecher.titel,
+      autor: buecher.autor,
+      kategorie: buecher.kategorie,
+      tagId: tags.id,
+      tagName: tags.name,
+      tagSlug: tags.slug,
+    })
+    .from(buchTags)
+    .innerJoin(tags, eq(buchTags.tagId, tags.id))
+    .innerJoin(buecher, eq(buchTags.buchId, buecher.id))
+    .innerJoin(buchinhalte, and(eq(buchinhalte.buchId, buecher.id), eq(buchinhalte.status, "im_vorrat")))
+    .where(and(inArray(buchTags.tagId, eigene.map((e) => e.tagId)), ne(buchTags.buchId, buchId)));
+
+  const proBuch = new Map<string, VerwandtesBuch>();
+  for (const z of zeilen) {
+    const eintrag = proBuch.get(z.buchId) ?? {
+      buchinhaltId: z.buchinhaltId,
+      titel: z.titel,
+      autor: z.autor,
+      kategorie: z.kategorie,
+      gemeinsameTags: [],
+    };
+    if (!eintrag.gemeinsameTags.some((t) => t.id === z.tagId)) {
+      eintrag.gemeinsameTags.push({ id: z.tagId, name: z.tagName, slug: z.tagSlug });
+    }
+    proBuch.set(z.buchId, eintrag);
+  }
+
+  return [...proBuch.values()]
+    .sort((a, b) => b.gemeinsameTags.length - a.gemeinsameTags.length || a.titel.localeCompare(b.titel, "de"))
+    .slice(0, limit);
 }
