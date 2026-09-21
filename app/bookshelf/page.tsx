@@ -30,6 +30,12 @@
 // TATSÄCHLICH vorkommen. Das heutige (gepinnte) Buch bleibt bewusst IMMER
 // sichtbar, unabhängig vom Filter — es ist ja nicht Teil der gefilterten
 // Liste, sondern der aktuelle Lesefortschritt.
+//
+// Tags (09/2026, Pendenz "Autotags zu Notizen und Büchern", lib/tags.ts)
+// — ?tag=<slug>, gleiches Muster wie die Feedback-Filter (wirkt zusätzlich
+// zu allen anderen Filtern). Chip-Zeile nach Häufigkeit sortiert, nur Tags,
+// die unter "Bereit"/"Gelesen" vorkommen. Pro Buch eine Tag-Zeile, jeder
+// Tag dort ist zugleich ein Filter-Link. Die Suche findet auch Tags.
 
 import Link from "next/link";
 import { after } from "next/server";
@@ -38,6 +44,7 @@ import { buchinhalte, buecher, gezeigteBuecher, konten } from "../../src/db/sche
 import { and, eq } from "drizzle-orm";
 import type { BuchBewertung } from "../abschluss/[id]/actions";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
+import { tagsFuerBuecher, type TagInfo } from "../../src/lib/tags";
 import { KategorieIcon } from "../../src/lib/kategorieIcons";
 import { relativesDatum, umfangZeileAusText } from "../../src/lib/darstellung";
 import MenuButton from "../MenuButton";
@@ -81,6 +88,25 @@ function BuchCover({ kategorie, coverUrl }: { kategorie: string; coverUrl: strin
   return <BuchIcon kategorie={kategorie} />;
 }
 
+// Tags eines Buchs als schlichte Meta-Zeile; jeder Tag filtert die
+// Bibliothek darauf (bzw. hebt den Filter auf, wenn er schon aktiv ist).
+function TagZeile({ tags, aktiv, href }: { tags: TagInfo[]; aktiv?: string; href: (slug: string | null) => string }) {
+  if (tags.length === 0) return null;
+  return (
+    <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)", display: "flex", flexWrap: "wrap", columnGap: 8, rowGap: 2 }}>
+      {tags.map((t) => (
+        <Link
+          key={t.slug}
+          href={href(aktiv === t.slug ? null : t.slug)}
+          style={{ color: aktiv === t.slug ? "#24231F" : "inherit", fontWeight: aktiv === t.slug ? 600 : 400 }}
+        >
+          #{t.name}
+        </Link>
+      ))}
+    </span>
+  );
+}
+
 // Buch-Feedback (09/2026, Buch-Bewertung Phase 1) — Anzeige-Labels für
 // gezeigteBuecher.buchBewertung, in der Reihenfolge der Filter-Chips.
 const BEWERTUNG_LABEL: Record<BuchBewertung, string> = {
@@ -98,6 +124,7 @@ export default async function BookshelfSeite({
     bewertung?: string;
     original?: string;
     aufbereitung?: string;
+    tag?: string;
   }>;
 }) {
   const {
@@ -106,6 +133,7 @@ export default async function BookshelfSeite({
     bewertung: bewertungFilterRoh,
     original: originalFilterRoh,
     aufbereitung: aufbereitungFilterRoh,
+    tag: tagFilter,
   } = await searchParams;
   const bewertungFilter =
     bewertungFilterRoh && Object.hasOwn(BEWERTUNG_LABEL, bewertungFilterRoh) ? (bewertungFilterRoh as BuchBewertung) : undefined;
@@ -198,6 +226,24 @@ export default async function BookshelfSeite({
 
   const uebrige = alleImVorrat.filter((b) => b.buchinhaltId !== heutigesBuch?.buchinhaltId);
 
+  const tagsProBuch = await tagsFuerBuecher(alleImVorrat.map((b) => b.buchId));
+  const tagsVon = (buchId: string): TagInfo[] => tagsProBuch.get(buchId) ?? [];
+  const tagHaeufigkeit = new Map<string, { tag: TagInfo; anzahl: number }>();
+  for (const b of uebrige) {
+    for (const t of tagsVon(b.buchId)) {
+      const eintrag = tagHaeufigkeit.get(t.slug) ?? { tag: t, anzahl: 0 };
+      eintrag.anzahl++;
+      tagHaeufigkeit.set(t.slug, eintrag);
+    }
+  }
+  // Chip-Zeile nur mit Tags, die mindestens zwei Bücher verbinden (sonst
+  // bei vielen Einzel-Tags eine lange Zeile mit lauter 1er-Treffern) — der
+  // aktive Tag bleibt immer drin. Am einzelnen Buch stehen weiterhin alle.
+  const tagsVorhanden = [...tagHaeufigkeit.values()].filter((e) => e.anzahl >= 2 || e.tag.slug === tagFilter).sort(
+    (a, b) => b.anzahl - a.anzahl || a.tag.name.localeCompare(b.tag.name, "de")
+  );
+  const aktiverTag = tagFilter ? tagHaeufigkeit.get(tagFilter)?.tag : undefined;
+
   // Nur Kategorien als Chip anzeigen, die unter den "übrigen" (nicht dem
   // gepinnten heutigen Buch) Büchern tatsächlich vorkommen — sonst stünden
   // bei einer kleinen Bibliothek meist leere Filter-Chips da.
@@ -239,10 +285,16 @@ export default async function BookshelfSeite({
   // zum Kategorie-Filter (beide zusammen, nicht alternativ). Das gepinnte
   // heutige Buch bleibt wie beim Kategorie-Filter davon unberührt.
   const sucheNormalisiert = (suche ?? "").trim().toLowerCase();
-  const uebrigeNachSuche = !sucheNormalisiert
+  const uebrigeNachTag = !tagFilter
     ? uebrigeNachKategorie
-    : uebrigeNachKategorie.filter(
-        (b) => b.titel.toLowerCase().includes(sucheNormalisiert) || b.autor.toLowerCase().includes(sucheNormalisiert)
+    : uebrigeNachKategorie.filter((b) => tagsVon(b.buchId).some((t) => t.slug === tagFilter));
+  const uebrigeNachSuche = !sucheNormalisiert
+    ? uebrigeNachTag
+    : uebrigeNachTag.filter(
+        (b) =>
+          b.titel.toLowerCase().includes(sucheNormalisiert) ||
+          b.autor.toLowerCase().includes(sucheNormalisiert) ||
+          tagsVon(b.buchId).some((t) => t.name.toLowerCase().includes(sucheNormalisiert))
       );
 
   // Feedback-Filter (09/2026, Buch-Bewertung Phase 1) — ?bewertung=stark|
@@ -261,7 +313,7 @@ export default async function BookshelfSeite({
         if (aufbereitungFilter && !status.aufbereitungSchwach) return false;
         return true;
       });
-  const filterAktiv = Boolean(kategorieFilter) || Boolean(sucheNormalisiert) || feedbackFilterAktiv;
+  const filterAktiv = Boolean(kategorieFilter) || Boolean(sucheNormalisiert) || feedbackFilterAktiv || Boolean(tagFilter);
 
   // Chips nur für Feedback-Werte, die tatsächlich vorkommen (analog
   // kategorienVorhanden) — bei einer noch unbewerteten Bibliothek bleibt
@@ -273,10 +325,11 @@ export default async function BookshelfSeite({
   );
   const originalVorhanden = feedbackStatus.some((z) => z.imOriginalLesen);
   const aufbereitungVorhanden = feedbackStatus.some((z) => z.aufbereitungSchwach);
-  function feedbackFilterHref(schluessel: "bewertung" | "original" | "aufbereitung", wert: string | null) {
+  function feedbackFilterHref(schluessel: "bewertung" | "original" | "aufbereitung" | "tag", wert: string | null) {
     const params = new URLSearchParams();
     if (kategorieFilter) params.set("kategorie", kategorieFilter);
     if (suche) params.set("suche", suche);
+    if (tagFilter) params.set("tag", tagFilter);
     if (bewertungFilter) params.set("bewertung", bewertungFilter);
     if (originalFilter) params.set("original", "1");
     if (aufbereitungFilter) params.set("aufbereitung", "1");
@@ -389,6 +442,22 @@ export default async function BookshelfSeite({
         </div>
       )}
 
+      {tagsVorhanden.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", flexShrink: 0, scrollbarWidth: "none" }}>
+          {/* Aktiver Tag zuerst, damit er bei einer langen Zeile sichtbar bleibt. */}
+          {[...tagsVorhanden]
+            .sort((a, b) => Number(b.tag.slug === tagFilter) - Number(a.tag.slug === tagFilter))
+            .map(({ tag, anzahl }) => (
+              <Link key={tag.slug} href={feedbackFilterHref("tag", tagFilter === tag.slug ? null : tag.slug)}>
+                <span style={kategorieChipStyle(tagFilter === tag.slug)}>
+                  <span>#{tag.name}</span>
+                  <span style={{ opacity: 0.6, fontWeight: 700 }}>{anzahl}</span>
+                </span>
+              </Link>
+            ))}
+        </div>
+      )}
+
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
       {gesamtAnzahl === 0 ? (
         <div
@@ -469,7 +538,9 @@ export default async function BookshelfSeite({
                   ? `Keine Treffer für „${suche}“.`
                   : feedbackFilterAktiv
                     ? "Keine Bücher für diesen Filter."
-                    : "Keine Bücher in dieser Kategorie."}
+                    : tagFilter && !kategorieFilter
+                      ? `Keine Bücher mit dem Tag „${aktiverTag?.name ?? tagFilter}“.`
+                      : "Keine Bücher in dieser Kategorie."}
               </span>
               <Link href="/bookshelf">
                 <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
@@ -529,6 +600,7 @@ export default async function BookshelfSeite({
                         {[buch.verlag, buch.erscheinungsjahr].filter(Boolean).join(" · ")}
                       </span>
                     )}
+                    <TagZeile tags={tagsVon(buch.buchId)} aktiv={tagFilter} href={(slug) => feedbackFilterHref("tag", slug)} />
                   </div>
                   <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Jetzt lesen">
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#24231F", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -598,6 +670,7 @@ export default async function BookshelfSeite({
                         {[buch.verlag, buch.erscheinungsjahr].filter(Boolean).join(" · ")}
                       </span>
                     )}
+                    <TagZeile tags={tagsVon(buch.buchId)} aktiv={tagFilter} href={(slug) => feedbackFilterHref("tag", slug)} />
                     {/* Buch-Feedback (09/2026, Buch-Bewertung Phase 1) als
                         schlichte Meta-Zeile, zugleich Link zum Abschluss-
                         Screen, wo es sich ändern lässt ("Bewerten", solange

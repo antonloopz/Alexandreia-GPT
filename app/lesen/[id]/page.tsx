@@ -11,6 +11,7 @@ import { buchinhalte, buecher, konten, notizen, repetitionselemente } from "../.
 import { and, eq, isNotNull } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { sicherstelleGezeigt } from "../../../src/lib/tagesbuch";
+import { tagsFuerBuecher } from "../../../src/lib/tags";
 import MenuButton from "../../MenuButton";
 import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
@@ -271,6 +272,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
   const kategorieLabel = KATEGORIE_LABEL[zeile.kategorie] ?? zeile.kategorie;
   const vh = (zeile.vertrauenshinweise ?? {}) as Record<string, Vertrauenshinweis>;
   const zusammenfassungsEbenen = parseZusammenfassung(zeile.zusammenfassung);
+  const buchTagListe = (await tagsFuerBuecher([zeile.buchId])).get(zeile.buchId) ?? [];
 
   // Bestehende Hervorhebungen/Notizen dieses Buchinhalts, nach Feld sortiert
   // (Feature "Notiz-/Highlight-Funktion" 09/2026) — an Hervorhebbarer
@@ -337,19 +339,31 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
 
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 22, overflowY: "auto" }}>
         {/* Buchtitel scrollt mit (09/2026), statt fest über dem Lesebereich
-            Platz zu belegen. */}
-        <span
-          style={{
-            fontFamily: "Helvetica, Arial, sans-serif",
-            fontWeight: 600,
-            fontSize: 13,
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "rgba(36,35,31,.62)",
-          }}
-        >
-          {zeile.titel} — {kategorieLabel}
-        </span>
+            Platz zu belegen. Darunter die Tags (Pendenz "Autotags"), jeder
+            führt in die Bibliothek, gefiltert auf diesen Tag. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span
+            style={{
+              fontFamily: "Helvetica, Arial, sans-serif",
+              fontWeight: 600,
+              fontSize: 13,
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              color: "rgba(36,35,31,.62)",
+            }}
+          >
+            {zeile.titel} — {kategorieLabel}
+          </span>
+          {buchTagListe.length > 0 && (
+            <span style={{ display: "flex", flexWrap: "wrap", columnGap: 10, rowGap: 2, fontSize: 14, color: "rgba(36,35,31,.62)" }}>
+              {buchTagListe.map((t) => (
+                <Link key={t.slug} href={`/bookshelf?tag=${encodeURIComponent(t.slug)}`} style={{ color: "inherit" }}>
+                  #{t.name}
+                </Link>
+              ))}
+            </span>
+          )}
+        </div>
         {zusammenfassungsEbenen.map((ebene, e) => (
           <Abschnitt key={e} label={ebene.titel ?? "Zusammenfassung"} hinweis={vh.zusammenfassung}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

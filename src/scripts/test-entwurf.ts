@@ -130,6 +130,7 @@ async function main() {
   console.log(`- ${ka.length} Kernaussagen, davon ${ka.filter((k) => k.beispiel).length} mit Beispiel`);
   const ws = ka.map((k) => k.wissensstatus?.status).filter(Boolean);
   console.log(`- Wissensstatus: ${ws.length}/${ka.length}${ws.length ? ` (${ws.join(", ")})` : ""}`);
+  console.log(`- Tags: ${fertig.tags.length ? fertig.tags.join(", ") : "–"}`);
   console.log(`- ${fertig.quizfragenAnzahl} Quizfragen, Status: ${fertig.status}`);
   const e = inhalt?.einordnung;
   console.log(

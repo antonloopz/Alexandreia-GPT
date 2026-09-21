@@ -11,11 +11,11 @@
 //     Prüfung + Korrektur → "geprueft"              (entwurfPruefenUndKorrigieren)
 //     schwere Fehler → Entwurf gelöscht, Buch wieder frei
 //   Stufe 3 — Synthese + Wissensstatus (app/api/cron/fertigstellen[-2])
-//     Einordnung, "Das bleibt hängen", Wissensstatus pro Kernaussage, Quiz
-//     → "im_vorrat" (sichtbar)                      (fertigstellen, unten)
+//     Einordnung, "Das bleibt hängen", Wissensstatus pro Kernaussage, Tags,
+//     Quiz → "im_vorrat" (sichtbar)                 (fertigstellen, unten)
 //
-// Jeder Lauf erledigt genau EIN Buch (ältestes zuerst). Stufe 3: Synthese
-// und Wissensstatus sind optional — scheitern sie, wird das Buch trotzdem
+// Jeder Lauf erledigt genau EIN Buch (ältestes zuerst). Stufe 3: Synthese,
+// Wissensstatus und Tags sind optional — scheitern sie, wird das Buch trotzdem
 // fertiggestellt (die Screens blenden fehlende Abschnitte aus) und kann
 // später per src/scripts/ergaenzungen-nachziehen.ts ergänzt werden. Das
 // Quiz ist Pflicht — ohne Quizfragen bleibt der Status "geprueft" und der
@@ -28,6 +28,7 @@ import { db } from "../db";
 import { buchinhalte, buecher, kernaussagen, quizfragen } from "../db/schema";
 import { entwurfPruefenUndKorrigieren, ergaenzungenErstellen, type PruefErgebnis } from "./entwurf";
 import { erstelleQuizfragen } from "./quiz-generierung";
+import { hatTags, tagsVergeben } from "./tags";
 
 async function aeltesterMitStatus(status: "in_aufbereitung" | "geprueft"): Promise<string | null> {
   const [zeile] = await db
@@ -68,6 +69,7 @@ export type FertigstellungErgebnis = {
   ergaenzungen: "ergaenzt" | "vorhanden" | "fehlgeschlagen";
   einordnungHeute: string | null;
   wissensstatusAnzahl: number;
+  tags: string[];
   quizfragenAnzahl: number;
   hinweise: string[];
 };
@@ -79,6 +81,7 @@ export function naechsterFertigzustellender(): Promise<string | null> {
 export async function fertigstellen(buchinhaltId: string): Promise<FertigstellungErgebnis> {
   const [zeile] = await db
     .select({
+      buchId: buecher.id,
       titel: buecher.titel,
       autor: buecher.autor,
       kategorie: buecher.kategorie,
@@ -136,7 +139,30 @@ export async function fertigstellen(buchinhaltId: string): Promise<Fertigstellun
     }
   }
 
-  // 2. Quiz (Pflicht). Existieren schon Quizfragen (z.B. ein früher
+  // 2. Tags (optional, siehe lib/tags.ts) — nur wenn das Buch noch keine
+  // hat (hängen am Buch, überleben also eine Neu-Aufbereitung).
+  let tagNamen: string[] = [];
+  try {
+    if (!(await hatTags(zeile.buchId))) {
+      const vergabe = await tagsVergeben(
+        zeile.buchId,
+        zeile.titel,
+        zeile.autor,
+        zeile.kategorie,
+        zeile.zusammenfassung,
+        aussagen.map((a) => a.text)
+      );
+      tagNamen = vergabe.tags;
+      if (vergabe.neu.length) hinweise.push(`Neue Tags: ${vergabe.neu.join(", ")}`);
+      if (vergabe.aliaseErgaenzt.length) hinweise.push(`Synonyme zugeordnet: ${vergabe.aliaseErgaenzt.join("; ")}`);
+    }
+  } catch (err) {
+    const nachricht = err instanceof Error ? err.message : String(err);
+    hinweise.push(`Tags fehlgeschlagen (später nachziehbar): ${nachricht}`);
+    console.error(`[fertigstellung] Tags für "${zeile.titel}" fehlgeschlagen:`, err);
+  }
+
+  // 3. Quiz (Pflicht). Existieren schon Quizfragen (z.B. ein früher
   // hängengebliebener Buchinhalt), nicht doppelt erzeugen, nur freischalten.
   const vorhandeneQuizfragen = await db
     .select({ id: quizfragen.id })
@@ -160,6 +186,7 @@ export async function fertigstellen(buchinhaltId: string): Promise<Fertigstellun
     ergaenzungen,
     einordnungHeute,
     wissensstatusAnzahl,
+    tags: tagNamen,
     quizfragenAnzahl,
     hinweise,
   };

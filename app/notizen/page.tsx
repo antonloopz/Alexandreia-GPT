@@ -20,6 +20,11 @@
 // trifft sie einzelne Einträge, werden nur diese gezeigt. Gruppen mit
 // Treffern öffnen sich beim Suchen automatisch (sonst müsste man jede
 // einzeln aufklappen, um den Treffer zu sehen).
+//
+// Tags 09/2026 (Pendenz "Autotags zu Notizen und Büchern") — Notizen erben
+// die Tags ihres Buchs (Entscheid 21.09.2026, lib/tags.ts). ?tag=<slug>
+// filtert die Buchgruppen, wirkt zusätzlich zu Kategorie und Suche; die
+// Suche findet auch Tags (wie ein Treffer im Buchtitel: ganze Gruppe).
 
 import Link from "next/link";
 import { db } from "../../src/db";
@@ -29,6 +34,7 @@ import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/
 import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import { FELD_LABEL, type NotizFeld } from "../../src/lib/notizen";
+import { tagsFuerBuecher, type TagInfo } from "../../src/lib/tags";
 import EntfernenButton from "./EntfernenButton";
 import WiederholungButton from "./WiederholungButton";
 import NotizenSuche from "./NotizenSuche";
@@ -57,9 +63,9 @@ function mitSuchtreffer(text: string, suche: string) {
 export default async function NotizenSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ kategorie?: string; suche?: string }>;
+  searchParams: Promise<{ kategorie?: string; suche?: string; tag?: string }>;
 }) {
-  const { kategorie: kategorieFilter, suche: sucheRoh } = await searchParams;
+  const { kategorie: kategorieFilter, suche: sucheRoh, tag: tagFilter } = await searchParams;
   const suche = (sucheRoh ?? "").trim();
   const sucheLower = suche.toLowerCase();
   const [konto] = await db.select().from(konten).limit(1);
@@ -79,6 +85,7 @@ export default async function NotizenSeite({
       textAuszug: notizen.textAuszug,
       text: notizen.text,
       buchinhaltId: notizen.buchinhaltId,
+      buchId: buecher.id,
       titel: buecher.titel,
       kategorie: buecher.kategorie,
     })
@@ -98,7 +105,8 @@ export default async function NotizenSeite({
   const wiederholtSet = new Set(wiederholteZeilen.map((w) => w.notizId));
 
   type Zeile = (typeof zeilen)[number];
-  type Gruppe = { buchinhaltId: string; titel: string; kategorie: string | null; eintraege: Zeile[] };
+  const tagsProBuch = await tagsFuerBuecher(zeilen.map((z) => z.buchId));
+  type Gruppe = { buchinhaltId: string; titel: string; kategorie: string | null; tags: TagInfo[]; eintraege: Zeile[] };
   const alleGruppen: Gruppe[] = [];
   const index = new Map<string, number>();
   for (const zeile of zeilen) {
@@ -106,7 +114,13 @@ export default async function NotizenSeite({
     const i = index.get(zeile.buchinhaltId);
     if (i === undefined) {
       index.set(zeile.buchinhaltId, alleGruppen.length);
-      alleGruppen.push({ buchinhaltId: zeile.buchinhaltId, titel: zeile.titel, kategorie: zeile.kategorie, eintraege: [zeile] });
+      alleGruppen.push({
+        buchinhaltId: zeile.buchinhaltId,
+        titel: zeile.titel,
+        kategorie: zeile.kategorie,
+        tags: tagsProBuch.get(zeile.buchId) ?? [],
+        eintraege: [zeile],
+      });
     } else {
       alleGruppen[i].eintraege.push(zeile);
     }
@@ -123,7 +137,29 @@ export default async function NotizenSeite({
     eintraegeProKategorie.set(g.kategorie, (eintraegeProKategorie.get(g.kategorie) ?? 0) + g.eintraege.length);
   }
 
-  const gruppenKategorie = !kategorieFilter ? alleGruppen : alleGruppen.filter((g) => g.kategorie === kategorieFilter);
+  const gruppenNurKategorie = !kategorieFilter ? alleGruppen : alleGruppen.filter((g) => g.kategorie === kategorieFilter);
+
+  // Tag-Chips: Tags der Bücher mit Notizen, nach Häufigkeit (Anzahl Bücher).
+  const tagHaeufigkeit = new Map<string, { tag: TagInfo; anzahl: number }>();
+  for (const g of alleGruppen) {
+    for (const t of g.tags) {
+      const eintrag = tagHaeufigkeit.get(t.slug) ?? { tag: t, anzahl: 0 };
+      eintrag.anzahl++;
+      tagHaeufigkeit.set(t.slug, eintrag);
+    }
+  }
+  // Chip-Zeile nur mit Tags, die mindestens zwei Bücher verbinden (sonst
+  // bei vielen Einzel-Tags eine lange Zeile mit lauter 1er-Treffern) — der
+  // aktive Tag bleibt immer drin. Am einzelnen Buch stehen weiterhin alle.
+  const tagsVorhanden = [...tagHaeufigkeit.values()].filter((e) => e.anzahl >= 2 || e.tag.slug === tagFilter).sort(
+    (a, b) =>
+      Number(b.tag.slug === tagFilter) - Number(a.tag.slug === tagFilter) ||
+      b.anzahl - a.anzahl ||
+      a.tag.name.localeCompare(b.tag.name, "de")
+  );
+  const gruppenKategorie = !tagFilter
+    ? gruppenNurKategorie
+    : gruppenNurKategorie.filter((g) => g.tags.some((t) => t.slug === tagFilter));
 
   // Suche: trifft sie den Buchtitel, bleiben alle Einträge der Gruppe
   // sichtbar (man sucht ja "das Buch") — sonst nur die Einträge, deren
@@ -133,7 +169,8 @@ export default async function NotizenSeite({
     ? gruppenKategorie
     : gruppenKategorie
         .map((g) => {
-          const titelTrifft = g.titel.toLowerCase().includes(sucheLower);
+          const titelTrifft =
+            g.titel.toLowerCase().includes(sucheLower) || g.tags.some((t) => t.name.toLowerCase().includes(sucheLower));
           const eintraege = titelTrifft
             ? g.eintraege
             : g.eintraege.filter(
@@ -148,10 +185,11 @@ export default async function NotizenSeite({
 
   // Kategorie-Chip-Links behalten eine laufende Suche bei (Filter sollen
   // sich kombinieren lassen, nicht sich gegenseitig zurücksetzen).
-  const chipHref = (kategorie?: string) => {
+  const chipHref = (kategorie?: string, tag: string | null | undefined = tagFilter) => {
     const params = new URLSearchParams();
     if (kategorie) params.set("kategorie", kategorie);
     if (suche) params.set("suche", suche);
+    if (tag) params.set("tag", tag);
     const query = params.toString();
     return query ? `/notizen?${query}` : "/notizen";
   };
@@ -204,6 +242,19 @@ export default async function NotizenSeite({
         </div>
       )}
 
+      {tagsVorhanden.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", flexShrink: 0, scrollbarWidth: "none" }}>
+          {tagsVorhanden.map(({ tag, anzahl }) => (
+            <Link key={tag.slug} href={chipHref(kategorieFilter, tagFilter === tag.slug ? null : tag.slug)}>
+              <span style={kategorieChipStyle(tagFilter === tag.slug)}>
+                <span>#{tag.name}</span>
+                <span style={{ opacity: 0.6, fontWeight: 700 }}>{anzahl}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 20, overflowY: "auto" }}>
         {alleGruppen.length === 0 ? (
           <span style={{ fontSize: 16, lineHeight: 1.5, color: "rgba(36,35,31,.65)" }}>
@@ -224,7 +275,13 @@ export default async function NotizenSeite({
                 }}
               >
                 <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>
-                  {suche ? <>Keine Treffer für „{suche}“.</> : "Keine Notizen in dieser Kategorie."}
+                  {suche ? (
+                    <>Keine Treffer für „{suche}“.</>
+                  ) : tagFilter && !kategorieFilter ? (
+                    <>Keine Notizen mit dem Tag „{tagHaeufigkeit.get(tagFilter)?.tag.name ?? tagFilter}“.</>
+                  ) : (
+                    "Keine Notizen in dieser Kategorie."
+                  )}
                 </span>
                 <Link href="/notizen">
                   <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
@@ -258,6 +315,19 @@ export default async function NotizenSeite({
                       <Link href={`/lesen/${gruppe.buchinhaltId}`}>
                         <span style={{ fontSize: 14.5, fontWeight: 600, color: "#24231F" }}>Im Buch öffnen →</span>
                       </Link>
+                      {gruppe.tags.length > 0 && (
+                        <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)", display: "flex", flexWrap: "wrap", columnGap: 8, rowGap: 2 }}>
+                          {gruppe.tags.map((t) => (
+                            <Link
+                              key={t.slug}
+                              href={chipHref(kategorieFilter, tagFilter === t.slug ? null : t.slug)}
+                              style={{ color: tagFilter === t.slug ? "#24231F" : "inherit", fontWeight: tagFilter === t.slug ? 600 : 400 }}
+                            >
+                              #{t.name}
+                            </Link>
+                          ))}
+                        </span>
+                      )}
                       {gruppe.eintraege.map((eintrag) => (
                         <div
                           key={eintrag.id}

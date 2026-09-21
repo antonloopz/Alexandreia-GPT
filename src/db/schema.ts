@@ -250,6 +250,38 @@ export const quizfragen = pgTable("quizfragen", {
   richtigeOptionIndex: integer().notNull(),
 });
 
+// Tags (09/2026, Pendenz "Autotags zu Notizen und Büchern") — feinere
+// Einteilung unterhalb der 11 Hauptkategorien und Grundlage für die
+// spätere Vernetzung über gemeinsame Konzepte. Vokabular wächst mit der
+// Bibliothek: das Modell verwendet bevorzugt bestehende Tags und legt nur
+// bei Bedarf neue an; lib/tags.ts gleicht neue Vorschläge über slug und
+// aliase mit dem Bestand ab ("stoische Philosophie" → "Stoizismus"), damit
+// keine Dubletten statt Verbindungen entstehen. Tags hängen am BUCH (nicht
+// am Buchinhalt) — sie überleben so eine Neu-Aufbereitung. Notizen erben
+// die Tags ihres Buchs (Entscheid 21.09.2026), keine eigene Tabelle.
+export const tags = pgTable("tags", {
+  id: uuid().primaryKey().defaultRandom(),
+  name: text().notNull(),
+  // Normalisierter Schlüssel (klein, ohne Akzente/Satzzeichen) — eindeutig.
+  slug: text().notNull().unique(),
+  // Weitere Schreibweisen/Synonyme als slugs, die auf diesen Tag zeigen.
+  aliase: jsonb().$type<string[]>().notNull().default([]),
+  erstelltAm: timestamp({ mode: "date" }).defaultNow().notNull(),
+});
+
+export const buchTags = pgTable(
+  "buch_tags",
+  {
+    buchId: uuid()
+      .notNull()
+      .references(() => buecher.id),
+    tagId: uuid()
+      .notNull()
+      .references(() => tags.id),
+  },
+  (t) => [unique("buch_tags_buch_tag_key").on(t.buchId, t.tagId)]
+);
+
 // ---------------------------------------------------------------------------
 // Pro Konto
 // ---------------------------------------------------------------------------
