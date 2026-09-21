@@ -2,9 +2,9 @@
 //
 // Client Component: eine Quizfrage auf einmal. Nach Auswahl einer Option
 // sofortiges Feedback (richtige Option wird dunkel + Häkchen, eine falsch
-// gewählte Option bekommt ein X — wie im Quiz.dc.html-Mockup), erst danach
-// erscheint der Weiter-Button (nach einer richtigen Antwort geht es nach
-// kurzer Pause auch von selbst weiter). Zählt die richtigen Antworten
+// gewählte Option bekommt ein X — wie im Quiz.dc.html-Mockup). Nach einer
+// richtigen Antwort geht es nach kurzer Pause von selbst weiter, nur nach
+// einer falschen erscheint der Weiter-Button. Zählt die richtigen Antworten
 // lokal mit und übergibt sie als Query-Parameter an Abschluss (kein
 // eigenes Schema-Feld für Quiz-Ergebnisse nötig).
 //
@@ -144,9 +144,10 @@ export default function QuizClient({
   // 09/2026 (Pendenz "Quiz: bei richtiger Antwort automatisch zur nächsten
   // Frage wechseln"): nach einer RICHTIGEN Antwort geht es nach kurzer Pause
   // von selbst weiter. Nach einer falschen bleibt die Frage stehen, damit man
-  // die richtige Option in Ruhe lesen kann — weiter dann per Button. Tippt
-  // man den Button früher selbst, wechselt index und der Cleanup verwirft den
-  // Timer, es wird also nie doppelt weitergeschaltet. Bewusst über einen
+  // die richtige Option in Ruhe lesen kann — weiter dann per Button. Nach einer
+  // richtigen Antwort ist der Button ausgeblendet (Wunsch Nutzer: der Timer
+  // macht ihn überflüssig); wechselt index, verwirft der Cleanup den Timer,
+  // es wird also nie doppelt weitergeschaltet. Bewusst über einen
   // Effekt statt direkt in auswaehlen(): erst im nächsten Render sind
   // antworten/richtigAnzahl aktualisiert, die zumAbschluss() bei der letzten
   // Frage braucht. useEffectEvent liefert dafür immer das aktuelle weiter().
@@ -407,6 +408,9 @@ export default function QuizClient({
             aria-busy={speichert}
             aria-label={istLetzte ? "Zum Abschluss" : "Nächste Frage"}
             style={{
+              // Nach richtiger Antwort übernimmt der Timer: Button unsichtbar,
+              // aber Platz behalten, damit das Layout nicht springt.
+              visibility: warRichtig ? "hidden" : undefined,
               width: 56,
               height: 32,
               borderRadius: 999,
