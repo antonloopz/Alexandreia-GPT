@@ -1,8 +1,9 @@
 // src/scripts/tags-nachziehen.ts
 //
 // Vergibt Tags (lib/tags.ts, Pendenz "Autotags zu Notizen und Büchern")
-// für bereits produzierte Bücher, die noch keine haben — dieselbe Funktion
-// wie Stufe 3 der Pipeline. Rührt sonst nichts an. Notizen erben die Tags
+// für bereits produzierte Bücher, die noch keine haben, und ordnet danach
+// die Kernaussagen diesen Tags zu (Pendenz "Vernetzung") — dieselben
+// Funktionen wie Stufe 3 der Pipeline. Rührt sonst nichts an. Notizen erben die Tags
 // ihres Buchs, brauchen also keinen eigenen Lauf.
 //
 // Läuft bewusst NACHEINANDER, ältestes Buch zuerst: das Vokabular wächst
@@ -17,6 +18,9 @@
 // Bestimmte Titel NEU taggen
 // (alte Zuordnung wird ersetzt): npx tsx src/scripts/tags-nachziehen.ts --titel="On Liberty|Schuld und Sühne"
 // Nur das Vokabular anzeigen:  npx tsx src/scripts/tags-nachziehen.ts --liste
+// Nur Kernaussagen den Tags
+// ihres Buchs zuordnen (Bestand, Pendenz "Vernetzung"; ohne --titel nur
+// Bücher ohne Zuordnung):      npx tsx src/scripts/tags-nachziehen.ts --kernaussagen
 // ALLE Tags löschen und alle
 // Bücher neu taggen:           npx tsx src/scripts/tags-nachziehen.ts --alle-neu
 //   (löscht sämtliche Zuordnungen UND das ganze Vokabular, damit das alte,
@@ -37,7 +41,7 @@ async function main() {
   const { db } = await import("../db");
   const { buchinhalte, buecher, buchTags, kernaussagen, tags } = await import("../db/schema");
   const { asc, eq, inArray } = await import("drizzle-orm");
-  const { ladeVokabular, tagsVergeben } = await import("../lib/tags");
+  const { hatKernaussageTags, kernaussagenZuordnen, ladeVokabular, tagsVergeben } = await import("../lib/tags");
 
   if (process.argv.includes("--liste")) {
     const vokabular = await ladeVokabular();
@@ -76,6 +80,32 @@ async function main() {
   for (const z of alle) proBuch.set(z.buchId, z);
   let zeilen = [...proBuch.values()];
 
+  if (process.argv.includes("--kernaussagen")) {
+    let auswahl = titelFilter ? zeilen.filter((z) => titelFilter.has(z.titel)) : zeilen;
+    if (!titelFilter) {
+      const offen = [];
+      for (const z of auswahl) if (!(await hatKernaussageTags(z.buchinhaltId))) offen.push(z);
+      auswahl = offen;
+    }
+    if (limit) auswahl = auswahl.slice(0, limit);
+    console.log(`${auswahl.length} Buch/Bücher: Kernaussagen werden zugeordnet.\n`);
+    let ok = 0;
+    let fehler = 0;
+    for (const z of auswahl) {
+      try {
+        const e = await kernaussagenZuordnen(z.buchId, z.buchinhaltId, z.titel, z.autor);
+        console.log(`OK    ${z.titel}: ${e.zugeordnet}/${e.gesamt} Kernaussagen mit Konzept`);
+        ok++;
+      } catch (err) {
+        console.error(`FEHLER  ${z.titel}:`, err);
+        fehler++;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    console.log(`\nFertig: ${ok} zugeordnet, ${fehler} fehlgeschlagen.`);
+    return;
+  }
+
   const mitTags = new Set((await db.selectDistinct({ buchId: buchTags.buchId }).from(buchTags)).map((z) => z.buchId));
   if (titelFilter) {
     zeilen = zeilen.filter((z) => titelFilter.has(z.titel));
@@ -108,6 +138,8 @@ async function main() {
       console.log(`OK    ${zeile.titel}: ${vergabe.tags.join(", ")}`);
       if (vergabe.neu.length) console.log(`      neu: ${vergabe.neu.join(", ")}`);
       if (vergabe.aliaseErgaenzt.length) console.log(`      Synonym: ${vergabe.aliaseErgaenzt.join("; ")}`);
+      const z = await kernaussagenZuordnen(zeile.buchId, zeile.buchinhaltId, zeile.titel, zeile.autor);
+      console.log(`      Kernaussagen mit Konzept: ${z.zugeordnet}/${z.gesamt}`);
       erfolgreich++;
     } catch (err) {
       console.error(`FEHLER  ${zeile.titel}:`, err);

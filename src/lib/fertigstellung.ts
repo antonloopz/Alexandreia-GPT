@@ -28,7 +28,7 @@ import { db } from "../db";
 import { buchinhalte, buecher, kernaussagen, quizfragen } from "../db/schema";
 import { entwurfPruefenUndKorrigieren, ergaenzungenErstellen, type PruefErgebnis } from "./entwurf";
 import { erstelleQuizfragen } from "./quiz-generierung";
-import { hatTags, tagsVergeben } from "./tags";
+import { hatKernaussageTags, hatTags, kernaussagenZuordnen, tagsVergeben } from "./tags";
 
 async function aeltesterMitStatus(status: "in_aufbereitung" | "geprueft"): Promise<string | null> {
   const [zeile] = await db
@@ -155,6 +155,13 @@ export async function fertigstellen(buchinhaltId: string): Promise<Fertigstellun
       tagNamen = vergabe.tags;
       if (vergabe.neu.length) hinweise.push(`Neue Tags: ${vergabe.neu.join(", ")}`);
       if (vergabe.aliaseErgaenzt.length) hinweise.push(`Synonyme zugeordnet: ${vergabe.aliaseErgaenzt.join("; ")}`);
+    }
+    // Kernaussagen den Tags des Buchs zuordnen (Pendenz "Vernetzung",
+    // Konzept-Seite) — auch für Bücher, die ihre Tags schon hatten, solange
+    // die Kernaussagen dieses Buchinhalts noch keine Zuordnung haben.
+    if (!(await hatKernaussageTags(buchinhaltId))) {
+      const z = await kernaussagenZuordnen(zeile.buchId, buchinhaltId, zeile.titel, zeile.autor);
+      hinweise.push(`Kernaussagen mit Konzept: ${z.zugeordnet}/${z.gesamt}`);
     }
   } catch (err) {
     const nachricht = err instanceof Error ? err.message : String(err);

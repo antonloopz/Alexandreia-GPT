@@ -30,7 +30,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../db";
-import { buchinhalte, buecher, buchTags, tags } from "../db/schema";
+import { buchinhalte, buecher, buchTags, kernaussagen, kernaussageTags, tags } from "../db/schema";
 import { jsonAusText } from "./json";
 import { KATEGORIE_LABEL } from "./kategorien";
 
@@ -73,6 +73,20 @@ function findeImVokabular(vokabular: VokabularEintrag[], name: string): Vokabula
   const s = slug(name);
   if (!s) return undefined;
   return vokabular.find((v) => v.slug === s || v.aliase.includes(s));
+}
+
+// Kurzer Aufruf ohne Websuche, Antwort als JSON.
+async function modellJson(prompt: string, maxTokens: number): Promise<unknown> {
+  const antwort = await client.messages.create({
+    model: MODELL,
+    max_tokens: maxTokens,
+    messages: [{ role: "user", content: prompt }],
+  });
+  const text = antwort.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+  return jsonAusText(text);
 }
 
 type Vorschlag = { name: string; synonymVon?: string };
@@ -118,16 +132,7 @@ ${kernaussagen.map((k, i) => `${i + 1}. ${k}`).join("\n")}
 Antworte ausschliesslich mit JSON, ohne Text davor oder danach:
 {"tags": [{"name": "…"}, {"name": "<bestehender Tag>", "synonym": "<dein Begriff>"}]}`;
 
-  const antwort = await client.messages.create({
-    model: MODELL,
-    max_tokens: 2000,
-    messages: [{ role: "user", content: prompt }],
-  });
-  const text = antwort.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("");
-  const daten = jsonAusText(text) as { tags?: { name?: unknown; synonym?: unknown }[] };
+  const daten = (await modellJson(prompt, 2000)) as { tags?: { name?: unknown; synonym?: unknown }[] };
   if (!Array.isArray(daten?.tags)) throw new Error("Antwort enthält kein Feld 'tags'.");
 
   return daten.tags
@@ -285,4 +290,173 @@ export async function verwandteBuecher(buchId: string, limit = 3): Promise<Verwa
   return [...proBuch.values()]
     .sort((a, b) => b.gemeinsameTags.length - a.gemeinsameTags.length || a.titel.localeCompare(b.titel, "de"))
     .slice(0, limit);
+}
+
+// ---------------------------------------------------------------------------
+// Kernaussagen → Konzepte (09/2026, Pendenz "Vernetzung")
+// ---------------------------------------------------------------------------
+
+export const MAX_TAGS_PRO_KERNAUSSAGE = 2;
+
+// Ordnet jeder Kernaussage eines Buchinhalts 0–2 der Tags IHRES Buchs zu
+// und ersetzt dabei bestehende Zuordnungen dieser Kernaussagen. Nur Tags
+// des Buchs sind erlaubt — so bleibt das Vokabular klein und jede
+// Kernaussage auf der Konzept-Seite ist über ihr Buch nachvollziehbar.
+// Gibt die Anzahl Kernaussagen mit mindestens einem Tag zurück.
+export async function kernaussagenZuordnen(
+  buchId: string,
+  buchinhaltId: string,
+  titel: string,
+  autor: string
+): Promise<{ zugeordnet: number; gesamt: number }> {
+  const buchTagListe = (await tagsFuerBuecher([buchId])).get(buchId) ?? [];
+  const aussagen = await db
+    .select({ id: kernaussagen.id, text: kernaussagen.text, erklaerung: kernaussagen.erklaerung })
+    .from(kernaussagen)
+    .where(eq(kernaussagen.buchinhaltId, buchinhaltId))
+    .orderBy(asc(kernaussagen.reihenfolge));
+  if (buchTagListe.length === 0 || aussagen.length === 0) return { zugeordnet: 0, gesamt: aussagen.length };
+
+  const prompt = `Das Buch "${titel}" von ${autor} hat diese Konzept-Tags:
+${buchTagListe.map((t) => `- ${t.name}`).join("\n")}
+
+Ordne jeder Kernaussage unten 0 bis ${MAX_TAGS_PRO_KERNAUSSAGE} dieser Tags zu — nur Tags, die die Kernaussage WIRKLICH inhaltlich behandelt (nicht bloss, weil das ganze Buch so getaggt ist). 0 Tags ist ausdrücklich erlaubt. Verwende die Tag-Namen exakt wie oben, keine neuen.
+
+Kernaussagen:
+${aussagen.map((a, i) => `${i}. ${a.text}\n   ${a.erklaerung}`).join("\n\n")}
+
+Antworte ausschliesslich mit JSON, ohne Text davor oder danach:
+{"zuordnungen": [{"index": 0, "tags": ["…"]}]}`;
+
+  const daten = (await modellJson(prompt, 2000)) as { zuordnungen?: { index?: unknown; tags?: unknown }[] };
+  if (!Array.isArray(daten?.zuordnungen)) throw new Error("Antwort enthält kein Feld 'zuordnungen'.");
+
+  const tagNachSlug = new Map(buchTagListe.map((t) => [t.slug, t]));
+  const neu: { kernaussageId: string; tagId: string }[] = [];
+  const mitTag = new Set<string>();
+  for (const z of daten.zuordnungen) {
+    const index = typeof z?.index === "number" ? z.index : Number(z?.index);
+    const aussage = Number.isInteger(index) ? aussagen[index] : undefined;
+    if (!aussage || !Array.isArray(z.tags)) continue;
+    const gewaehlt = new Set<string>();
+    for (const name of z.tags) {
+      if (typeof name !== "string") continue;
+      const tag = tagNachSlug.get(slug(name));
+      if (!tag || gewaehlt.has(tag.id) || gewaehlt.size >= MAX_TAGS_PRO_KERNAUSSAGE) continue;
+      gewaehlt.add(tag.id);
+      neu.push({ kernaussageId: aussage.id, tagId: tag.id });
+      mitTag.add(aussage.id);
+    }
+  }
+
+  await db.delete(kernaussageTags).where(inArray(kernaussageTags.kernaussageId, aussagen.map((a) => a.id)));
+  if (neu.length > 0) {
+    await db.insert(kernaussageTags).values(neu).onConflictDoNothing({
+      target: [kernaussageTags.kernaussageId, kernaussageTags.tagId],
+    });
+  }
+  return { zugeordnet: mitTag.size, gesamt: aussagen.length };
+}
+
+export async function hatKernaussageTags(buchinhaltId: string): Promise<boolean> {
+  const [z] = await db
+    .select({ tagId: kernaussageTags.tagId })
+    .from(kernaussageTags)
+    .innerJoin(kernaussagen, eq(kernaussageTags.kernaussageId, kernaussagen.id))
+    .where(eq(kernaussagen.buchinhaltId, buchinhaltId))
+    .limit(1);
+  return Boolean(z);
+}
+
+// ---------------------------------------------------------------------------
+// Konsolidierung (09/2026, Pendenz "Vernetzung") — ähnliche Tags
+// zusammenführen, siehe src/scripts/tags-konsolidieren.ts
+// ---------------------------------------------------------------------------
+
+export type Zusammenfuehrung = { von: string; nach: string; begruendung: string };
+
+// Das Modell sieht das ganze Vokabular (mit Büchern) und schlägt NUR echte
+// Dubletten vor: Synonyme, andere Schreibweisen oder ein Tag, der
+// praktisch denselben Begriff meint. Verwandte, aber verschiedene Konzepte
+// bleiben getrennt — die Verbindung entsteht dort über gemeinsame Bücher.
+export async function zusammenfuehrungenVorschlagen(): Promise<Zusammenfuehrung[]> {
+  const vokabular = await ladeVokabular();
+  if (vokabular.length < 2) return [];
+  const buecherProTag = await db
+    .select({ tagId: buchTags.tagId, titel: buecher.titel })
+    .from(buchTags)
+    .innerJoin(buecher, eq(buchTags.buchId, buecher.id));
+  const titelVon = (tagId: string) => buecherProTag.filter((b) => b.tagId === tagId).map((b) => b.titel);
+
+  const prompt = `Hier ist das Tag-Vokabular einer persönlichen Buch-Bibliothek, mit den Büchern pro Tag:
+
+${vokabular.map((v) => `- ${v.name}: ${titelVon(v.id).join("; ") || "(keine Bücher)"}`).join("\n")}
+
+Finde Tags, die ZUSAMMENGEFÜHRT werden sollten, weil sie dasselbe Konzept bezeichnen: Synonyme, andere Schreib- oder Wortformen, oder ein Begriff, der praktisch deckungsgleich mit einem anderen ist.
+
+NICHT zusammenführen: verwandte, aber verschiedene Konzepte (z.B. "Stoizismus" und "Tugendethik", "Kognitionspsychologie" und "Verhaltensökonomie") und Ober-/Unterbegriffe — die verbinden sich bereits über gemeinsame Bücher. Im Zweifel NICHT zusammenführen.
+
+Ziel ("nach") ist jeweils der gebräuchlichere bzw. breiter verwendete Tag, exakt wie oben geschrieben. Keine Ketten (ein Ziel darf nicht selbst "von" sein).
+
+Antworte ausschliesslich mit JSON, ohne Text davor oder danach:
+{"zusammenfuehrungen": [{"von": "…", "nach": "…", "begruendung": "…"}]}`;
+
+  const daten = (await modellJson(prompt, 4000)) as {
+    zusammenfuehrungen?: { von?: unknown; nach?: unknown; begruendung?: unknown }[];
+  };
+  if (!Array.isArray(daten?.zusammenfuehrungen)) throw new Error("Antwort enthält kein Feld 'zusammenfuehrungen'.");
+
+  const bekannt = new Set(vokabular.map((v) => v.slug));
+  const ergebnis: Zusammenfuehrung[] = [];
+  const ziele = new Set<string>();
+  const quellen = new Set<string>();
+  for (const z of daten.zusammenfuehrungen) {
+    if (typeof z?.von !== "string" || typeof z?.nach !== "string") continue;
+    const von = slug(z.von);
+    const nach = slug(z.nach);
+    if (!bekannt.has(von) || !bekannt.has(nach) || von === nach) continue;
+    if (quellen.has(von) || ziele.has(von) || quellen.has(nach)) continue; // keine Ketten
+    quellen.add(von);
+    ziele.add(nach);
+    ergebnis.push({
+      von: vokabular.find((v) => v.slug === von)!.name,
+      nach: vokabular.find((v) => v.slug === nach)!.name,
+      begruendung: typeof z.begruendung === "string" ? z.begruendung : "",
+    });
+  }
+  return ergebnis;
+}
+
+// Führt Tag "von" in Tag "nach" zusammen: Bücher und Kernaussagen werden
+// umgehängt, slug + aliase von "von" als aliase bei "nach" hinterlegt
+// (künftige Vorschläge landen so direkt beim Ziel), dann "von" gelöscht.
+export async function tagsZusammenfuehren(vonName: string, nachName: string): Promise<void> {
+  const vokabular = await ladeVokabular();
+  const von = findeImVokabular(vokabular, vonName);
+  const nach = findeImVokabular(vokabular, nachName);
+  if (!von || !nach) throw new Error(`Tag nicht gefunden: ${!von ? vonName : nachName}`);
+  if (von.id === nach.id) return;
+
+  const buecherVon = await db.select({ buchId: buchTags.buchId }).from(buchTags).where(eq(buchTags.tagId, von.id));
+  if (buecherVon.length > 0) {
+    await db
+      .insert(buchTags)
+      .values(buecherVon.map((b) => ({ buchId: b.buchId, tagId: nach.id })))
+      .onConflictDoNothing({ target: [buchTags.buchId, buchTags.tagId] });
+  }
+  const aussagenVon = await db
+    .select({ kernaussageId: kernaussageTags.kernaussageId })
+    .from(kernaussageTags)
+    .where(eq(kernaussageTags.tagId, von.id));
+  if (aussagenVon.length > 0) {
+    await db
+      .insert(kernaussageTags)
+      .values(aussagenVon.map((a) => ({ kernaussageId: a.kernaussageId, tagId: nach.id })))
+      .onConflictDoNothing({ target: [kernaussageTags.kernaussageId, kernaussageTags.tagId] });
+  }
+
+  const aliase = [...new Set([...nach.aliase, von.slug, ...von.aliase])].filter((a) => a !== nach.slug);
+  await db.update(tags).set({ aliase }).where(eq(tags.id, nach.id));
+  await db.delete(buchTags).where(eq(buchTags.tagId, von.id));
+  await db.delete(tags).where(eq(tags.id, von.id)); // kernaussage_tags: cascade
 }

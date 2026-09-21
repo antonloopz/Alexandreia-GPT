@@ -442,8 +442,16 @@ export default async function BookshelfSeite({
         </div>
       )}
 
-      {tagsVorhanden.length > 0 && (
+      {tagHaeufigkeit.size > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", whiteSpace: "nowrap", overflowX: "auto", flexShrink: 0, scrollbarWidth: "none" }}>
+          {/* Zugang zur Konzept-Übersicht (Pendenz "Vernetzung", Entscheid
+              21.09.2026: hier statt eines eigenen Menüpunkts). Bei aktivem
+              Tag-Filter führt der Chip direkt auf dessen Konzept-Seite. */}
+          <Link href={aktiverTag ? `/konzepte/${encodeURIComponent(aktiverTag.slug)}` : "/konzepte"}>
+            <span style={{ ...kategorieChipStyle(false), background: "transparent", boxShadow: "inset 0 0 0 1.5px rgba(36,35,31,.25)" }}>
+              {aktiverTag ? `Konzept #${aktiverTag.name}` : "Alle Konzepte"} →
+            </span>
+          </Link>
           {/* Aktiver Tag zuerst, damit er bei einer langen Zeile sichtbar bleibt. */}
           {[...tagsVorhanden]
             .sort((a, b) => Number(b.tag.slug === tagFilter) - Number(a.tag.slug === tagFilter))

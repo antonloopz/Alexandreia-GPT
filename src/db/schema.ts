@@ -282,6 +282,26 @@ export const buchTags = pgTable(
   (t) => [unique("buch_tags_buch_tag_key").on(t.buchId, t.tagId)]
 );
 
+// Welche Kernaussage zu welchem Konzept (Tag) gehört (09/2026, Pendenz
+// "Vernetzung") — Grundlage der Konzept-Seite app/konzepte/[tag], die die
+// Kernaussagen mehrerer Bücher zu einem Konzept nebeneinanderstellt. Das
+// Modell ordnet jeder Kernaussage 0–2 der Tags IHRES Buchs zu
+// (lib/tags.ts kernaussagenZuordnen). onDelete cascade auf beiden Seiten:
+// werden Kernaussagen neu erzeugt (kernaussagen-regenerieren.ts) oder Tags
+// zusammengeführt/gelöscht, verschwinden die Zuordnungen mit.
+export const kernaussageTags = pgTable(
+  "kernaussage_tags",
+  {
+    kernaussageId: uuid()
+      .notNull()
+      .references(() => kernaussagen.id, { onDelete: "cascade" }),
+    tagId: uuid()
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => [unique("kernaussage_tags_kernaussage_tag_key").on(t.kernaussageId, t.tagId)]
+);
+
 // ---------------------------------------------------------------------------
 // Pro Konto
 // ---------------------------------------------------------------------------

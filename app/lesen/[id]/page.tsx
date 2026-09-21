@@ -340,7 +340,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 22, overflowY: "auto" }}>
         {/* Buchtitel scrollt mit (09/2026), statt fest über dem Lesebereich
             Platz zu belegen. Darunter die Tags (Pendenz "Autotags"), jeder
-            führt in die Bibliothek, gefiltert auf diesen Tag. */}
+            führt auf seine Konzept-Seite (Pendenz "Vernetzung"). */}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span
             style={{
@@ -357,7 +357,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
           {buchTagListe.length > 0 && (
             <span style={{ display: "flex", flexWrap: "wrap", columnGap: 10, rowGap: 2, fontSize: 14, color: "rgba(36,35,31,.62)" }}>
               {buchTagListe.map((t) => (
-                <Link key={t.slug} href={`/bookshelf?tag=${encodeURIComponent(t.slug)}`} style={{ color: "inherit" }}>
+                <Link key={t.slug} href={`/konzepte/${encodeURIComponent(t.slug)}`} style={{ color: "inherit" }}>
                   #{t.name}
                 </Link>
               ))}
