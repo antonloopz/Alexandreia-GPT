@@ -17,6 +17,14 @@
 // zusammengeführt, sodass gesamtText() (entwurf.ts/recherche.ts) wie
 // bisher über ALLE Textblöcke läuft; Prosa vor dem JSON (z.B. obiger Satz)
 // entfernt jsonAusText() über extrahiereJsonKern().
+//
+// Zweiter Fall (gleicher Bug, 09/2026 beim Nachzieh-Lauf "Schuld und
+// Sühne"): das Modell beendet den Durchgang REGULÄR (stop_reason
+// "end_turn") nach genau so einem Ankündigungssatz, ohne das JSON je zu
+// schreiben. Enthält der gesamte Text dann kein einziges "{", wird EINMAL
+// im selben Gespräch nachgefragt ("gib jetzt das JSON aus") — die bereits
+// geladenen Suchergebnisse bleiben dabei im Kontext, es wird nicht erneut
+// gesucht. Alle Aufrufer dieses Wrappers erwarten eine JSON-Antwort.
 
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -24,28 +32,48 @@ import Anthropic from "@anthropic-ai/sdk";
 // Endloskosten), falls die API wider Erwarten immer wieder pausiert.
 const MAX_FORTSETZUNGEN = 4;
 
+const JSON_NACHFRAGE =
+  "Du hast das JSON noch nicht ausgegeben. Gib jetzt AUSSCHLIESSLICH das geforderte JSON-Objekt " +
+  "aus — ohne weitere Suche, ohne Text davor oder danach.";
+
+function textAus(bloecke: Anthropic.ContentBlock[]): string {
+  return bloecke
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+}
+
 export async function erstelleMitFortsetzung(
   client: Anthropic,
   params: Anthropic.MessageCreateParamsNonStreaming
 ): Promise<Anthropic.Message> {
   let nachrichten: Anthropic.MessageParam[] = [...params.messages];
   const alleBloecke: Anthropic.ContentBlock[] = [];
+  let jsonNachgefragt = false;
 
   for (let runde = 0; runde <= MAX_FORTSETZUNGEN; runde++) {
     const antwort = await client.messages.create({ ...params, messages: nachrichten });
     alleBloecke.push(...antwort.content);
+    const alsAssistent: Anthropic.MessageParam = {
+      role: "assistant",
+      content: antwort.content as Anthropic.ContentBlockParam[],
+    };
 
-    if (antwort.stop_reason !== "pause_turn") {
-      return { ...antwort, content: alleBloecke };
+    if (antwort.stop_reason === "pause_turn") {
+      nachrichten = [...nachrichten, alsAssistent];
+      continue;
     }
 
-    nachrichten = [
-      ...nachrichten,
-      { role: "assistant", content: antwort.content as Anthropic.ContentBlockParam[] },
-    ];
+    if (antwort.stop_reason === "end_turn" && !jsonNachgefragt && !textAus(alleBloecke).includes("{")) {
+      jsonNachgefragt = true;
+      nachrichten = [...nachrichten, alsAssistent, { role: "user", content: JSON_NACHFRAGE }];
+      continue;
+    }
+
+    return { ...antwort, content: alleBloecke };
   }
 
   throw new Error(
-    `Modell hat den Durchgang ${MAX_FORTSETZUNGEN + 1}× pausiert (stop_reason "pause_turn") — abgebrochen.`
+    `Modell hat nach ${MAX_FORTSETZUNGEN + 1} Runden (pause_turn/JSON-Nachfrage) noch keine fertige Antwort geliefert — abgebrochen.`
   );
 }
