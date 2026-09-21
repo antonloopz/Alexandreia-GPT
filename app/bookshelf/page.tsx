@@ -36,6 +36,7 @@ import { after } from "next/server";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, gezeigteBuecher, konten } from "../../src/db/schema";
 import { and, eq } from "drizzle-orm";
+import type { BuchBewertung } from "../abschluss/[id]/actions";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
 import { KategorieIcon } from "../../src/lib/kategorieIcons";
 import { relativesDatum, umfangZeileAusText } from "../../src/lib/darstellung";
@@ -80,12 +81,36 @@ function BuchCover({ kategorie, coverUrl }: { kategorie: string; coverUrl: strin
   return <BuchIcon kategorie={kategorie} />;
 }
 
+// Buch-Feedback (09/2026, Buch-Bewertung Phase 1) — Anzeige-Labels für
+// gezeigteBuecher.buchBewertung, in der Reihenfolge der Filter-Chips.
+const BEWERTUNG_LABEL: Record<BuchBewertung, string> = {
+  stark: "Stark",
+  solide: "Solide",
+  schwach: "Schwach",
+};
+
 export default async function BookshelfSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ kategorie?: string; suche?: string }>;
+  searchParams: Promise<{
+    kategorie?: string;
+    suche?: string;
+    bewertung?: string;
+    original?: string;
+    aufbereitung?: string;
+  }>;
 }) {
-  const { kategorie: kategorieFilter, suche } = await searchParams;
+  const {
+    kategorie: kategorieFilter,
+    suche,
+    bewertung: bewertungFilterRoh,
+    original: originalFilterRoh,
+    aufbereitung: aufbereitungFilterRoh,
+  } = await searchParams;
+  const bewertungFilter =
+    bewertungFilterRoh && Object.hasOwn(BEWERTUNG_LABEL, bewertungFilterRoh) ? (bewertungFilterRoh as BuchBewertung) : undefined;
+  const originalFilter = originalFilterRoh === "1";
+  const aufbereitungFilter = aufbereitungFilterRoh === "1";
   const [konto] = await db.select().from(konten).limit(1);
 
   if (!konto) {
@@ -137,6 +162,9 @@ export default async function BookshelfSeite({
       buchinhaltId: gezeigteBuecher.buchinhaltId,
       datumGezeigt: gezeigteBuecher.datumGezeigt,
       abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
+      buchBewertung: gezeigteBuecher.buchBewertung,
+      imOriginalLesen: gezeigteBuecher.imOriginalLesen,
+      aufbereitungSchwach: gezeigteBuecher.aufbereitungSchwach,
     })
     .from(gezeigteBuecher)
     .where(eq(gezeigteBuecher.kontoId, konto.id));
@@ -147,12 +175,24 @@ export default async function BookshelfSeite({
   // zählte schon das reine Öffnen als "gelesen", auch ohne abgeschlossenes
   // Quiz — und ohne Weiterlesen-Link liess sich ein so "gelesenes", aber nie
   // fertig gelesenes Buch danach gar nicht mehr öffnen).
-  const statusProBuchinhalt = new Map<string, { datumGezeigt: Date; abgeschlossenAm: Date | null }>();
+  const statusProBuchinhalt = new Map<
+    string,
+    {
+      datumGezeigt: Date;
+      abgeschlossenAm: Date | null;
+      buchBewertung: BuchBewertung | null;
+      imOriginalLesen: boolean;
+      aufbereitungSchwach: boolean;
+    }
+  >();
   for (const zeile of gezeigtRows) {
     if (zeile.buchinhaltId === heutigesBuch?.buchinhaltId) continue; // separat gepinnt
     statusProBuchinhalt.set(zeile.buchinhaltId, {
       datumGezeigt: zeile.datumGezeigt,
       abgeschlossenAm: zeile.abgeschlossenAm,
+      buchBewertung: zeile.buchBewertung,
+      imOriginalLesen: zeile.imOriginalLesen,
+      aufbereitungSchwach: zeile.aufbereitungSchwach,
     });
   }
 
@@ -199,12 +239,52 @@ export default async function BookshelfSeite({
   // zum Kategorie-Filter (beide zusammen, nicht alternativ). Das gepinnte
   // heutige Buch bleibt wie beim Kategorie-Filter davon unberührt.
   const sucheNormalisiert = (suche ?? "").trim().toLowerCase();
-  const uebrigeGefiltert = !sucheNormalisiert
+  const uebrigeNachSuche = !sucheNormalisiert
     ? uebrigeNachKategorie
     : uebrigeNachKategorie.filter(
         (b) => b.titel.toLowerCase().includes(sucheNormalisiert) || b.autor.toLowerCase().includes(sucheNormalisiert)
       );
-  const filterAktiv = Boolean(kategorieFilter) || Boolean(sucheNormalisiert);
+
+  // Feedback-Filter (09/2026, Buch-Bewertung Phase 1) — ?bewertung=stark|
+  // solide|schwach, ?original=1, ?aufbereitung=1, gleiches Query-Parameter-
+  // Muster wie ?kategorie=, wirken zusätzlich zu Kategorie/Suche. Greifen
+  // nur bei Büchern mit gezeigte_buecher-Zeile (nur dort gibt es Feedback);
+  // das gepinnte heutige Buch bleibt wie bei den anderen Filtern sichtbar.
+  const feedbackFilterAktiv = Boolean(bewertungFilter) || originalFilter || aufbereitungFilter;
+  const uebrigeGefiltert = !feedbackFilterAktiv
+    ? uebrigeNachSuche
+    : uebrigeNachSuche.filter((b) => {
+        const status = statusProBuchinhalt.get(b.buchinhaltId);
+        if (!status) return false;
+        if (bewertungFilter && status.buchBewertung !== bewertungFilter) return false;
+        if (originalFilter && !status.imOriginalLesen) return false;
+        if (aufbereitungFilter && !status.aufbereitungSchwach) return false;
+        return true;
+      });
+  const filterAktiv = Boolean(kategorieFilter) || Boolean(sucheNormalisiert) || feedbackFilterAktiv;
+
+  // Chips nur für Feedback-Werte, die tatsächlich vorkommen (analog
+  // kategorienVorhanden) — bei einer noch unbewerteten Bibliothek bleibt
+  // die Zeile also ganz weg. Ein Chip-Link schaltet genau seinen eigenen
+  // Parameter um und behält alle übrigen Filter (inkl. Kategorie/Suche).
+  const feedbackStatus = [...statusProBuchinhalt.values()];
+  const bewertungenVorhanden = (Object.keys(BEWERTUNG_LABEL) as BuchBewertung[]).filter((w) =>
+    feedbackStatus.some((z) => z.buchBewertung === w)
+  );
+  const originalVorhanden = feedbackStatus.some((z) => z.imOriginalLesen);
+  const aufbereitungVorhanden = feedbackStatus.some((z) => z.aufbereitungSchwach);
+  function feedbackFilterHref(schluessel: "bewertung" | "original" | "aufbereitung", wert: string | null) {
+    const params = new URLSearchParams();
+    if (kategorieFilter) params.set("kategorie", kategorieFilter);
+    if (suche) params.set("suche", suche);
+    if (bewertungFilter) params.set("bewertung", bewertungFilter);
+    if (originalFilter) params.set("original", "1");
+    if (aufbereitungFilter) params.set("aufbereitung", "1");
+    if (wert === null) params.delete(schluessel);
+    else params.set(schluessel, wert);
+    const query = params.toString();
+    return query ? `/bookshelf?${query}` : "/bookshelf";
+  }
 
   const gelesen = uebrigeGefiltert
     .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm != null)
@@ -290,6 +370,26 @@ export default async function BookshelfSeite({
         </div>
       )}
 
+      {(bewertungenVorhanden.length > 0 || originalVorhanden || aufbereitungVorhanden) && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {originalVorhanden && (
+            <Link href={feedbackFilterHref("original", originalFilter ? null : "1")}>
+              <span style={kategorieChipStyle(originalFilter)}>Im Original lesen</span>
+            </Link>
+          )}
+          {bewertungenVorhanden.map((w) => (
+            <Link key={w} href={feedbackFilterHref("bewertung", bewertungFilter === w ? null : w)}>
+              <span style={kategorieChipStyle(bewertungFilter === w)}>{BEWERTUNG_LABEL[w]}</span>
+            </Link>
+          ))}
+          {aufbereitungVorhanden && (
+            <Link href={feedbackFilterHref("aufbereitung", aufbereitungFilter ? null : "1")}>
+              <span style={kategorieChipStyle(aufbereitungFilter)}>Aufbereitung schwach</span>
+            </Link>
+          )}
+        </div>
+      )}
+
       {gesamtAnzahl === 0 ? (
         <div
           style={{
@@ -365,7 +465,11 @@ export default async function BookshelfSeite({
           {filterAktiv && bereit.length === 0 && gelesen.length === 0 && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center", padding: "20px 0" }}>
               <span style={{ fontSize: 16, color: "rgba(36,35,31,.65)" }}>
-                {sucheNormalisiert ? `Keine Treffer für „${suche}“.` : "Keine Bücher in dieser Kategorie."}
+                {sucheNormalisiert
+                  ? `Keine Treffer für „${suche}“.`
+                  : feedbackFilterAktiv
+                    ? "Keine Bücher für diesen Filter."
+                    : "Keine Bücher in dieser Kategorie."}
               </span>
               <Link href="/bookshelf">
                 <span style={{ fontSize: 15, fontWeight: 600, color: "#24231F" }}>Alle anzeigen</span>
@@ -494,6 +598,33 @@ export default async function BookshelfSeite({
                         {[buch.verlag, buch.erscheinungsjahr].filter(Boolean).join(" · ")}
                       </span>
                     )}
+                    {/* Buch-Feedback (09/2026, Buch-Bewertung Phase 1) als
+                        schlichte Meta-Zeile, zugleich Link zum Abschluss-
+                        Screen, wo es sich ändern lässt ("Bewerten", solange
+                        noch nichts gesetzt ist). */}
+                    {(() => {
+                      const status = statusProBuchinhalt.get(buch.buchinhaltId)!;
+                      const teile = [
+                        status.buchBewertung ? BEWERTUNG_LABEL[status.buchBewertung] : null,
+                        status.imOriginalLesen ? "Im Original lesen" : null,
+                        status.aufbereitungSchwach ? "Aufbereitung schwach" : null,
+                      ].filter(Boolean);
+                      return (
+                        <Link
+                          href={`/abschluss/${buch.buchinhaltId}`}
+                          style={{
+                            fontSize: 13.5,
+                            color: "rgba(36,35,31,.5)",
+                            alignSelf: "flex-start",
+                            textDecoration: "underline",
+                            textDecorationColor: "rgba(36,35,31,.25)",
+                            textUnderlineOffset: 2,
+                          }}
+                        >
+                          {teile.length > 0 ? teile.join(" · ") : "Bewerten"}
+                        </Link>
+                      );
+                    })()}
                   </div>
                   <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Nochmal lesen">
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(36,35,31,.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

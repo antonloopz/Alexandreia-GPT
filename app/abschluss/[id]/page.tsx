@@ -27,6 +27,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { aktuellerStreak } from "../../../src/lib/streak";
 import MenuButton from "../../MenuButton";
+import BuchBewertungAuswahl from "./BuchBewertung";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,12 @@ export default async function AbschlussSeite({
         .select({
           abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
           quizRichtigAnzahl: gezeigteBuecher.quizRichtigAnzahl,
+          // Buch-Feedback (09/2026, Buch-Bewertung Phase 1) — Startwerte für
+          // BuchBewertung.tsx unten, damit ein erneuter Besuch die
+          // bisherige Bewertung zeigt und ändern lässt.
+          buchBewertung: gezeigteBuecher.buchBewertung,
+          imOriginalLesen: gezeigteBuecher.imOriginalLesen,
+          aufbereitungSchwach: gezeigteBuecher.aufbereitungSchwach,
         })
         .from(gezeigteBuecher)
         .where(and(eq(gezeigteBuecher.kontoId, konto.id), eq(gezeigteBuecher.buchinhaltId, id)))
@@ -153,12 +160,18 @@ export default async function AbschlussSeite({
       </div>
       <MenuButton />
 
+      {/* minHeight/overflowY + "safe center" (09/2026, Buch-Bewertung):
+          mit dem Feedback-Block darunter reicht die Höhe auf kleinen
+          Displays evtl. nicht mehr — dann scrollt nur dieser Bereich, statt
+          oben abgeschnitten zu werden. */}
       <div
         style={{
           flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
+          justifyContent: "safe center",
           alignItems: "center",
           gap: 22,
           textAlign: "center",
@@ -244,6 +257,20 @@ export default async function AbschlussSeite({
           </div>
         </div>
       </div>
+
+      {/* Nur wenn es eine gezeigte_buecher-Zeile gibt — ohne sie gäbe es
+          nichts zu speichern (siehe actions.ts). */}
+      {bestehendeZeile && (
+        <BuchBewertungAuswahl
+          buchinhaltId={id}
+          akzent={akzent}
+          initial={{
+            buchBewertung: bestehendeZeile.buchBewertung,
+            imOriginalLesen: bestehendeZeile.imOriginalLesen,
+            aufbereitungSchwach: bestehendeZeile.aufbereitungSchwach,
+          }}
+        />
+      )}
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <Link href="/" aria-label="Zurück zu Home">

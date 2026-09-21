@@ -55,6 +55,14 @@ export const bewertungEnum = pgEnum("bewertung", [
   "gewusst",
 ]);
 
+// Wie wertvoll ein gelesenes Buch INHALTLICH war (09/2026, Buch-Bewertung
+// Phase 1) — siehe gezeigteBuecher.buchBewertung. Bewusst nur drei Stufen.
+export const buchBewertungEnum = pgEnum("buch_bewertung", [
+  "schwach",
+  "solide",
+  "stark",
+]);
+
 // Welches Textfeld einer buchinhalte-Zeile eine Hervorhebung betrifft (siehe
 // notizen unten, Feature "Notiz-/Highlight-Funktion", 09/2026). Nur bei
 // Hervorhebungen mit konkreter Textstelle gesetzt — eine freistehende Notiz
@@ -234,6 +242,19 @@ export const gezeigteBuecher = pgTable(
     // durchlaufen wurde. Fortschritt.tsx nutzt das für die Quiz-Trefferquote.
     quizRichtigAnzahl: integer(),
     quizGesamtAnzahl: integer(),
+    // Buch-Feedback (09/2026, Buch-Bewertung Phase 1), gesetzt auf dem
+    // Abschluss-Screen (app/abschluss/[id]/BuchBewertung.tsx, änderbar bei
+    // jedem erneuten Besuch). Drei BEWUSST getrennte Angaben, weil "war das
+    // Buch für mich wertvoll?" und "war die Aufbereitung gut?" verschiedene
+    // Fragen sind: buchBewertung = Wert des Buchs selbst (null = noch nicht
+    // bewertet); imOriginalLesen = Buch vollständig lesen wollen (ergibt
+    // die Leseliste); aufbereitungSchwach = Aufbereitung (Zusammenfassung/
+    // Kernaussagen/Quiz) später neu erzeugen. Hier statt in einer eigenen
+    // Tabelle, weil diese Zeile dank des unique-Constraints unten schon
+    // genau einmal je (Konto, Buchinhalt) existiert.
+    buchBewertung: buchBewertungEnum(),
+    imOriginalLesen: boolean().notNull().default(false),
+    aufbereitungSchwach: boolean().notNull().default(false),
   },
   (t) => [
     // Ein Buch wird einem Konto nur einmal "gezeigt" (Bug-Fix 09/2026,
