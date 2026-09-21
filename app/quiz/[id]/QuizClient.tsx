@@ -3,9 +3,10 @@
 // Client Component: eine Quizfrage auf einmal. Nach Auswahl einer Option
 // sofortiges Feedback (richtige Option wird dunkel + Häkchen, eine falsch
 // gewählte Option bekommt ein X — wie im Quiz.dc.html-Mockup), erst danach
-// erscheint der Weiter-Button. Zählt die richtigen Antworten lokal mit und
-// übergibt sie als Query-Parameter an Abschluss (kein eigenes Schema-Feld
-// für Quiz-Ergebnisse nötig).
+// erscheint der Weiter-Button (nach einer richtigen Antwort geht es nach
+// kurzer Pause auch von selbst weiter). Zählt die richtigen Antworten
+// lokal mit und übergibt sie als Query-Parameter an Abschluss (kein
+// eigenes Schema-Feld für Quiz-Ergebnisse nötig).
 //
 // Nach der letzten Frage: falls mindestens eine Antwort falsch war, erst
 // eine kurze Auswertung zeigen (falsch beantwortete Fragen mit der
@@ -15,7 +16,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MenuButton from "../../MenuButton";
@@ -25,6 +26,10 @@ import { quizantwortenProtokollieren } from "./actions";
 
 type Frage = { id: string; kernaussageId: string; frage: string; optionen: string[]; richtigeOptionIndex: number };
 type FalscheAntwort = { frage: string; gewaehlt: string; richtig: string };
+
+// Pause nach einer richtigen Antwort, bevor es von selbst weitergeht —
+// lang genug, dass das Häkchen noch wahrgenommen wird.
+const AUTO_WEITER_MS = 900;
 
 // Dezenter Hinweis neben dem Pfeil-Button, solange die Antworten geschrieben
 // werden — gleiche Typo wie die Meta-Zeile unter dem Titel, kein Spinner.
@@ -135,6 +140,23 @@ export default function QuizClient({
       setAusgewaehlt(null);
     }
   }
+
+  // 09/2026 (Pendenz "Quiz: bei richtiger Antwort automatisch zur nächsten
+  // Frage wechseln"): nach einer RICHTIGEN Antwort geht es nach kurzer Pause
+  // von selbst weiter. Nach einer falschen bleibt die Frage stehen, damit man
+  // die richtige Option in Ruhe lesen kann — weiter dann per Button. Tippt
+  // man den Button früher selbst, wechselt index und der Cleanup verwirft den
+  // Timer, es wird also nie doppelt weitergeschaltet. Bewusst über einen
+  // Effekt statt direkt in auswaehlen(): erst im nächsten Render sind
+  // antworten/richtigAnzahl aktualisiert, die zumAbschluss() bei der letzten
+  // Frage braucht. useEffectEvent liefert dafür immer das aktuelle weiter().
+  const warRichtig = beantwortet && ausgewaehlt === aktuelle.richtigeOptionIndex;
+  const automatischWeiter = useEffectEvent(() => weiter());
+  useEffect(() => {
+    if (phase !== "frage" || !warRichtig) return;
+    const timer = setTimeout(automatischWeiter, AUTO_WEITER_MS);
+    return () => clearTimeout(timer);
+  }, [index, warRichtig, phase]);
 
   if (phase === "auswertung") {
     return (
