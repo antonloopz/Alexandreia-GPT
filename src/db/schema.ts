@@ -373,6 +373,23 @@ export const gezeigteBuecher = pgTable(
     buchBewertung: buchBewertungEnum(),
     imOriginalLesen: boolean().notNull().default(false),
     aufbereitungSchwach: boolean().notNull().default(false),
+    // Erneuter Durchgang (09/2026, Pendenz "Gelesene Bücher wieder in den
+    // Lauf aufnehmen"). Ein zweites "Zeigen" als neue Zeile verbietet der
+    // unique-Constraint unten — deshalb wird DIESE Zeile umgewidmet:
+    // - wiederImLaufSeit: gesetzt = Buch ist wieder im Lauf (Tagesauswahl-
+    //   Kandidat bzw. zweiter Durchgang offen, in der Bibliothek unter
+    //   "Bereit"). Geleert beim erneuten Abschluss oder "Aus dem Lauf".
+    // - erneutGezeigtAm: Tag, an dem der neue Durchgang begann (Tagesauswahl
+    //   oder direktes Öffnen, siehe sicherstelleGezeigt) — null, solange es
+    //   noch wartet. datumGezeigt bleibt bewusst das ERSTE Zeigedatum
+    //   (Historie, Streak).
+    // - durchgaenge: abgeschlossene Durchgänge (1 = einmal gelesen).
+    // abgeschlossenAm/Quiz-Ergebnis bleiben während des neuen Durchgangs
+    // stehen (Entscheid 22.09.2026: bisheriger Durchgang bleibt gezählt) und
+    // werden erst beim erneuten Abschluss überschrieben.
+    wiederImLaufSeit: timestamp({ mode: "date" }),
+    erneutGezeigtAm: date({ mode: "date" }),
+    durchgaenge: integer().notNull().default(1),
   },
   (t) => [
     // Ein Buch wird einem Konto nur einmal "gezeigt" (Bug-Fix 09/2026,

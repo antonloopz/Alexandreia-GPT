@@ -30,13 +30,14 @@ import {
   quizfragen,
   repetitionselemente,
 } from "../../../src/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { EinordnungUrteil } from "../../../src/db/schema";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { aktuellerStreak } from "../../../src/lib/streak";
 import { verwandteBuecher } from "../../../src/lib/tags";
 import MenuButton from "../../MenuButton";
 import BuchBewertungAuswahl from "./BuchBewertung";
+import WiederInLaufButton from "../../WiederInLaufButton";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,8 @@ export default async function AbschlussSeite({
           buchBewertung: gezeigteBuecher.buchBewertung,
           imOriginalLesen: gezeigteBuecher.imOriginalLesen,
           aufbereitungSchwach: gezeigteBuecher.aufbereitungSchwach,
+          wiederImLaufSeit: gezeigteBuecher.wiederImLaufSeit,
+          durchgaenge: gezeigteBuecher.durchgaenge,
         })
         .from(gezeigteBuecher)
         .where(and(eq(gezeigteBuecher.kontoId, konto.id), eq(gezeigteBuecher.buchinhaltId, id)))
@@ -137,7 +140,37 @@ export default async function AbschlussSeite({
   // den Zeitpunkt noch das schon gespeicherte Ergebnis. Betrifft nur die
   // offizielle Tagesbuch-Zeile (falls id keiner entspricht, z.B. bei einem
   // zusätzlich gelesenen "Bereit"-Buch, ändert sich nichts).
-  if (konto) {
+  //
+  // Erneuter Durchgang (09/2026, Buch wieder in den Lauf aufgenommen,
+  // wiederImLaufSeit gesetzt): hier gilt der isNull-Guard nicht — beim
+  // Abschluss werden Zeitpunkt und Quiz-Ergebnis mit dem neuen Durchgang
+  // überschrieben, das Buch verlässt den Lauf wieder und der Zähler
+  // durchgaenge steigt. Nur mit frischem ?richtig= (also direkt aus dem
+  // Quiz): ein blosser Besuch, z.B. über "Bewerten" in der Bibliothek,
+  // schliesst den neuen Durchgang NICHT ab.
+  let imLauf = bestehendeZeile?.wiederImLaufSeit != null;
+  let durchgaenge = bestehendeZeile?.durchgaenge ?? 1;
+  if (konto && imLauf && richtig !== undefined) {
+    await db
+      .update(gezeigteBuecher)
+      .set({
+        abgeschlossenAm: new Date(),
+        quizRichtigAnzahl: richtigAnzahl,
+        quizGesamtAnzahl: quizfragenAnzahl,
+        wiederImLaufSeit: null,
+        erneutGezeigtAm: sql`coalesce(${gezeigteBuecher.erneutGezeigtAm}, current_date)`,
+        durchgaenge: sql`${gezeigteBuecher.durchgaenge} + 1`,
+      })
+      .where(
+        and(
+          eq(gezeigteBuecher.kontoId, konto.id),
+          eq(gezeigteBuecher.buchinhaltId, id),
+          isNotNull(gezeigteBuecher.wiederImLaufSeit)
+        )
+      );
+    imLauf = false;
+    durchgaenge += 1;
+  } else if (konto) {
     await db
       .update(gezeigteBuecher)
       .set({
@@ -167,10 +200,11 @@ export default async function AbschlussSeite({
   let streak = 0;
   if (konto) {
     const gezeigteDaten = await db
-      .select({ datum: gezeigteBuecher.datumGezeigt })
+      .select({ datum: gezeigteBuecher.datumGezeigt, erneut: gezeigteBuecher.erneutGezeigtAm })
       .from(gezeigteBuecher)
       .where(eq(gezeigteBuecher.kontoId, konto.id));
-    streak = aktuellerStreak(gezeigteDaten.map((d) => d.datum));
+    // Der Beginn eines erneuten Durchgangs zählt als Lesetag mit (09/2026).
+    streak = aktuellerStreak(gezeigteDaten.flatMap((d) => (d.erneut ? [d.datum, d.erneut] : [d.datum])));
   }
 
   const akzent = KATEGORIE_FARBE[buch.kategorie] ?? "var(--paper)";
@@ -190,6 +224,8 @@ export default async function AbschlussSeite({
     { label: "Kernaussagen", wert: String(kernaussagenAnzahl), an: kernaussagenAnzahl > 0 },
     { label: "Quiz", wert: `${richtigAnzahl} / ${quizfragenAnzahl} richtig`, an: quizfragenAnzahl > 0 },
     { label: "Einordnung", wert: einordnungWert, an: Boolean(buch.einordnung) },
+    // Erst ab dem zweiten Durchgang (Buch war wieder im Lauf, 09/2026).
+    ...(durchgaenge > 1 ? [{ label: "Durchgänge", wert: String(durchgaenge), an: true }] : []),
   ];
 
   return (
@@ -409,7 +445,10 @@ export default async function AbschlussSeite({
         />
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      {/* "Wieder in den Lauf" (09/2026) links, Weiter-Pfeil rechts — nur mit
+          gezeigte_buecher-Zeile (sonst gibt es nichts umzuwidmen). */}
+      <div style={{ display: "flex", justifyContent: bestehendeZeile ? "space-between" : "flex-end", alignItems: "center" }}>
+        {bestehendeZeile && <WiederInLaufButton buchinhaltId={id} imLauf={imLauf} />}
         <Link href="/" aria-label="Zurück zu Home">
           <div
             style={{

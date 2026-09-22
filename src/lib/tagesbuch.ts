@@ -13,6 +13,13 @@
 //    gezeigt wurden, die Kategorie wählen, die am längsten nicht dran
 //    war (nie gezeigte Kategorien zuerst) — und dafür eine neue
 //    gezeigteBuecher-Zeile anlegen (das "Zeigen" passiert genau hier).
+//
+// Wieder in den Lauf aufgenommene Bücher (09/2026, gezeigteBuecher.
+// wiederImLaufSeit gesetzt, erneutGezeigtAm noch null) zählen in Schritt 2
+// wieder als Kandidaten — wie nie gezeigte. Ihr neuer Durchgang beginnt in
+// sicherstelleGezeigt() (erneutGezeigtAm = heute), die bestehende Zeile
+// wird dabei umgewidmet statt eine zweite angelegt (unique-Constraint).
+// "Heute gezeigt" heisst deshalb: datumGezeigt ODER erneutGezeigtAm = heute.
 
 import { db } from "../db";
 import {
@@ -24,7 +31,7 @@ import {
   repetitionselemente,
   wunschlisteneintraege,
 } from "../db/schema";
-import { and, desc, eq, gte, lt, lte, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, lt, lte, notInArray, or, sql } from "drizzle-orm";
 import { relativesDatum, wortanzahl } from "./darstellung";
 import { KATEGORIE_LABEL } from "./kategorien";
 
@@ -80,6 +87,36 @@ function heuteDatum(): Date {
   return new Date();
 }
 
+// Zeigedaten einer gezeigteBuecher-Zeile — das erste Zeigen plus ggf. der
+// Beginn eines erneuten Durchgangs (wieder in den Lauf aufgenommen).
+type ZeigeZeile = {
+  datumGezeigt: Date;
+  erneutGezeigtAm: Date | null;
+  wiederImLaufSeit: Date | null;
+};
+
+// Wartet ein wieder aufgenommenes Buch noch auf seinen neuen Durchgang?
+// Dann ist es — wie ein nie gezeigtes — Kandidat für die Tagesauswahl.
+export function wartetImLauf(z: Pick<ZeigeZeile, "erneutGezeigtAm" | "wiederImLaufSeit">): boolean {
+  return z.wiederImLaufSeit !== null && z.erneutGezeigtAm === null;
+}
+
+// Letztes Zeigedatum einer Zeile (für die Kategorie-Rotation).
+function letztesZeigedatum(z: Pick<ZeigeZeile, "datumGezeigt" | "erneutGezeigtAm">): number {
+  const erst = new Date(z.datumGezeigt).getTime();
+  return z.erneutGezeigtAm ? Math.max(erst, new Date(z.erneutGezeigtAm).getTime()) : erst;
+}
+
+// Rotationsbasis: pro Kategorie das letzte Zeigedatum (ms).
+function letzteDatenProKategorie(zeilen: (ZeigeZeile & { kategorie: string })[]): Map<string, number> {
+  const karte = new Map<string, number>();
+  for (const z of zeilen) {
+    const d = letztesZeigedatum(z);
+    if (d > (karte.get(z.kategorie) ?? 0)) karte.set(z.kategorie, d);
+  }
+  return karte;
+}
+
 function teaserAus(zusammenfassung: string): string {
   // Erster Satz der Zusammenfassung als kurzer Aufhänger, bis eine
   // eigene Teaser-Spalte nötig wird (aktuell kein Schema-Feld dafür).
@@ -98,21 +135,26 @@ async function letztesDatumFuerKategorie(
   kategorie: (typeof kategorieEnum.enumValues)[number],
   vorDatum: Date
 ): Promise<Date | null> {
-  const [row] = await db
-    .select({ datum: gezeigteBuecher.datumGezeigt })
+  // Erstes Zeigen UND Beginn eines erneuten Durchgangs zählen (09/2026).
+  const zeilen = await db
+    .select({ datumGezeigt: gezeigteBuecher.datumGezeigt, erneutGezeigtAm: gezeigteBuecher.erneutGezeigtAm })
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .where(
-      and(
-        eq(gezeigteBuecher.kontoId, kontoId),
-        eq(buecher.kategorie, kategorie),
-        lt(gezeigteBuecher.datumGezeigt, vorDatum)
-      )
-    )
-    .orderBy(desc(gezeigteBuecher.datumGezeigt))
-    .limit(1);
-  return row?.datum ?? null;
+    .where(and(eq(gezeigteBuecher.kontoId, kontoId), eq(buecher.kategorie, kategorie)));
+  // Kalendertag-Vergleich wie zuvor lt(datumGezeigt, vorDatum): nur Tage
+  // VOR dem Tag von vorDatum zählen.
+  const tagGrenze = new Date(vorDatum);
+  tagGrenze.setHours(0, 0, 0, 0);
+  let bestes: number | null = null;
+  for (const z of zeilen) {
+    for (const d of [z.datumGezeigt, z.erneutGezeigtAm]) {
+      if (!d) continue;
+      const t = new Date(d).getTime();
+      if (t < tagGrenze.getTime() && (bestes === null || t > bestes)) bestes = t;
+    }
+  }
+  return bestes === null ? null : new Date(bestes);
 }
 
 // Baut aus dem Rotationsergebnis den Anzeigetext — bewusst derselbe Grund,
@@ -143,11 +185,20 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       umfang: buecher.umfang,
       zusammenfassung: buchinhalte.zusammenfassung,
       abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
+      wiederImLaufSeit: gezeigteBuecher.wiederImLaufSeit,
     })
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .where(and(eq(gezeigteBuecher.kontoId, kontoId), eq(gezeigteBuecher.datumGezeigt, heute)));
+    .where(
+      and(
+        eq(gezeigteBuecher.kontoId, kontoId),
+        or(eq(gezeigteBuecher.datumGezeigt, heute), eq(gezeigteBuecher.erneutGezeigtAm, heute))
+      )
+    )
+    // Ein heute begonnener erneuter Durchgang hat Vorrang vor einem heute
+    // (zusätzlich) direkt geöffneten Buch.
+    .orderBy(sql`${gezeigteBuecher.erneutGezeigtAm} is null`);
 
   if (bereitsHeute) {
     const anzahl = await db
@@ -165,21 +216,29 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
       umfang: bereitsHeute.umfang,
       wortanzahl: wortanzahl(bereitsHeute.zusammenfassung),
       kernaussagenAnzahl: anzahl[0]?.n ?? 0,
-      abgeschlossen: bereitsHeute.abgeschlossenAm !== null,
+      // Im erneuten Durchgang (wiederImLaufSeit gesetzt) gilt das Buch erst
+      // nach dem neuen Abschluss wieder als geschafft.
+      abgeschlossen: bereitsHeute.abgeschlossenAm !== null && bereitsHeute.wiederImLaufSeit === null,
       begruendung: begruendungText(KATEGORIE_LABEL[bereitsHeute.kategorie] ?? bereitsHeute.kategorie, letztesDatum),
     };
   }
 
   // 2. Bereits gezeigte Buchinhalte dieses Kontos ausschliessen
   const bisherGezeigt = await db
-    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, kategorie: buecher.kategorie, datum: gezeigteBuecher.datumGezeigt })
+    .select({
+      buchinhaltId: gezeigteBuecher.buchinhaltId,
+      kategorie: buecher.kategorie,
+      datumGezeigt: gezeigteBuecher.datumGezeigt,
+      erneutGezeigtAm: gezeigteBuecher.erneutGezeigtAm,
+      wiederImLaufSeit: gezeigteBuecher.wiederImLaufSeit,
+    })
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .where(eq(gezeigteBuecher.kontoId, kontoId))
-    .orderBy(desc(gezeigteBuecher.datumGezeigt));
+    .where(eq(gezeigteBuecher.kontoId, kontoId));
 
-  const ausgeschlosseneIds = bisherGezeigt.map((r) => r.buchinhaltId);
+  // Wieder in den Lauf aufgenommene, noch wartende Bücher bleiben Kandidaten.
+  const ausgeschlosseneIds = bisherGezeigt.filter((r) => !wartetImLauf(r)).map((r) => r.buchinhaltId);
 
   const kandidaten = await db
     .select({
@@ -202,13 +261,7 @@ export async function naechstesBuchFuerHeute(kontoId: string): Promise<TagesBuch
   if (kandidaten.length === 0) return null;
 
   // Kategorie wählen, die am längsten nicht dran war (nie gezeigt zuerst).
-  // r.datum kommt als echtes Date-Objekt zurück (mode:"date").
-  const letzteKategorieDatum = new Map<string, number>();
-  for (const r of bisherGezeigt) {
-    if (!letzteKategorieDatum.has(r.kategorie)) {
-      letzteKategorieDatum.set(r.kategorie, new Date(r.datum).getTime());
-    }
-  }
+  const letzteKategorieDatum = letzteDatenProKategorie(bisherGezeigt);
 
   const sortiert = [...kandidaten].sort((a, b) => {
     const da = letzteKategorieDatum.get(a.kategorie) ?? 0;
@@ -286,6 +339,39 @@ export async function sicherstelleGezeigt(
       quelle,
     })
     .onConflictDoNothing({ target: [gezeigteBuecher.kontoId, gezeigteBuecher.buchinhaltId] });
+
+  // Wieder in den Lauf aufgenommenes Buch (09/2026): der neue Durchgang
+  // beginnt jetzt — egal ob über die Tagesauswahl oder direkt aus der
+  // Bibliothek geöffnet. Nur beim ersten Mal (erneutGezeigtAm noch null).
+  await db
+    .update(gezeigteBuecher)
+    .set({ erneutGezeigtAm: heuteDatum() })
+    .where(
+      and(
+        eq(gezeigteBuecher.kontoId, kontoId),
+        eq(gezeigteBuecher.buchinhaltId, buchinhaltId),
+        isNotNull(gezeigteBuecher.wiederImLaufSeit),
+        isNull(gezeigteBuecher.erneutGezeigtAm)
+      )
+    );
+}
+
+// Gelesenes Buch wieder in den Lauf aufnehmen bzw. wieder herausnehmen
+// (09/2026, Pendenz "Gelesene Bücher wieder in den Lauf aufnehmen").
+// Aufnehmen nur bei einem abgeschlossenen Buch, das nicht schon im Lauf
+// ist; der bisherige Durchgang bleibt gezählt (abgeschlossenAm/Quiz
+// bleiben stehen, Entscheid 22.09.2026). Herausnehmen setzt nur die beiden
+// Lauf-Felder zurück.
+export async function wiederInDenLaufSetzen(kontoId: string, buchinhaltId: string, imLauf: boolean): Promise<void> {
+  const zeile = and(eq(gezeigteBuecher.kontoId, kontoId), eq(gezeigteBuecher.buchinhaltId, buchinhaltId));
+  if (imLauf) {
+    await db
+      .update(gezeigteBuecher)
+      .set({ wiederImLaufSeit: new Date(), erneutGezeigtAm: null })
+      .where(and(zeile, isNotNull(gezeigteBuecher.abgeschlossenAm), isNull(gezeigteBuecher.wiederImLaufSeit)));
+  } else {
+    await db.update(gezeigteBuecher).set({ wiederImLaufSeit: null, erneutGezeigtAm: null }).where(zeile);
+  }
 }
 
 // "Bereit zum Weiterlesen": fertig produzierte ("im_vorrat") Bücher, die
@@ -307,10 +393,17 @@ export async function sicherstelleGezeigt(
 // gesetzt und wird hier korrekt mit ausgeschlossen.
 export async function bereiteBuecher(kontoId: string, limit = 3): Promise<BereitesBuch[]> {
   const gezeigt = await db
-    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, abgeschlossenAm: gezeigteBuecher.abgeschlossenAm })
+    .select({
+      buchinhaltId: gezeigteBuecher.buchinhaltId,
+      abgeschlossenAm: gezeigteBuecher.abgeschlossenAm,
+      wiederImLaufSeit: gezeigteBuecher.wiederImLaufSeit,
+    })
     .from(gezeigteBuecher)
     .where(eq(gezeigteBuecher.kontoId, kontoId));
-  const abgeschlossenIds = new Set(gezeigt.filter((r) => r.abgeschlossenAm !== null).map((r) => r.buchinhaltId));
+  // Wieder in den Lauf aufgenommene Bücher gelten als bereit (09/2026).
+  const abgeschlossenIds = new Set(
+    gezeigt.filter((r) => r.abgeschlossenAm !== null && r.wiederImLaufSeit === null).map((r) => r.buchinhaltId)
+  );
 
   const kandidaten = await db
     .select({
@@ -349,14 +442,19 @@ export async function naechsteBuecherVorschau(
   anzahl = 2
 ): Promise<RotationsVorschauBuch[]> {
   const bisherGezeigt = await db
-    .select({ buchinhaltId: gezeigteBuecher.buchinhaltId, kategorie: buecher.kategorie, datum: gezeigteBuecher.datumGezeigt })
+    .select({
+      buchinhaltId: gezeigteBuecher.buchinhaltId,
+      kategorie: buecher.kategorie,
+      datumGezeigt: gezeigteBuecher.datumGezeigt,
+      erneutGezeigtAm: gezeigteBuecher.erneutGezeigtAm,
+      wiederImLaufSeit: gezeigteBuecher.wiederImLaufSeit,
+    })
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .where(eq(gezeigteBuecher.kontoId, kontoId))
-    .orderBy(desc(gezeigteBuecher.datumGezeigt));
+    .where(eq(gezeigteBuecher.kontoId, kontoId));
 
-  const ausgeschlosseneIds = new Set(bisherGezeigt.map((r) => r.buchinhaltId));
+  const ausgeschlosseneIds = new Set(bisherGezeigt.filter((r) => !wartetImLauf(r)).map((r) => r.buchinhaltId));
   ausgeschlosseneIds.add(heutigerBuchinhaltId);
 
   const kandidaten = await db
@@ -375,12 +473,7 @@ export async function naechsteBuecherVorschau(
 
   let pool = kandidaten.filter((k) => !ausgeschlosseneIds.has(k.buchinhaltId));
 
-  const letzteKategorieDatum = new Map<string, number>();
-  for (const r of bisherGezeigt) {
-    if (!letzteKategorieDatum.has(r.kategorie)) {
-      letzteKategorieDatum.set(r.kategorie, new Date(r.datum).getTime());
-    }
-  }
+  const letzteKategorieDatum = letzteDatenProKategorie(bisherGezeigt);
   // Das heute gewählte Buch zählt ab sofort ebenfalls als "gerade dran
   // gewesen" — sonst würde die Vorschau dieselbe Kategorie gleich nochmal
   // an erster Stelle zeigen.

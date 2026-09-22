@@ -17,6 +17,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "../../../src/db";
 import { buchBewertungEnum, gezeigteBuecher, konten } from "../../../src/db/schema";
 import { and, eq } from "drizzle-orm";
+import { wiederInDenLaufSetzen } from "../../../src/lib/tagesbuch";
 
 export type BuchBewertung = (typeof buchBewertungEnum.enumValues)[number];
 
@@ -51,4 +52,17 @@ export async function buchFeedbackSpeichern(buchinhaltId: string, aenderung: Par
 
   revalidatePath(`/abschluss/${buchinhaltId}`);
   revalidatePath("/bookshelf");
+}
+
+// Gelesenes Buch wieder in den Lauf aufnehmen bzw. herausnehmen (09/2026,
+// Pendenz "Gelesene Bücher wieder in den Lauf aufnehmen") — Aufrufer:
+// app/WiederInLaufButton.tsx (Abschluss-Screen und Bibliothek).
+export async function wiederInDenLauf(buchinhaltId: string, imLauf: boolean) {
+  if (typeof imLauf !== "boolean") throw new Error("wiederInDenLauf: imLauf muss boolean sein");
+  const [konto] = await db.select().from(konten).limit(1);
+  if (!konto) return;
+  await wiederInDenLaufSetzen(konto.id, buchinhaltId, imLauf);
+  revalidatePath(`/abschluss/${buchinhaltId}`);
+  revalidatePath("/bookshelf");
+  revalidatePath("/");
 }

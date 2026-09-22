@@ -36,15 +36,21 @@
 // zu allen anderen Filtern). Chip-Zeile nach Häufigkeit sortiert, nur Tags,
 // die unter "Bereit"/"Gelesen" vorkommen. Pro Buch eine Tag-Zeile, jeder
 // Tag dort ist zugleich ein Filter-Link. Die Suche findet auch Tags.
+//
+// Wieder in den Lauf (09/2026, Pendenz "Gelesene Bücher wieder in den Lauf
+// aufnehmen"): gelesene Bücher tragen einen Umschalter; aufgenommene stehen
+// unter "Bereit" mit Hinweis "N. Durchgang", bis der neue Durchgang
+// abgeschlossen ist (gezeigteBuecher.wiederImLaufSeit).
 
 import Link from "next/link";
 import { after } from "next/server";
 import { db } from "../../src/db";
 import { buchinhalte, buecher, gezeigteBuecher, konten } from "../../src/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import type { BuchBewertung } from "../abschluss/[id]/actions";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, kategorieChipStyle } from "../../src/lib/kategorien";
 import { tagsFuerBuecher, type TagInfo } from "../../src/lib/tags";
+import WiederInLaufButton from "../WiederInLaufButton";
 import { KategorieIcon } from "../../src/lib/kategorieIcons";
 import { relativesDatum, umfangZeileAusText } from "../../src/lib/darstellung";
 import MenuButton from "../MenuButton";
@@ -164,7 +170,14 @@ export default async function BookshelfSeite({
     .from(gezeigteBuecher)
     .innerJoin(buchinhalte, eq(gezeigteBuecher.buchinhaltId, buchinhalte.id))
     .innerJoin(buecher, eq(buchinhalte.buchId, buecher.id))
-    .where(and(eq(gezeigteBuecher.kontoId, konto.id), eq(gezeigteBuecher.datumGezeigt, heute)));
+    .where(
+      and(
+        eq(gezeigteBuecher.kontoId, konto.id),
+        or(eq(gezeigteBuecher.datumGezeigt, heute), eq(gezeigteBuecher.erneutGezeigtAm, heute))
+      )
+    )
+    // wie naechstesBuchFuerHeute: heute begonnener erneuter Durchgang zuerst
+    .orderBy(sql`${gezeigteBuecher.erneutGezeigtAm} is null`);
 
   const alleImVorrat = await db
     .select({
@@ -193,6 +206,8 @@ export default async function BookshelfSeite({
       buchBewertung: gezeigteBuecher.buchBewertung,
       imOriginalLesen: gezeigteBuecher.imOriginalLesen,
       aufbereitungSchwach: gezeigteBuecher.aufbereitungSchwach,
+      wiederImLaufSeit: gezeigteBuecher.wiederImLaufSeit,
+      durchgaenge: gezeigteBuecher.durchgaenge,
     })
     .from(gezeigteBuecher)
     .where(eq(gezeigteBuecher.kontoId, konto.id));
@@ -211,6 +226,8 @@ export default async function BookshelfSeite({
       buchBewertung: BuchBewertung | null;
       imOriginalLesen: boolean;
       aufbereitungSchwach: boolean;
+      imLauf: boolean;
+      durchgaenge: number;
     }
   >();
   for (const zeile of gezeigtRows) {
@@ -221,6 +238,8 @@ export default async function BookshelfSeite({
       buchBewertung: zeile.buchBewertung,
       imOriginalLesen: zeile.imOriginalLesen,
       aufbereitungSchwach: zeile.aufbereitungSchwach,
+      imLauf: zeile.wiederImLaufSeit !== null,
+      durchgaenge: zeile.durchgaenge,
     });
   }
 
@@ -340,7 +359,10 @@ export default async function BookshelfSeite({
   }
 
   const gelesen = uebrigeGefiltert
-    .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm != null)
+    .filter((b) => {
+      const st = statusProBuchinhalt.get(b.buchinhaltId);
+      return st?.abgeschlossenAm != null && !st.imLauf;
+    })
     .sort(
       (a, b) =>
         statusProBuchinhalt.get(b.buchinhaltId)!.abgeschlossenAm!.getTime() -
@@ -348,7 +370,10 @@ export default async function BookshelfSeite({
     );
 
   const bereit = uebrigeGefiltert
-    .filter((b) => statusProBuchinhalt.get(b.buchinhaltId)?.abgeschlossenAm == null)
+    .filter((b) => {
+      const st = statusProBuchinhalt.get(b.buchinhaltId);
+      return st?.abgeschlossenAm == null || st.imLauf;
+    })
     .sort((a, b) => a.titel.localeCompare(b.titel));
 
   const gesamtAnzahl = alleImVorrat.length;
@@ -598,6 +623,14 @@ export default async function BookshelfSeite({
                     <span style={{ fontSize: 14.5, color: "rgba(36,35,31,.65)" }}>
                       {buch.autor} · hinzugefügt {relativesDatum(buch.erstelltAm)}
                     </span>
+                    {statusProBuchinhalt.get(buch.buchinhaltId)?.imLauf && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 13.5, color: "rgba(36,35,31,.6)" }}>
+                        <span style={{ fontWeight: 600 }}>
+                          {(statusProBuchinhalt.get(buch.buchinhaltId)?.durchgaenge ?? 1) + 1}. Durchgang
+                        </span>
+                        <WiederInLaufButton buchinhaltId={buch.buchinhaltId} imLauf kompakt />
+                      </span>
+                    )}
                     {umfangZeileAusText(buch.umfang, buch.zusammenfassung) && (
                       <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.5)" }}>
                         {umfangZeileAusText(buch.umfang, buch.zusammenfassung)}
@@ -706,6 +739,7 @@ export default async function BookshelfSeite({
                         </Link>
                       );
                     })()}
+                    <WiederInLaufButton buchinhaltId={buch.buchinhaltId} imLauf={false} kompakt />
                   </div>
                   <Link href={`/lesen/${buch.buchinhaltId}`} aria-label="Nochmal lesen">
                     <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(36,35,31,.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
