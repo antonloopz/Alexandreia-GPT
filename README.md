@@ -1,5 +1,15 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## GPT-Ableger: erster Start
+
+- `DATABASE_URL`: ausschliesslich die Verbindung zum Neon-Branch `alexandreia-gpt` verwenden.
+- `NEXT_PUBLIC_KI_DEAKTIVIERT=true`: kostenpflichtige KI-Funktionen bleiben deaktiviert.
+- `ANTHROPIC_API_KEY=test-mode-disabled`: Platzhalter für die Client-Initialisierung, kein gültiger API-Schlüssel.
+- `CRON_SECRET` nicht setzen: Cron-Endpunkte weisen Aufrufe zurück.
+- `TESTER_ZUGANG_AKTIV` nicht setzen: kein Testzugang erforderlich. Dieser Schalter ist unabhängig von der KI-Deaktivierung.
+
+Nur für einen optionalen Testzugang `TESTER_ZUGANG_AKTIV=true` sowie eigene Werte für `TESTER_ZUGANGSCODE` und `TESTER_SESSION_SECRET` setzen.
+
 ## Getting Started
 
 First, run the development server:
