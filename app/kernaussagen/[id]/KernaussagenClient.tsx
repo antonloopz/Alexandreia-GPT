@@ -15,6 +15,7 @@ import StatusBarColor from "../../StatusBarColor";
 import Hervorhebbarer, { type Hervorhebung } from "../../lesen/[id]/Hervorhebbarer";
 import type { NotizFeld } from "../../../src/lib/notizen";
 import type { Wissensstatus, WissensstatusWert } from "../../../src/db/schema";
+import { LESETEXT_GROSS, LESETEXT_KLEIN, LESETEXT_KLEINER } from "../../../src/lib/lesemodus";
 
 type Kernaussage = {
   id: string;
@@ -168,7 +169,7 @@ export default function KernaussagenClient({
           kernaussageId={aktuelle.id}
           bestehende={nachFeld("kernaussage_text")}
           akzent={akzent}
-          style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 29, lineHeight: 1.2 }}
+          style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: "calc(var(--lese-groesse, 17px) + 12px)", lineHeight: 1.2 }}
         />
         <Hervorhebbarer
           key={`${aktuelle.id}-erklaerung`}
@@ -178,7 +179,7 @@ export default function KernaussagenClient({
           kernaussageId={aktuelle.id}
           bestehende={nachFeld("kernaussage_erklaerung")}
           akzent={akzent}
-          style={{ fontSize: 18, lineHeight: 1.6 }}
+          style={LESETEXT_GROSS}
         />
         {/* Beispiel zur Kernaussage (09/2026) — nur bei Kernaussagen, die
             eins haben (ältere nicht). Bewusst nicht hervorhebbar: das
@@ -205,7 +206,7 @@ export default function KernaussagenClient({
             >
               Beispiel
             </span>
-            <span style={{ fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.8)" }}>{aktuelle.beispiel}</span>
+            <span style={{ ...LESETEXT_KLEIN, color: "rgba(36,35,31,.8)" }}>{aktuelle.beispiel}</span>
           </div>
         )}
         {aktuelle.wissensstatus && (
@@ -247,7 +248,7 @@ export default function KernaussagenClient({
                 {WISSENSSTATUS_LABEL[aktuelle.wissensstatus.status] ?? aktuelle.wissensstatus.status}
               </span>
             </div>
-            <span style={{ fontSize: 15, lineHeight: 1.5, color: "rgba(36,35,31,.8)" }}>
+            <span style={{ ...LESETEXT_KLEINER, color: "rgba(36,35,31,.8)" }}>
               {aktuelle.wissensstatus.begruendung}
             </span>
             {aktuelle.wissensstatus.quellen.map((q) => (

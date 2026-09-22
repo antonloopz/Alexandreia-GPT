@@ -477,6 +477,9 @@ export const kontoeinstellungen = pgTable("kontoeinstellungen", {
   obsidianExportAktiv: boolean().notNull().default(true),
   // Optionale eigene Zielwerte pro Kategorie, überschreibt den Standard-Mix
   kategorieZielwerte: jsonb().$type<Record<string, number>>(),
+  // Lesemodus (09/2026): Schriftgrösse (Stufenindex), Zeilenabstand,
+  // Schriftart — siehe src/lib/lesemodus.ts. null = Standardwerte.
+  lesemodus: jsonb().$type<{ groesse: number; zeilen: string; schrift: string }>(),
 });
 
 // ---------------------------------------------------------------------------

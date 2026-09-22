@@ -22,12 +22,15 @@ import {
   buchTags,
   kernaussagen,
   kernaussageTags,
+  konten,
   tags,
   type WissensstatusWert,
 } from "../../../src/db/schema";
 import { KATEGORIE_FARBE, kategorieChipStyle } from "../../../src/lib/kategorien";
 import MenuButton from "../../MenuButton";
 import ZurueckButton from "../ZurueckButton";
+import { LESETEXT_KLEINER, leseVariablen } from "../../../src/lib/lesemodus";
+import { ladeLesemodus } from "../../../src/lib/lesemodus-laden";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +118,9 @@ export default async function KonzeptSeite({ params }: { params: Promise<{ tag: 
     .sort(([, a], [, b]) => b.anzahl - a.anzahl || a.name.localeCompare(b.name, "de"))
     .slice(0, 10);
 
+  const [konto] = await db.select({ id: konten.id }).from(konten).limit(1);
+  const lesemodus = await ladeLesemodus(konto?.id);
+
   // Kernaussagen nach Buch gruppiert, in der Reihenfolge der Bücherliste.
   const gruppen = buecherZeilen
     .map((b) => ({ buch: b, aussagen: aussagen.filter((a) => a.buchinhaltId === b.buchinhaltId) }))
@@ -133,6 +139,7 @@ export default async function KonzeptSeite({ params }: { params: Promise<{ tag: 
         gap: 20,
         color: "var(--ink)",
         overflow: "hidden",
+        ...leseVariablen(lesemodus),
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
@@ -185,8 +192,8 @@ export default async function KonzeptSeite({ params }: { params: Promise<{ tag: 
                 </Link>
                 {liste.map((a) => (
                   <div key={a.id} style={{ ...KARTE, display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 16, lineHeight: 1.35 }}>{a.text}</span>
-                    <span style={{ fontSize: 15, lineHeight: 1.5, color: "rgba(36,35,31,.8)" }}>{a.erklaerung}</span>
+                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: "calc(var(--lese-groesse, 17px) - 1px)", lineHeight: 1.35 }}>{a.text}</span>
+                    <span style={{ ...LESETEXT_KLEINER, color: "rgba(36,35,31,.8)" }}>{a.erklaerung}</span>
                     {a.wissensstatus && (
                       <span style={{ fontSize: 13.5, color: "rgba(36,35,31,.6)" }}>
                         Forschung heute: <strong>{WISSENSSTATUS_LABEL[a.wissensstatus.status] ?? a.wissensstatus.status}</strong>

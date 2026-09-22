@@ -25,6 +25,7 @@ import MenuButton from "../MenuButton";
 import SchliessenButton from "../SchliessenButton";
 import EinstellungenClient from "./EinstellungenClient";
 import { obsidianExportStatus } from "../../src/lib/obsidian";
+import { lesemodusKurz, normalisiereLesemodus } from "../../src/lib/lesemodus";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,23 @@ export default async function EinstellungenSeite({
           <Link href="/einstellungen/themenverteilung" style={zeileStil}>
             <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
               Themenverteilung anpassen
+            </span>
+            <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>›</span>
+          </Link>
+        </div>
+
+        {/* Lesemodus (09/2026): Schriftgrösse, Zeilenabstand, Schrift —
+            Unterseite analog Themenverteilung. */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <span style={gruppenLabelStil}>Darstellung</span>
+          <Link href="/einstellungen/lesemodus" style={zeileStil}>
+            <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 500, fontSize: 16.5, color: "#24231F" }}>
+                Lesemodus
+              </span>
+              <span style={{ fontSize: 13, color: "rgba(36,35,31,.55)" }}>
+                {lesemodusKurz(normalisiereLesemodus(einstellungen?.lesemodus ?? null))}
+              </span>
             </span>
             <span style={{ color: "rgba(36,35,31,.5)", fontSize: 18 }}>›</span>
           </Link>

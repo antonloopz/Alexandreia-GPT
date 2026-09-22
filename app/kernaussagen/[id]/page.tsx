@@ -9,6 +9,8 @@ import { buchinhalte, buecher, kernaussagen, konten, notizen, repetitionselement
 import { and, eq, asc, isNotNull } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL, KERNAUSSAGEN_LABEL } from "../../../src/lib/kategorien";
 import KernaussagenClient from "./KernaussagenClient";
+import { leseVariablen } from "../../../src/lib/lesemodus";
+import { ladeLesemodus } from "../../../src/lib/lesemodus-laden";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +77,12 @@ export default async function KernaussagenSeite({ params }: { params: Promise<{ 
     inWiederholung: wiederholtSet.has(h.id),
   }));
 
+  // Lesemodus (09/2026) als CSS-Variablen um den Client-Screen — display:
+  // contents lässt das Layout unberührt, die Variablen vererben sich trotzdem.
+  const lesemodus = await ladeLesemodus(konto?.id);
+
   return (
+    <div style={{ display: "contents", ...leseVariablen(lesemodus) }}>
     <KernaussagenClient
       buchinhaltId={id}
       titel={buch.titel}
@@ -85,5 +92,6 @@ export default async function KernaussagenSeite({ params }: { params: Promise<{ 
       kernaussagen={liste}
       hervorhebungen={hervorhebungen}
     />
+    </div>
   );
 }

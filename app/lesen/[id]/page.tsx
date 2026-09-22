@@ -12,6 +12,8 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import { KATEGORIE_FARBE, KATEGORIE_LABEL } from "../../../src/lib/kategorien";
 import { sicherstelleGezeigt } from "../../../src/lib/tagesbuch";
 import { tagsFuerBuecher } from "../../../src/lib/tags";
+import { LESETEXT, LESETEXT_KLEIN, leseVariablen } from "../../../src/lib/lesemodus";
+import { ladeLesemodus } from "../../../src/lib/lesemodus-laden";
 import MenuButton from "../../MenuButton";
 import NavKreise from "../../NavKreise";
 import StatusBarColor from "../../StatusBarColor";
@@ -107,7 +109,7 @@ function EinordnungBlock({ einordnung, akzent }: { einordnung: Einordnung; akzen
       {felder.map((f) => (
         <div key={f.label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={EINORDNUNG_LABEL_STIL}>{f.label}</span>
-          <span style={{ fontSize: 17, lineHeight: 1.55 }}>{f.text}</span>
+          <span style={LESETEXT}>{f.text}</span>
         </div>
       ))}
       {einordnung.heute && (
@@ -138,7 +140,7 @@ function EinordnungBlock({ einordnung, akzent }: { einordnung: Einordnung; akzen
               {URTEIL_LABEL[einordnung.heute.urteil] ?? einordnung.heute.urteil}
             </span>
           </div>
-          <span style={{ fontSize: 16, lineHeight: 1.55 }}>{einordnung.heute.begruendung}</span>
+          <span style={LESETEXT_KLEIN}>{einordnung.heute.begruendung}</span>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {einordnung.heute.quellen.map((q) => (
               <a
@@ -272,6 +274,9 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
   const kategorieLabel = KATEGORIE_LABEL[zeile.kategorie] ?? zeile.kategorie;
   const vh = (zeile.vertrauenshinweise ?? {}) as Record<string, Vertrauenshinweis>;
   const zusammenfassungsEbenen = parseZusammenfassung(zeile.zusammenfassung);
+  // Lesemodus (09/2026): Schriftgrösse/Zeilenabstand/Schriftart aus den
+  // Einstellungen, als CSS-Variablen auf <main> (siehe src/lib/lesemodus.ts).
+  const lesemodus = await ladeLesemodus(konto?.id);
   const buchTagListe = (await tagsFuerBuecher([zeile.buchId])).get(zeile.buchId) ?? [];
 
   // Bestehende Hervorhebungen/Notizen dieses Buchinhalts, nach Feld sortiert
@@ -315,6 +320,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
         padding: 16,
         paddingBottom: 32,
         background: akzent,
+        ...leseVariablen(lesemodus),
         display: "flex",
         flexDirection: "column",
         gap: 20,
@@ -370,7 +376,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
               {ebene.unterabschnitte.map((abschnitt, i) => (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {abschnitt.titel && (
-                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: 17 }}>
+                    <span style={{ fontFamily: "Helvetica, Arial, sans-serif", fontWeight: 700, fontSize: "var(--lese-groesse, 17px)" }}>
                       {abschnitt.titel}
                     </span>
                   )}
@@ -404,7 +410,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
                           feld="zusammenfassung"
                           bestehende={nachFeld("zusammenfassung")}
                           akzent={akzent}
-                          style={{ fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.72)" }}
+                          style={{ ...LESETEXT_KLEIN, color: "rgba(36,35,31,.72)" }}
                         />
                       </div>
                     ) : (
@@ -415,7 +421,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
                         feld="zusammenfassung"
                         bestehende={nachFeld("zusammenfassung")}
                         akzent={akzent}
-                        style={{ fontSize: 17, lineHeight: 1.55 }}
+                        style={LESETEXT}
                       />
                     )
                   )}
@@ -438,7 +444,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
             feld="entstehungsgeschichte"
             bestehende={nachFeld("entstehungsgeschichte")}
             akzent={akzent}
-            style={{ fontSize: 17, lineHeight: 1.55 }}
+            style={LESETEXT}
           />
         </Abschnitt>
 
@@ -450,7 +456,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
               feld="autorenhintergrund"
               bestehende={nachFeld("autorenhintergrund")}
               akzent={akzent}
-              style={{ fontSize: 17, lineHeight: 1.55 }}
+              style={LESETEXT}
             />
           </Abschnitt>
         )}
@@ -464,7 +470,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
                 feld="kernzitat_original"
                 bestehende={nachFeld("kernzitat_original")}
                 akzent={akzent}
-                style={{ fontSize: 17, lineHeight: 1.55, fontStyle: "italic" }}
+                style={{ ...LESETEXT, fontStyle: "italic" }}
                 praefix="„"
                 suffix="“"
               />
@@ -475,7 +481,7 @@ export default async function LesenSeite({ params }: { params: Promise<{ id: str
                   feld="kernzitat_uebersetzung"
                   bestehende={nachFeld("kernzitat_uebersetzung")}
                   akzent={akzent}
-                  style={{ fontSize: 16, lineHeight: 1.55, color: "rgba(36,35,31,.7)" }}
+                  style={{ ...LESETEXT_KLEIN, color: "rgba(36,35,31,.7)" }}
                 />
               )}
             </div>
